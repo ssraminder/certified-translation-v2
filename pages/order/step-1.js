@@ -374,7 +374,7 @@ export default function Step1() {
               <p className="text-gray-800 font-medium">Drag & drop files here</p>
               <p className="text-gray-500 text-sm mb-3">PDF, DOC, DOCX, JPG, JPEG, PNG</p>
               <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer">
-                <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden" onChange={onInputChange} />
+                <input suppressHydrationWarning type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden" onChange={onInputChange} />
                 Browse files
               </label>
             </div>
@@ -399,7 +399,7 @@ export default function Step1() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Source language</label>
-              <select className="w-full border rounded-lg px-3 py-2" value={formData.sourceLanguage} onChange={e => handleSourceLanguageChange(e.target.value)}>
+              <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.sourceLanguage} onChange={e => handleSourceLanguageChange(e.target.value)}>
                 <option value="">Select...</option>
                 {languages.map(l => <option key={l.id} value={l.language}>{l.language}</option>)}
               </select>
@@ -408,24 +408,24 @@ export default function Step1() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Target language</label>
               {formData.sourceLanguage && formData.sourceLanguage !== 'English' ? (
-                <select className="w-full border rounded-lg px-3 py-2" value={formData.targetLanguage} onChange={e => handleTargetLanguageChange(e.target.value)}>
+                <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.targetLanguage} onChange={e => handleTargetLanguageChange(e.target.value)}>
                   <option value="">Select...</option>
                   {targetOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               ) : (
-                <select className="w-full border rounded-lg px-3 py-2" value={formData.targetLanguage} onChange={e => handleTargetLanguageChange(e.target.value)}>
+                <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.targetLanguage} onChange={e => handleTargetLanguageChange(e.target.value)}>
                   <option value="">Select...</option>
                   {targetOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               )}
               {showCustomLanguage && (
-                <input className="mt-2 w-full border rounded-lg px-3 py-2" placeholder="Please specify language" value={customLanguage} onChange={e => setCustomLanguage(e.target.value)} />
+                <input suppressHydrationWarning className="mt-2 w-full border rounded-lg px-3 py-2" placeholder="Please specify language" value={customLanguage} onChange={e => setCustomLanguage(e.target.value)} />
               )}
               {errors.targetLanguage && <p className="text-xs text-red-600 mt-1">{errors.targetLanguage}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Intended use</label>
-              <select className="w-full border rounded-lg px-3 py-2" value={formData.intendedUseId} onChange={e => setFormData(fd => ({ ...fd, intendedUseId: e.target.value }))}>
+              <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.intendedUseId} onChange={e => setFormData(fd => ({ ...fd, intendedUseId: e.target.value }))}>
                 <option value="">Select...</option>
                 {intendedUses.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
@@ -433,7 +433,7 @@ export default function Step1() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Country of issue</label>
-              <input className="w-full border rounded-lg px-3 py-2" value={formData.countryOfIssue} onChange={e => setFormData(fd => ({ ...fd, countryOfIssue: e.target.value }))} />
+              <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.countryOfIssue} onChange={e => setFormData(fd => ({ ...fd, countryOfIssue: e.target.value }))} />
               {errors.countryOfIssue && <p className="text-xs text-red-600 mt-1">{errors.countryOfIssue}</p>}
             </div>
           </div>
