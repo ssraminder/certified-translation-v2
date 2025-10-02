@@ -114,7 +114,12 @@ export default function Step2() {
     } catch (err) {
       console.error(err);
       setProcessing(false);
-      alert('Failed to save. Please try again.');
+      try {
+        const { getErrorMessage } = await import('../../lib/errorMessage');
+        alert(getErrorMessage(err));
+      } catch {
+        alert('Failed to save. Please try again.');
+      }
     }
   };
 
