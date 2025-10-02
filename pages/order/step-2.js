@@ -171,22 +171,22 @@ export default function Step2() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input className="w-full border rounded-lg px-3 py-2" value={formData.fullName} onChange={e => setFormData(f => ({ ...f, fullName: e.target.value }))} />
+              <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.fullName} onChange={e => setFormData(f => ({ ...f, fullName: e.target.value }))} />
               {errors.fullName && <p className="text-xs text-red-600 mt-1">{errors.fullName}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-              <input type="email" className="w-full border rounded-lg px-3 py-2" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} />
+              <input suppressHydrationWarning type="email" className="w-full border rounded-lg px-3 py-2" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} />
               {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <input className="w-full border rounded-lg px-3 py-2" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} />
+              <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} />
               {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">I am ordering as</label>
-              <select className="w-full border rounded-lg px-3 py-2" value={formData.orderingType} onChange={e => setFormData(f => ({ ...f, orderingType: e.target.value }))}>
+              <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.orderingType} onChange={e => setFormData(f => ({ ...f, orderingType: e.target.value }))}>
                 <option value="">Select...</option>
                 <option value="individual">Individual</option>
                 <option value="business">Company/Business</option>
@@ -200,17 +200,17 @@ export default function Step2() {
                 <div className="grid grid-cols-1 gap-4 mt-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={formData.companyName} onChange={e => setFormData(f => ({ ...f, companyName: e.target.value }))} />
+                    <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.companyName} onChange={e => setFormData(f => ({ ...f, companyName: e.target.value }))} />
                     {errors.companyName && <p className="text-xs text-red-600 mt-1">{errors.companyName}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-                    <input className="w-full border rounded-lg px-3 py-2" value={formData.designation} onChange={e => setFormData(f => ({ ...f, designation: e.target.value }))} />
+                    <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.designation} onChange={e => setFormData(f => ({ ...f, designation: e.target.value }))} />
                     {errors.designation && <p className="text-xs text-red-600 mt-1">{errors.designation}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Frequency of Translation Services</label>
-                    <select className="w-full border rounded-lg px-3 py-2" value={formData.frequency} onChange={e => setFormData(f => ({ ...f, frequency: e.target.value }))}>
+                    <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.frequency} onChange={e => setFormData(f => ({ ...f, frequency: e.target.value }))}>
                       <option value="">Select...</option>
                       <option value="one-time">One-time only</option>
                       <option value="monthly">Monthly</option>
