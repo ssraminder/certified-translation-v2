@@ -226,10 +226,8 @@ export default function Step1() {
   }
 
   async function triggerWebhook(quoteId) {
-    const url = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
-    if (!url) return;
     try {
-      await fetch(url, {
+      await fetch('/api/trigger-n8n', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quote_id: quoteId })
