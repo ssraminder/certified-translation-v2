@@ -233,7 +233,7 @@ export default function Step1() {
         body: JSON.stringify({ quote_id: quoteId })
       });
     } catch (e) {
-      // ignore
+      console.warn('Webhook trigger failed:', e);
     }
   }
 
@@ -337,7 +337,12 @@ export default function Step1() {
     } catch (err) {
       console.error(err);
       setProcessing(false);
-      alert('Something went wrong. Please try again.');
+      try {
+        const { getErrorMessage } = await import('../../lib/errorMessage');
+        alert(getErrorMessage(err));
+      } catch {
+        alert('Something went wrong. Please try again.');
+      }
     }
   }
 
