@@ -284,9 +284,9 @@ export default function Step1() {
         .insert({
           quote_id: quoteId,
           job_id: jobId,
-          name: '',
-          email: '',
-          phone: '',
+          name: null,
+          email: null,
+          phone: null,
           source_lang: formData.sourceLanguage,
           target_lang: customLanguage || formData.targetLanguage,
           source_code: src?.iso_code || null,
