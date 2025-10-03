@@ -217,12 +217,19 @@ export default function Step1() {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (last?.job_id) {
-      const num = parseInt(String(last.job_id).replace('CS', '')) + 1;
-      return 'CS' + String(num).padStart(6, '0');
-    }
-    const random = Math.floor(Math.random() * 900) + 100;
-    return 'CS' + String(random).padStart(6, '0');
+    const nextValue = (() => {
+      if (last?.job_id) {
+        const cleaned = String(last.job_id).replace(/^CS/i, '');
+        const numeric = Number.parseInt(cleaned, 10);
+        if (Number.isFinite(numeric)) {
+          const candidate = numeric + 1;
+          if (candidate <= 99999) return candidate;
+        }
+      }
+      const random = Math.floor(Math.random() * 100000);
+      return random;
+    })();
+    return 'CS' + String(nextValue).padStart(5, '0');
   }
 
   async function triggerWebhook(quoteId) {
