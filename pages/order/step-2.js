@@ -31,19 +31,59 @@ export default function Step2() {
 
   useEffect(() => {
     if (!quote) return;
-    const checkStatus = async () => {
-      const { data } = await supabase
-        .from('ocr_analysis')
-        .select('quote_id')
-        .eq('quote_id', quote)
-        .limit(1);
-      if (data && data.length > 0) {
-        setProcessingStatus('complete');
+    let cancelled = false;
+    let intervalId = null;
+
+    const markStatus = (status) => {
+      if (!cancelled) {
+        setProcessingStatus(status);
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
       }
     };
-    const interval = setInterval(checkStatus, 5000);
+
+    const checkStatus = async () => {
+      try {
+        const { data: submissionRows, error: submissionError } = await supabase
+          .from('quote_submissions')
+          .select('status')
+          .eq('quote_id', quote)
+          .limit(1);
+        if (submissionError) throw submissionError;
+        const submissionStatus = submissionRows?.[0]?.status || null;
+        if (submissionStatus === 'analysis_complete') {
+          markStatus('complete');
+          return;
+        }
+        if (submissionStatus === 'analysis_failed') {
+          markStatus('failed');
+          return;
+        }
+        const { data: analysisRows, error: analysisError } = await supabase
+          .from('ocr_analysis')
+          .select('quote_id')
+          .eq('quote_id', quote)
+          .limit(1);
+        if (analysisError) throw analysisError;
+        if (analysisRows && analysisRows.length > 0) {
+          markStatus('complete');
+        }
+      } catch (error) {
+        console.error('Failed to check processing status', error);
+      }
+    };
+
+    intervalId = setInterval(checkStatus, 5000);
     checkStatus();
-    return () => clearInterval(interval);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [quote]);
 
   useEffect(() => {
@@ -149,6 +189,17 @@ export default function Step2() {
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
               <p className="text-sm font-medium text-green-800">Documents analyzed successfully!</p>
+            </div>
+          )}
+          {processingStatus === 'failed' && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+              <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1.414-10.586a1 1 0 10-1.414-1.414L10 8.586 8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-red-800">We could not analyze your documents.</p>
+                <p className="text-xs text-red-600">Please retry your upload or contact support so we can help.</p>
+              </div>
             </div>
           )}
 
