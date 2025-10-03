@@ -154,6 +154,7 @@ export default function Step2() {
 
           {/* Back Link */}
           <button
+            suppressHydrationWarning
             onClick={() => {
               if (confirm('Go back to documents? Your progress will be saved.')) {
                 window.location.href = `/order/step-1?quote=${quote}&job=${job}`;
@@ -224,7 +225,7 @@ export default function Step2() {
             </div>
 
             <div className="pt-2">
-              <button type="submit" disabled={processing} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">
+              <button suppressHydrationWarning type="submit" disabled={processing} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">
                 {processing ? 'Saving...' : 'Continue to Quote Review'}
               </button>
             </div>
