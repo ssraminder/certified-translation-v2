@@ -153,21 +153,31 @@ function formatDateForDisplay(dateString, timezone) {
 
 function normalizeLineItems(items) {
   return (items || []).map((item) => {
-    const billablePages = roundToCents(item.billable_pages);
-    const unitRate = roundToCents(item.unit_rate);
-    const certificationAmount = roundToCents(item.certification_amount);
-    const storedLineTotal = roundToCents(item.line_total);
+    const filename = item.filename || item.filenames || 'Document';
+    const docType = item.doc_type || 'Document';
+    const billablePages = roundToCents(safeNumber(item.billable_pages));
+    const unitRate = roundToCents(safeNumber(item.unit_rate));
+    const certificationAmount = roundToCents(safeNumber(item.certification_amount));
+    const storedLineTotal = roundToCents(safeNumber(item.line_total));
     const computedTotal = roundToCents(billablePages * unitRate + certificationAmount);
     const lineTotal = storedLineTotal > 0 ? storedLineTotal : computedTotal;
+    const totalPages = safeNumber(item.total_pages);
     return {
       id: item.id,
-      filename: item.filename || item.filenames || 'Document',
-      docType: item.doc_type || 'Document',
+      filename,
+      docType,
+      doc_type: docType,
       billablePages,
+      billable_pages: billablePages,
       unitRate,
+      unit_rate: unitRate,
       certificationAmount,
+      certification_amount: certificationAmount,
+      certification_type_name: item.certification_type_name,
       lineTotal,
-      totalPages: parseNumber(item.total_pages),
+      line_total: lineTotal,
+      totalPages,
+      total_pages: totalPages,
       sourceLanguage: item.source_language,
       targetLanguage: item.target_language
     };
