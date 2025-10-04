@@ -309,6 +309,33 @@ async function calculateAllDeliveryDates(quoteId, items, holidays) {
   return { dates, settings, totalPages };
 }
 
+async function pollForAnalysis(quoteId, { maxDuration = 45000, pollInterval = 2000 } = {}) {
+  const s = getSb();
+  if (!s) return { success: false };
+  const start = Date.now();
+  while (Date.now() - start < maxDuration) {
+    try {
+      const { data: sub } = await s
+        .from('quote_submissions')
+        .select('status')
+        .eq('quote_id', quoteId)
+        .maybeSingle();
+      const status = (sub?.status || '').toLowerCase();
+      if (status === 'analysis_complete') return { success: true };
+      if (status === 'analysis_failed') return { success: false, failed: true };
+      const { data: items } = await s
+        .from('ocr_analysis_items')
+        .select('quote_id')
+        .eq('quote_id', quoteId)
+        .limit(1);
+      if (items && items.length > 0) return { success: true };
+    } catch {}
+    // wait
+    await new Promise(r => setTimeout(r, pollInterval));
+  }
+  return { success: false, timeout: true };
+}
+
 export default function Step3() {
   const [{ quote, job }, setParams] = useState({ quote: null, job: null });
   const [quoteData, setQuoteData] = useState(null);
@@ -317,6 +344,8 @@ export default function Step3() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [totalPages, setTotalPages] = useState(null);
+  const [waiting, setWaiting] = useState(true);
+  const [hitl, setHitl] = useState(false);
 
   useEffect(() => { setParams(getQueryParams()); }, []);
 
@@ -324,6 +353,16 @@ export default function Step3() {
     if (!quote) return;
     let cancelled = false;
     const run = async () => {
+      setWaiting(true);
+      const gate = await pollForAnalysis(quote, { maxDuration: 45000, pollInterval: 2000 });
+      if (cancelled) return;
+      if (!gate.success) {
+        setWaiting(false);
+        setHitl(true);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError('');
       try {
@@ -342,7 +381,10 @@ export default function Step3() {
       } catch (e) {
         if (!cancelled) setError('Failed to load quote.');
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setWaiting(false);
+          setLoading(false);
+        }
       }
     };
     run();
@@ -357,21 +399,38 @@ export default function Step3() {
         <title>Step 3 - Quote Review</title>
       </Head>
       <div className="min-h-screen bg-white">
-        <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto px-4 py-8 relative">
           <div className="mb-4 text-sm font-medium text-gray-600">Order ID: {quoteData?.job_id || job || ''}</div>
 
-          {loading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">Loading your quote...</p>
+          {hitl && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 mb-6">
+              <p className="text-sm font-medium text-yellow-900">Human review in progress</p>
+              <p className="text-sm text-yellow-800 mt-1">Your documents need a quick manual review. We’ll notify you as soon as the quote is ready.</p>
+              <p className="text-xs text-yellow-700 mt-2">Order ID: {job || quote}</p>
+              <div className="mt-3 flex gap-3">
+                <button suppressHydrationWarning onClick={() => window.location.reload()} className="px-3 py-2 text-sm rounded-lg border border-yellow-300 text-yellow-900">Retry</button>
+                <button suppressHydrationWarning onClick={() => { window.location.href = `/order/step-2?quote=${quote || ''}&job=${job || ''}`; }} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white">Back</button>
+              </div>
             </div>
           )}
-          {error && (
+
+          {!hitl && loading && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+              <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Analyzing your documents...</p>
+                <p className="text-xs text-blue-600">This may take up to 45 seconds.</p>
+              </div>
+            </div>
+          )}
+
+          {!hitl && !loading && error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
-          {quoteData && deliveryDates && (
+          {!hitl && quoteData && deliveryDates && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <p className="font-semibold text-lg">Order ID: {quoteData.job_id || job}</p>
               <p className="text-gray-700">{quoteData.source_lang} → {quoteData.target_lang} | {quoteData.intended_use}</p>
@@ -414,24 +473,36 @@ export default function Step3() {
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <button
-              suppressHydrationWarning
-              onClick={() => { window.location.href = `/order/step-2?quote=${quote || ''}&job=${job || ''}`; }}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
-            >
-              Back
-            </button>
-            <button
-              suppressHydrationWarning
-              disabled={!canContinue}
-              onClick={() => { window.location.href = `/order/step-4?quote=${quote || ''}&job=${job || ''}`; }}
-              className={classNames('px-4 py-2 rounded-lg text-white', canContinue ? 'bg-blue-600' : 'bg-gray-400 cursor-not-allowed')}
-            >
-              Continue to Checkout
-            </button>
-          </div>
+          {!hitl && (
+            <div className="flex items-center gap-3">
+              <button
+                suppressHydrationWarning
+                onClick={() => { window.location.href = `/order/step-2?quote=${quote || ''}&job=${job || ''}`; }}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
+              >
+                Back
+              </button>
+              <button
+                suppressHydrationWarning
+                disabled={!canContinue}
+                onClick={() => { window.location.href = `/order/step-4?quote=${quote || ''}&job=${job || ''}`; }}
+                className={classNames('px-4 py-2 rounded-lg text-white', canContinue ? 'bg-blue-600' : 'bg-gray-400 cursor-not-allowed')}
+              >
+                Continue to Checkout
+              </button>
+            </div>
+          )}
         </div>
+
+        {waiting && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-lg p-5 w-[320px] text-center">
+              <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              <p className="text-sm font-medium text-gray-900">Analyzing your documents...</p>
+              <p className="text-xs text-gray-600 mt-1">This can take up to 45 seconds.</p>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
