@@ -30,6 +30,11 @@ function parseNumber(value) {
   return Number.isFinite(asNumber) ? asNumber : 0;
 }
 
+function safeNumber(value, defaultValue = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : defaultValue;
+}
+
 function roundToCents(value) {
   return Math.round(parseNumber(value) * 100) / 100;
 }
