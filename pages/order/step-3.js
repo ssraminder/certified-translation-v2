@@ -195,45 +195,53 @@ function calculateTotals(items) {
   return { subtotal, estimatedTax, total };
 }
 
-function buildResultsPayload({ totals, items, delivery, currency }) {
-  return {
-    version: 1,
-    currency,
-    subtotal: totals.subtotal,
-    estimatedTax: totals.estimatedTax,
-    total: totals.total,
-    lineItemCount: items.length,
-    lineItems: items.map((item) => ({
-      id: item.id,
-      filename: item.filename,
-      docType: item.docType,
-      billablePages: item.billablePages,
-      unitRate: item.unitRate,
-      certificationAmount: item.certificationAmount,
-      lineTotal: item.lineTotal
-    })),
-    delivery,
-    generatedAt: new Date().toISOString()
-  };
-}
-
-async function saveQuoteResults({ quoteId, totals, items, delivery, currency }) {
+async function saveQuoteResults(quoteId, totals, currentLineItems, { currency = CURRENCY, delivery = null } = {}) {
   if (!supabase) {
     throw new Error('Supabase client unavailable');
   }
-  const payload = buildResultsPayload({ totals, items, delivery, currency });
+
+  const sanitizedItems = (currentLineItems || []).map((item) => ({
+    id: item.id,
+    filename: item.filename,
+    doc_type: item.doc_type || item.docType,
+    billable_pages: safeNumber(item.billable_pages ?? item.billablePages),
+    unit_rate: safeNumber(item.unit_rate ?? item.unitRate),
+    certification_type_name: item.certification_type_name || null,
+    certification_amount: safeNumber(item.certification_amount ?? item.certificationAmount),
+    line_total: safeNumber(item.line_total ?? item.lineTotal)
+  }));
+
+  const resultsPayload = {
+    version: 1,
+    calculatedAt: new Date().toISOString(),
+    lineItemCount: sanitizedItems.length,
+    lineItems: sanitizedItems,
+    pricing: {
+      subtotal: totals.subtotal,
+      tax: totals.estimatedTax,
+      taxRate: GST_RATE,
+      total: totals.total,
+      currency
+    }
+  };
+
+  if (delivery) {
+    resultsPayload.delivery = delivery;
+  }
+
   const upsertPayload = {
     quote_id: quoteId,
-    results_json: payload,
-    currency,
+    results_json: resultsPayload,
     subtotal: totals.subtotal,
     tax: totals.estimatedTax,
     total: totals.total,
+    currency,
     computed_at: new Date().toISOString()
   };
+
   const { error } = await supabase
     .from('quote_results')
-    .upsert(upsertPayload, { onConflict: 'quote_id' });
+    .upsert(upsertPayload, { onConflict: 'quote_id', returning: 'minimal' });
   if (error) throw error;
 }
 
