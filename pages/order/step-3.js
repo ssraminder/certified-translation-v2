@@ -656,7 +656,6 @@ export default function Step3() {
   const [deliveryOptions, setDeliveryOptions] = useState([]);
   const [qualifiers, setQualifiers] = useState([]);
   const [files, setFiles] = useState([]);
-  const [sameDayEligible, setSameDayEligible] = useState(false);
   const [minimumOrder, setMinimumOrder] = useState(65);
 
   useEffect(() => {
@@ -791,7 +790,6 @@ export default function Step3() {
       setDeliveryOptions(deliveryOptionsList);
       setQualifiers(qualifiersList);
       setFiles(filesList);
-      setSameDayEligible(sameDay);
       setMinimumOrder(baseRate);
       setShowHITL(false);
     } catch (err) {
@@ -948,7 +946,6 @@ export default function Step3() {
       setLineItems(updatedItems);
       setPricing(totals);
       setDeliveryEstimates(delivery);
-      setSameDayEligible(sameDay);
     } catch (err) {
       console.error('Remove item failed', err);
       setError(getErrorMessage(err));
