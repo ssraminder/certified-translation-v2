@@ -847,7 +847,7 @@ export default function Step3() {
           .maybeSingle(),
         supabase
           .from('quote_sub_orders')
-          .select('id, filename, doc_type, billable_pages, unit_rate, certification_amount, line_total, total_pages, source_language, target_language')
+          .select('id, filename, doc_type, billable_pages, unit_rate, certification_amount, certification_type_name, line_total, total_pages, source_language, target_language')
           .eq('quote_id', targetQuoteId)
           .order('id'),
         supabase
