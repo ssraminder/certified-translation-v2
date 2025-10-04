@@ -185,7 +185,11 @@ function normalizeLineItems(items) {
 }
 
 function calculateTotals(items) {
-  const subtotal = items.reduce((sum, item) => sum + roundToCents(item.lineTotal), 0);
+  const subtotalValue = (items || []).reduce((sum, item) => {
+    const amount = safeNumber(item.line_total ?? item.lineTotal);
+    return sum + amount;
+  }, 0);
+  const subtotal = roundToCents(subtotalValue);
   const estimatedTax = roundToCents(subtotal * GST_RATE);
   const total = roundToCents(subtotal + estimatedTax);
   return { subtotal, estimatedTax, total };
