@@ -1117,10 +1117,14 @@ export default function Step3() {
       setPricing(newTotals);
       setDeliveryEstimates(delivery);
 
-      await saveQuoteResults(quoteId, newTotals, updatedItems, {
-        currency: CURRENCY,
-        delivery
-      });
+      try {
+        await saveQuoteResults(quoteId, newTotals, updatedItems, {
+          currency: CURRENCY,
+          delivery
+        });
+      } catch (saveError) {
+        console.error('⚠️ Error saving quote_results:', saveError);
+      }
 
       console.log('✅ Item removed successfully, quote recalculated');
     } catch (err) {
