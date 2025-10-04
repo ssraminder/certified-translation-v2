@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabase } from '../../lib/supabaseClient';
 
 function getQueryParams() {
@@ -176,7 +177,7 @@ export default function Step2() {
           {/* Processing Banner */}
           {processingStatus === 'processing' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-              <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+              <LoadingSpinner size="md" className="text-blue-600" label="Analyzing documents" />
               <div>
                 <p className="text-sm font-medium text-blue-800">Analyzing your documents...</p>
                 <p className="text-xs text-blue-600">This usually takes 2-3 minutes. You can continue filling out your information.</p>
