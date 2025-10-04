@@ -1036,41 +1036,67 @@ export default function Step3() {
       }
       return;
     }
-    if (typeof window !== 'undefined' && !window.confirm('Remove this document from your quote?')) {
-      return;
+
+    const itemToRemove = lineItems.find((item) => item.id === itemId);
+    if (!itemToRemove) return;
+
+    if (typeof window !== 'undefined') {
+      const reduction = safeNumber(itemToRemove.line_total ?? itemToRemove.lineTotal).toFixed(2);
+      const confirmed = window.confirm(
+        `Remove "${itemToRemove.filename}" from your quote?\n\nThis will reduce your total by $${reduction}.`
+      );
+      if (!confirmed) return;
     }
+
     if (!supabase) {
       setError('Supabase is not configured.');
       return;
     }
+
     setIsSaving(true);
     setError('');
+
     try {
       const { error: deleteError } = await supabase
         .from('quote_sub_orders')
         .delete()
         .eq('id', itemId);
+
       if (deleteError) throw deleteError;
+
       const updatedItems = lineItems.filter((item) => item.id !== itemId);
+
       if (updatedItems.length === 0) {
+        setLineItems(updatedItems);
+        setPricing({ subtotal: 0, estimatedTax: 0, total: 0 });
         setError('All documents were removed. A human specialist will follow up with you.');
         await triggerHitlReview(quoteId);
         setShowHITL(true);
         return;
       }
-      const totals = calculateTotals(updatedItems);
-      if (totals.total <= 0) {
+
+      setLineItems(updatedItems);
+
+      const newTotals = calculateTotals(updatedItems);
+
+      if (newTotals.total <= 0) {
+        setPricing(newTotals);
         setError('Quote total dropped to $0. Our human team will finish this quote.');
         await triggerHitlReview(quoteId);
         setShowHITL(true);
         return;
       }
-      if (totals.subtotal < minimumOrder) {
-        setError(`Our minimum order is ${formatCurrency(minimumOrder)}. We will prepare a manual quote for you.`);
+
+      if (newTotals.subtotal < minimumOrder) {
+        setPricing(newTotals);
+        if (typeof window !== 'undefined') {
+          window.alert(`Removing this document brings your order below the ${formatCurrency(minimumOrder)} minimum. Requesting human review.`);
+        }
         await triggerHitlReview(quoteId);
         setShowHITL(true);
         return;
       }
+
       const sameDay = determineSameDayEligibility({
         items: updatedItems,
         files,
@@ -1079,6 +1105,7 @@ export default function Step3() {
         fallbackCountry: quoteMeta?.country_of_issue,
         holidays: HOLIDAYS_2025
       });
+
       const delivery = computeDeliveryEstimates({
         items: updatedItems,
         deliveryOptions,
@@ -1086,23 +1113,18 @@ export default function Step3() {
         sameDayEligible: sameDay,
         holidays: HOLIDAYS_2025
       });
-      try {
-        await saveQuoteResults({
-          quoteId,
-          totals,
-          items: updatedItems,
-          delivery,
-          currency: CURRENCY
-        });
-      } catch (saveError) {
-        console.error('Failed to persist updated quote results', saveError);
-        setError('We removed the document, but we could not sync the totals. Our team will double-check before checkout.');
-      }
-      setLineItems(updatedItems);
-      setPricing(totals);
+
+      setPricing(newTotals);
       setDeliveryEstimates(delivery);
+
+      await saveQuoteResults(quoteId, newTotals, updatedItems, {
+        currency: CURRENCY,
+        delivery
+      });
+
+      console.log('✅ Item removed successfully, quote recalculated');
     } catch (err) {
-      console.error('Remove item failed', err);
+      console.error('❌ Error removing item:', err);
       setError(getErrorMessage(err));
     } finally {
       setIsSaving(false);
