@@ -1,508 +1,1040 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
-import { supabase, getSupabase } from '../../lib/supabaseClient';
+import { useRouter } from 'next/router';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { supabase } from '../../lib/supabaseClient';
+import { getErrorMessage } from '../../lib/errorMessage';
 
-function getQueryParams() {
-  if (typeof window === 'undefined') return { quote: null, job: null };
-  const params = new URLSearchParams(window.location.search);
-  return { quote: params.get('quote'), job: params.get('job') };
+const GST_RATE = 0.05;
+const DEFAULT_TIMEZONE = 'America/Edmonton';
+const DEFAULT_ORDER_CUTOFF = '18:00';
+const DEFAULT_SAME_DAY_CUTOFF = '14:00';
+const CURRENCY = 'CAD';
+const HOLIDAYS_2025 = new Set([
+  '2025-01-01',
+  '2025-04-18',
+  '2025-05-19',
+  '2025-07-01',
+  '2025-09-01',
+  '2025-10-13',
+  '2025-12-25',
+  '2025-12-26'
+]);
+
+function classNames(...values) {
+  return values.filter(Boolean).join(' ');
 }
 
-function getSb() { return supabase || getSupabase(); }
-
-function classNames(...arr) { return arr.filter(Boolean).join(' '); }
-
-function toISODate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function parseNumber(value) {
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? asNumber : 0;
 }
 
-function formatCutoffTime(timeString) {
-  if (!timeString) return '6:00 PM';
-  const [hRaw, mRaw = '00'] = String(timeString).split(':');
-  let h = Math.max(0, Math.min(23, parseInt(hRaw, 10) || 0));
-  const m = Math.max(0, Math.min(59, parseInt(mRaw, 10) || 0));
-  const period = h >= 12 ? 'PM' : 'AM';
-  const displayHours = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-  return `${displayHours}:${String(m).padStart(2, '0')} ${period}`;
+function roundToCents(value) {
+  return Math.round(parseNumber(value) * 100) / 100;
 }
 
-function getTodayInEdmonton(edmontonTimezone = 'America/Edmonton') {
+function formatCurrency(value) {
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: CURRENCY,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(roundToCents(value));
+}
+
+function getDateParts(date, timezone) {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: edmontonTimezone,
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(new Date());
-  const y = parts.find(p => p.type === 'year')?.value || '1970';
-  const m = parts.find(p => p.type === 'month')?.value || '01';
-  const d = parts.find(p => p.type === 'day')?.value || '01';
-  return `${y}-${m}-${d}`;
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === 'year')?.value || '1970';
+  const month = parts.find((p) => p.type === 'month')?.value || '01';
+  const day = parts.find((p) => p.type === 'day')?.value || '01';
+  return { year, month, day };
 }
 
-function isTodayWeekendInEdmonton(edmontonTimezone = 'America/Edmonton') {
-  const weekday = new Intl.DateTimeFormat('en-US', {
-    timeZone: edmontonTimezone,
+function getDateStringInTimezone(date, timezone) {
+  const { year, month, day } = getDateParts(date, timezone);
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalDateString(timezone) {
+  return getDateStringInTimezone(new Date(), timezone || DEFAULT_TIMEZONE);
+}
+
+function getLocalWeekdayNumber(timezone) {
+  const name = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone || DEFAULT_TIMEZONE,
     weekday: 'short'
   }).format(new Date());
-  return weekday === 'Sat' || weekday === 'Sun';
+  const map = {
+    Sun: 7,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6
+  };
+  return map[name] || 7;
 }
 
-function isBeforeCutoff(cutoffTimeString, edmontonTimezone = 'America/Edmonton') {
-  try {
-    if (!cutoffTimeString) return true;
-    const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: edmontonTimezone,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-    }).formatToParts(now);
-    const [cH = 0, cM = 0, cS = 0] = String(cutoffTimeString).split(':').map(n => parseInt(n, 10) || 0);
-    const nH = parseInt(parts.find(p => p.type === 'hour')?.value || '00', 10);
-    const nM = parseInt(parts.find(p => p.type === 'minute')?.value || '00', 10);
-    const nS = parseInt(parts.find(p => p.type === 'second')?.value || '00', 10);
-    if (nH < cH) return true;
-    if (nH > cH) return false;
-    if (nM < cM) return true;
-    if (nM > cM) return false;
-    return nS < cS;
-  } catch (e) {
-    return false;
+function isBeforeLocalTime(timeString, timezone) {
+  if (!timeString) return true;
+  const tz = timezone || DEFAULT_TIMEZONE;
+  const [hh = '00', mm = '00', ss = '00'] = String(timeString).split(':');
+  const cutoff = {
+    hours: Math.max(0, Math.min(23, parseInt(hh, 10) || 0)),
+    minutes: Math.max(0, Math.min(59, parseInt(mm, 10) || 0)),
+    seconds: Math.max(0, Math.min(59, parseInt(ss, 10) || 0))
+  };
+  const nowParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(new Date());
+  const hours = parseInt(nowParts.find((p) => p.type === 'hour')?.value || '00', 10);
+  const minutes = parseInt(nowParts.find((p) => p.type === 'minute')?.value || '00', 10);
+  const seconds = parseInt(nowParts.find((p) => p.type === 'second')?.value || '00', 10);
+  if (hours < cutoff.hours) return true;
+  if (hours > cutoff.hours) return false;
+  if (minutes < cutoff.minutes) return true;
+  if (minutes > cutoff.minutes) return false;
+  return seconds < cutoff.seconds;
+}
+
+function addBusinessDaysFromNow(days, timezone, holidaysSet) {
+  const tz = timezone || DEFAULT_TIMEZONE;
+  const holidays = holidaysSet || HOLIDAYS_2025;
+  if (days <= 0) {
+    return getDateStringInTimezone(new Date(), tz);
   }
-}
-
-function calculateBusinessDaysFromToday(days, edmontonTimezone = 'America/Edmonton', holidays = []) {
-  const hol = new Set((holidays || []).map(String));
-  let current = new Date(new Date().toLocaleString('en-US', { timeZone: edmontonTimezone }));
   let added = 0;
+  let reference = new Date();
   while (added < days) {
-    current.setDate(current.getDate() + 1);
-    const asEdmonton = new Date(current.toLocaleString('en-US', { timeZone: edmontonTimezone }));
-    const dow = asEdmonton.getDay();
-    const iso = toISODate(asEdmonton);
-    if (dow !== 0 && dow !== 6 && !hol.has(iso)) {
-      added++;
+    reference = new Date(reference.getTime() + 86_400_000);
+    const iso = getDateStringInTimezone(reference, tz);
+    const weekdayName = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      weekday: 'short'
+    }).format(reference);
+    const weekdayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayName);
+    const isWeekend = weekdayIndex === 0 || weekdayIndex === 6;
+    if (!isWeekend && !holidays.has(iso)) {
+      added += 1;
     }
   }
-  const finalAsEdmonton = new Date(current.toLocaleString('en-US', { timeZone: edmontonTimezone }));
-  return toISODate(finalAsEdmonton);
+  return getDateStringInTimezone(reference, tz);
 }
 
-function formatDate(dateStr, timezone) {
-  try {
-    if (!dateStr) return 'TBD';
-    const dt = new Date(`${dateStr}T12:00:00`);
-    if (isNaN(dt.getTime())) return String(dateStr);
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone || 'America/Edmonton',
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    }).format(dt);
-  } catch {
-    return String(dateStr || 'TBD');
+function formatDateForDisplay(dateString, timezone) {
+  if (!dateString) return 'TBD';
+  const tz = timezone || DEFAULT_TIMEZONE;
+  const date = new Date(`${dateString}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return String(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+}
+
+function normalizeLineItems(items) {
+  return (items || []).map((item) => {
+    const billablePages = roundToCents(item.billable_pages);
+    const unitRate = roundToCents(item.unit_rate);
+    const certificationAmount = roundToCents(item.certification_amount);
+    const storedLineTotal = roundToCents(item.line_total);
+    const computedTotal = roundToCents(billablePages * unitRate + certificationAmount);
+    const lineTotal = storedLineTotal > 0 ? storedLineTotal : computedTotal;
+    return {
+      id: item.id,
+      filename: item.filename || item.filenames || 'Document',
+      docType: item.doc_type || 'Document',
+      billablePages,
+      unitRate,
+      certificationAmount,
+      lineTotal,
+      totalPages: parseNumber(item.total_pages),
+      sourceLanguage: item.source_language,
+      targetLanguage: item.target_language
+    };
+  });
+}
+
+function calculateTotals(items) {
+  const subtotal = items.reduce((sum, item) => sum + roundToCents(item.lineTotal), 0);
+  const estimatedTax = roundToCents(subtotal * GST_RATE);
+  const total = roundToCents(subtotal + estimatedTax);
+  return { subtotal, estimatedTax, total };
+}
+
+function buildResultsPayload({ totals, items, delivery, currency }) {
+  return {
+    version: 1,
+    currency,
+    subtotal: totals.subtotal,
+    estimatedTax: totals.estimatedTax,
+    total: totals.total,
+    lineItemCount: items.length,
+    lineItems: items.map((item) => ({
+      id: item.id,
+      filename: item.filename,
+      docType: item.docType,
+      billablePages: item.billablePages,
+      unitRate: item.unitRate,
+      certificationAmount: item.certificationAmount,
+      lineTotal: item.lineTotal
+    })),
+    delivery,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+async function saveQuoteResults({ quoteId, totals, items, delivery, currency }) {
+  if (!supabase) {
+    throw new Error('Supabase client unavailable');
   }
+  const payload = buildResultsPayload({ totals, items, delivery, currency });
+  const upsertPayload = {
+    quote_id: quoteId,
+    results_json: payload,
+    currency,
+    subtotal: totals.subtotal,
+    tax: totals.estimatedTax,
+    total: totals.total,
+    computed_at: new Date().toISOString()
+  };
+  const { error } = await supabase
+    .from('quote_results')
+    .upsert(upsertPayload, { onConflict: 'quote_id' });
+  if (error) throw error;
 }
 
-async function fetchHolidays() {
+async function triggerHitlReview(quoteId) {
   try {
-    const s = getSb();
-    if (!s) throw new Error('no supabase');
-    const { data, error } = await s.from('holidays').select('date').order('date');
-    if (error) throw error;
-    const arr = (data || []).map(r => r.date).filter(Boolean);
-    if (arr.length > 0) return arr;
-  } catch {}
-  return [
-    '2025-01-01', '2025-04-18', '2025-05-19',
-    '2025-07-01', '2025-09-01', '2025-10-13',
-    '2025-12-25', '2025-12-26'
-  ];
-}
-
-async function fetchSettings() {
-  try {
-    const s = getSb();
-    if (!s) throw new Error('no supabase');
-    const { data, error } = await s
-      .from('app_settings')
-      .select('order_cutoff_time, same_day_cutoff_time, timezone')
-      .single();
-    if (error) throw error;
-    return data || { order_cutoff_time: '18:00:00', same_day_cutoff_time: '14:00:00', timezone: 'America/Edmonton' };
-  } catch {
-    try {
-      const s = getSb();
-      if (!s) throw new Error('no supabase');
-      const { data } = await s
-        .from('app_settings')
-        .select('same_day_cutoff_local_time, timezone')
-        .single();
-      const sameDay = data?.same_day_cutoff_local_time || '14:00:00';
-      return { order_cutoff_time: '18:00:00', same_day_cutoff_time: sameDay, timezone: data?.timezone || 'America/Edmonton' };
-    } catch {
-      return { order_cutoff_time: '18:00:00', same_day_cutoff_time: '14:00:00', timezone: 'America/Edmonton' };
-    }
-  }
-}
-
-async function fetchDeliveryOptions() {
-  const s = getSb();
-  if (!s) return [];
-  const { data } = await s
-    .from('delivery_options')
-    .select('id, delivery_type, base_business_days, addl_business_days, addl_business_days_per_pages, is_expedited, is_same_day, price_modifier_percent, active, display_order')
-    .eq('active', true)
-    .order('display_order');
-  return data || [];
-}
-
-async function fetchQuoteSummary(quoteId) {
-  const s = getSb();
-  if (!s) return null;
-  const { data } = await s
-    .from('quote_submissions')
-    .select('job_id, source_lang, target_lang, intended_use')
-    .eq('quote_id', quoteId)
-    .single();
-  return data || null;
-}
-
-async function fetchBillableItems(quoteId) {
-  try {
-    const s = getSb();
-    if (!s) throw new Error('no supabase');
-    const { data: items1 } = await s
-      .from('ocr_analysis_items')
-      .select('quote_id, filename, doc_type, billable_pages')
+    if (!supabase) return;
+    await supabase
+      .from('quote_submissions')
+      .update({ hitl_required: true, status: 'awaiting_review' })
       .eq('quote_id', quoteId);
-    if (items1 && items1.length > 0) return items1.map(i => ({
-      quote_id: i.quote_id,
-      filename: i.filename,
-      doc_type: i.doc_type,
-      billable_pages: Number(i.billable_pages) || 0
-    }));
-  } catch {}
-  try {
-    const s = getSb();
-    if (!s) throw new Error('no supabase');
-    const { data: item2 } = await s
-      .from('ocr_analysis')
-      .select('billable_pages')
-      .eq('quote_id', quoteId)
-      .maybeSingle();
-    if (item2 && typeof item2.billable_pages !== 'undefined') return [{ quote_id: quoteId, filename: null, doc_type: null, billable_pages: Number(item2.billable_pages) || 0 }];
-  } catch {}
-  try {
-    const s = getSb();
-    if (!s) throw new Error('no supabase');
-    const { data: items3 } = await s
-      .from('quote_files')
-      .select('filename, pages')
-      .eq('quote_id', quoteId);
-    if (items3 && items3.length > 0 && typeof items3[0].pages !== 'undefined') {
-      return items3.map(i => ({ quote_id: quoteId, filename: i.filename, doc_type: null, billable_pages: Number(i.pages) || 0 }));
-    }
-  } catch {}
-  return [{ quote_id: quoteId, filename: null, doc_type: null, billable_pages: 2 }];
-}
-
-async function checkSameDayEligibility(quoteId, items) {
-  try {
-    const totalPages = (items || []).reduce((sum, item) => sum + (Number(item.billable_pages) || 0), 0);
-    if (totalPages !== 1) return false;
-
-    const settings = await fetchSettings();
-    const tz = settings?.timezone || 'America/Edmonton';
-
-    const beforeSameDayCutoff = isBeforeCutoff(settings.same_day_cutoff_time || '14:00:00', tz);
-    if (!beforeSameDayCutoff) return false;
-
-    if (isTodayWeekendInEdmonton(tz)) return false;
-
-    const today = getTodayInEdmonton(tz);
-    const holidays = await fetchHolidays();
-    if (holidays.includes(today)) return false;
-
-    const s = getSb();
-    if (!s) return false;
-    const { data: files } = await s
-      .from('quote_files')
-      .select('filename, country_of_issue')
-      .eq('quote_id', quoteId);
-
-    if (!files || files.length === 0) return false;
-
-    for (const item of (items || [])) {
-      const file = files.find(f => !item.filename || f.filename === item.filename);
-      const country = file?.country_of_issue || null;
-      const docType = item?.doc_type || null;
-      if (!country || !docType) return false;
-      const { data: qualifiers } = await s
-        .from('same_day_qualifiers')
-        .select('id')
-        .eq('active', true)
-        .eq('country', country)
-        .ilike('doc_type', `%${docType}%`);
-      if (!qualifiers || qualifiers.length === 0) return false;
-    }
-
-    return true;
-  } catch {
-    return false;
+  } catch (err) {
+    console.error('Failed to flag quote for HITL review', err);
   }
 }
 
-function calculateBusinessDaysNeeded(totalPages, baseDays, addlDays, addlPagesPerDay) {
-  const additionalPages = Math.max(0, (Number(totalPages) || 0) - 2);
-  const per = Math.max(1, Number(addlPagesPerDay) || 1);
-  const addlBlocks = Math.ceil(additionalPages / per);
-  return (Number(baseDays) || 0) + addlBlocks * (Number(addlDays) || 0);
+function matchesQualifier(docType, country, qualifiers) {
+  const normalizedDoc = (docType || '').trim().toLowerCase();
+  const normalizedCountry = (country || '').trim().toLowerCase();
+  if (!normalizedDoc || !normalizedCountry) return false;
+  return (qualifiers || []).some((qualifier) => {
+    const qualifierDoc = (qualifier.doc_type || '').trim().toLowerCase();
+    const qualifierCountry = (qualifier.country || '').trim().toLowerCase();
+    if (!qualifierDoc || !qualifierCountry) return false;
+    if (qualifierCountry !== normalizedCountry) return false;
+    return (
+      qualifierDoc === normalizedDoc ||
+      normalizedDoc.includes(qualifierDoc) ||
+      qualifierDoc.includes(normalizedDoc)
+    );
+  });
 }
 
-async function calculateAllDeliveryDates(quoteId, items, holidays) {
-  const [settings, deliveryOptions] = await Promise.all([
-    fetchSettings(),
-    fetchDeliveryOptions()
-  ]);
+function determineSameDayEligibility({
+  items,
+  files,
+  qualifiers,
+  settings,
+  fallbackCountry,
+  holidays
+}) {
+  const totalPages = (items || []).reduce((sum, item) => sum + roundToCents(item.billablePages), 0);
+  if (totalPages !== 1) return false;
+  const tz = settings?.timezone || DEFAULT_TIMEZONE;
+  const cutoff = settings?.same_day_cutoff_local_time || DEFAULT_SAME_DAY_CUTOFF;
+  if (!isBeforeLocalTime(cutoff, tz)) return false;
 
-  const tz = settings?.timezone || 'America/Edmonton';
-  const totalPages = (items || []).reduce((sum, item) => sum + (Number(item.billable_pages) || 0), 0);
-  const dates = {};
+  const weekdays = new Set(
+    (settings?.same_day_cutoff_weekdays || '1,2,3,4,5')
+      .split(',')
+      .map((value) => parseInt(value.trim(), 10))
+      .filter((value) => Number.isFinite(value))
+  );
+  const weekdayNumber = getLocalWeekdayNumber(tz);
+  if (!weekdays.has(weekdayNumber)) return false;
 
-  const afterOrderCutoff = !isBeforeCutoff(settings.order_cutoff_time || '18:00:00', tz);
+  const todayIso = getLocalDateString(tz);
+  const blockedDates = holidays || HOLIDAYS_2025;
+  if (blockedDates.has(todayIso)) return false;
 
-  const standardOption = deliveryOptions.find(opt => opt.delivery_type === 'standard' || (!opt.is_expedited && !opt.is_same_day));
+  const fileCountryMap = new Map((files || []).map((file) => [file.filename, (file.country_of_issue || '').trim().toLowerCase()]));
+  const fallback = (fallbackCountry || '').trim().toLowerCase();
+
+  return (items || []).every((item) => {
+    const country = fileCountryMap.get(item.filename) || fallback;
+    return matchesQualifier(item.docType, country, qualifiers);
+  });
+}
+
+function toPercentLabel(decimal) {
+  const value = parseNumber(decimal);
+  if (value <= 0) return '+0%';
+  return `+${Math.round(value * 100)}%`;
+}
+
+function computeDeliveryEstimates({
+  items,
+  deliveryOptions,
+  settings,
+  sameDayEligible,
+  holidays
+}) {
+  const tz = settings?.timezone || DEFAULT_TIMEZONE;
+  const orderCutoff = settings?.order_cutoff_time || DEFAULT_ORDER_CUTOFF;
+  const totalPages = (items || []).reduce((sum, item) => sum + roundToCents(item.billablePages), 0);
+  const delivery = {};
+  const afterCutoff = !isBeforeLocalTime(orderCutoff, tz);
+  const options = deliveryOptions || [];
+
+  const standardOption = options.find((option) => !option.is_expedited && !option.is_same_day);
   if (standardOption) {
-    const needed = calculateBusinessDaysNeeded(totalPages, standardOption.base_business_days, standardOption.addl_business_days, standardOption.addl_business_days_per_pages);
-    const adjusted = afterOrderCutoff ? needed + 1 : needed;
-    dates.standard = {
-      date: calculateBusinessDaysFromToday(adjusted, tz, holidays),
-      label: 'Standard Delivery',
-      price: 'Free',
-      modifier: 0
+    const baseDays = parseNumber(standardOption.base_business_days);
+    const addlPages = parseNumber(standardOption.addl_business_days_per_pages);
+    const addlDays = parseNumber(standardOption.addl_business_days);
+    const extraBlocks = addlPages > 0 ? Math.max(0, Math.ceil(Math.max(totalPages - 1, 0) / addlPages)) : 0;
+    let requiredDays = baseDays + extraBlocks * addlDays;
+    if (afterCutoff) requiredDays += 1;
+    if (requiredDays < 0) requiredDays = 0;
+    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidays);
+    const feeAmount = parseNumber(standardOption.fee_amount);
+    const priceLabel = feeAmount > 0 ? `+${formatCurrency(feeAmount)}` : 'Included';
+    delivery.standard = {
+      key: 'standard',
+      label: standardOption.name || 'Standard delivery',
+      rawDate,
+      displayDate: formatDateForDisplay(rawDate, tz),
+      priceLabel,
+      modifier: 0,
+      timezone: tz
     };
   }
 
-  const expeditedOption = deliveryOptions.find(opt => opt.delivery_type === 'expedited' || (opt.is_expedited && !opt.is_same_day));
+  const expeditedOption = options.find((option) => option.is_expedited && !option.is_same_day);
   if (expeditedOption) {
-    const needed = calculateBusinessDaysNeeded(totalPages, expeditedOption.base_business_days, expeditedOption.addl_business_days, expeditedOption.addl_business_days_per_pages);
-    const adjusted = afterOrderCutoff ? needed + 1 : needed;
-    const pct = Number(expeditedOption.price_modifier_percent) || 40;
-    dates.expedited = {
-      date: calculateBusinessDaysFromToday(adjusted, tz, holidays),
-      label: 'Expedited Delivery',
-      price: `+${pct}%`,
-      modifier: pct / 100
+    const baseDays = parseNumber(expeditedOption.base_business_days);
+    const addlPages = parseNumber(expeditedOption.addl_business_days_per_pages);
+    const addlDays = parseNumber(expeditedOption.addl_business_days);
+    const extraBlocks = addlPages > 0 ? Math.max(0, Math.ceil(Math.max(totalPages - 1, 0) / addlPages)) : 0;
+    let requiredDays = baseDays + extraBlocks * addlDays;
+    if (afterCutoff) requiredDays += 1;
+    if (requiredDays < 0) requiredDays = 0;
+    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidays);
+    let modifier = 0;
+    let priceLabel = 'Included';
+    if ((expeditedOption.fee_type || '').toLowerCase() === 'percent') {
+      modifier = parseNumber(expeditedOption.fee_amount);
+      priceLabel = toPercentLabel(modifier > 0 ? modifier : parseNumber(settings?.rush_percent));
+    } else if ((expeditedOption.fee_type || '').toLowerCase() === 'flat') {
+      modifier = parseNumber(expeditedOption.fee_amount);
+      priceLabel = modifier > 0 ? `+${formatCurrency(modifier)}` : 'Included';
+    } else {
+      modifier = parseNumber(settings?.rush_percent);
+      priceLabel = toPercentLabel(modifier);
+    }
+    delivery.expedited = {
+      key: 'expedited',
+      label: expeditedOption.name || 'Expedited delivery',
+      rawDate,
+      displayDate: formatDateForDisplay(rawDate, tz),
+      priceLabel,
+      modifier,
+      timezone: tz
     };
   }
 
-  const eligible = await checkSameDayEligibility(quoteId, items);
-  if (eligible) {
-    dates.sameDay = {
-      date: getTodayInEdmonton(tz),
-      time: formatCutoffTime(settings.same_day_cutoff_time || '14:00:00'),
-      label: `Today by ${formatCutoffTime(settings.same_day_cutoff_time || '14:00:00')} MST`,
-      price: '+100%',
-      modifier: 1
+  const sameDayOption = options.find((option) => option.is_same_day);
+  if (sameDayEligible && sameDayOption) {
+    const sameDayCutoff = settings?.same_day_cutoff_local_time || DEFAULT_SAME_DAY_CUTOFF;
+    const rawDate = getLocalDateString(tz);
+    let modifier = parseNumber(sameDayOption.fee_amount);
+    if ((sameDayOption.fee_type || '').toLowerCase() !== 'percent' || modifier <= 0) {
+      modifier = 1;
+    }
+    const priceLabel = modifier > 0 ? toPercentLabel(modifier) : '+100%';
+    delivery.sameDay = {
+      key: 'sameDay',
+      label: 'Same-day delivery',
+      rawDate,
+      displayDate: 'Today',
+      deadlineTime: `${sameDayCutoff} ${tz.replace('America/', '')}`,
+      priceLabel,
+      modifier,
+      timezone: tz
+    };
+  } else if (sameDayEligible) {
+    const sameDayCutoff = settings?.same_day_cutoff_local_time || DEFAULT_SAME_DAY_CUTOFF;
+    const rawDate = getLocalDateString(tz);
+    delivery.sameDay = {
+      key: 'sameDay',
+      label: 'Same-day delivery',
+      rawDate,
+      displayDate: 'Today',
+      deadlineTime: `${sameDayCutoff} ${tz.replace('America/', '')}`,
+      priceLabel: '+100%',
+      modifier: 1,
+      timezone: tz
     };
   }
 
-  return { dates, settings, totalPages };
+  return delivery;
 }
 
-async function pollForAnalysis(quoteId, { maxDuration = 45000, pollInterval = 2000 } = {}) {
-  const s = getSb();
-  if (!s) return { success: false };
-  const start = Date.now();
-  while (Date.now() - start < maxDuration) {
-    try {
-      const { data: sub } = await s
-        .from('quote_submissions')
-        .select('status')
-        .eq('quote_id', quoteId)
-        .maybeSingle();
-      const status = (sub?.status || '').toLowerCase();
-      if (status === 'analysis_complete') return { success: true };
-      if (status === 'analysis_failed') return { success: false, failed: true };
-      const { data: items } = await s
-        .from('ocr_analysis_items')
-        .select('quote_id')
-        .eq('quote_id', quoteId)
-        .limit(1);
-      if (items && items.length > 0) return { success: true };
-    } catch {}
-    // wait
-    await new Promise(r => setTimeout(r, pollInterval));
-  }
-  return { success: false, timeout: true };
+function LoadingState({ heading, message }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-20 text-center">
+      <LoadingSpinner size="lg" className="text-blue-600" label={heading} />
+      <p className="text-lg font-semibold text-gray-900">{heading}</p>
+      <p className="text-sm text-gray-600">{message}</p>
+    </div>
+  );
+}
+
+function HitlFallback({ jobId, quoteMeta }) {
+  return (
+    <section className="rounded-2xl border border-amber-200 bg-white p-10 text-center shadow-sm">
+      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+          <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      </div>
+      <h2 className="text-xl font-semibold text-gray-900">Our team is reviewing your documents</h2>
+      <p className="mt-3 text-sm text-gray-600">
+        Your quote needs a human touch. A certified specialist will review everything and email you within the next few hours.
+      </p>
+      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Order ID</dt>
+          <dd className="text-sm font-semibold text-gray-900">{jobId || 'Pending'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Source language</dt>
+          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.source_lang || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Target language</dt>
+          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.target_lang || '—'}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function QuoteSummaryCard({ quoteMeta, jobId }) {
+  if (!quoteMeta) return null;
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Order summary</h2>
+          <p className="text-sm text-gray-600">Confirm the details before you proceed to checkout.</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Order ID</p>
+          <p className="text-sm font-semibold text-gray-900">{jobId || 'Pending'}</p>
+        </div>
+      </div>
+      <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Source language</dt>
+          <dd className="mt-1 text-sm font-semibold text-slate-900">{quoteMeta.source_lang || '—'}</dd>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Target language</dt>
+          <dd className="mt-1 text-sm font-semibold text-slate-900">{quoteMeta.target_lang || '—'}</dd>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Intended use</dt>
+          <dd className="mt-1 text-sm font-semibold text-slate-900">{quoteMeta.intended_use || '—'}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function DeliveryOptionsCard({ delivery, timezone }) {
+  if (!delivery || !delivery.standard) return null;
+  const options = [delivery.standard, delivery.expedited, delivery.sameDay].filter(Boolean);
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-gray-900">Delivery options</h2>
+      <p className="text-sm text-gray-600">Choose your delivery speed at checkout.</p>
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {options.map((option) => (
+          <div key={option.key} className="relative flex h-full flex-col justify-between rounded-xl border border-gray-200 p-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{option.label}</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900">{option.displayDate}</p>
+              {option.deadlineTime && (
+                <p className="mt-1 text-xs text-gray-500">Delivery by {option.deadlineTime}</p>
+              )}
+            </div>
+            <p className="mt-3 text-sm font-medium text-cyan-700">{option.priceLabel}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-xs text-gray-500">All times shown in {timezone || DEFAULT_TIMEZONE}.</p>
+    </section>
+  );
+}
+
+function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold text-gray-900">Documents</h2>
+        <p className="text-sm text-gray-600">Remove any document you do not need translated.</p>
+      </div>
+      <div className="mt-4 overflow-hidden rounded-xl border border-gray-100">
+        <table className="min-w-full divide-y divide-gray-100 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-slate-600">Filename</th>
+              <th scope="col" className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
+              <th scope="col" className="px-4 py-3 text-right font-medium text-slate-600">Pages</th>
+              <th scope="col" className="px-4 py-3 text-right font-medium text-slate-600">Rate</th>
+              <th scope="col" className="px-4 py-3 text-right font-medium text-slate-600">Total</th>
+              <th scope="col" className="px-3 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {items.map((item) => (
+              <tr key={item.id}>
+                <td className="max-w-xs truncate px-4 py-3 text-sm text-gray-900" title={item.filename}>{item.filename}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{item.docType}</td>
+                <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">{item.billablePages}</td>
+                <td className="px-4 py-3 text-right text-sm text-gray-600">{item.unitRate > 0 ? formatCurrency(item.unitRate) : '—'}</td>
+                <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{formatCurrency(item.lineTotal)}</td>
+                <td className="px-3 py-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(item.id)}
+                    disabled={disableRemove || isSaving}
+                    className={classNames(
+                      'text-sm font-medium transition-colors',
+                      disableRemove || isSaving
+                        ? 'cursor-not-allowed text-gray-300'
+                        : 'text-rose-600 hover:text-rose-700'
+                    )}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {disableRemove && (
+        <p className="mt-3 text-xs text-gray-500">You must keep at least one document in your quote.</p>
+      )}
+    </section>
+  );
+}
+
+function PricingSummary({ pricing }) {
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-gray-900">Pricing summary</h2>
+      <dl className="mt-4 space-y-3 text-sm">
+        <div className="flex items-center justify-between">
+          <dt className="text-gray-600">Subtotal</dt>
+          <dd className="font-medium text-gray-900">{formatCurrency(pricing.subtotal)}</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-gray-600">Estimated GST (5%)</dt>
+          <dd className="font-medium text-gray-900">{formatCurrency(pricing.estimatedTax)}</dd>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-100 pt-3 text-base font-semibold text-gray-900">
+          <dt>Total due today</dt>
+          <dd>{formatCurrency(pricing.total)}</dd>
+        </div>
+      </dl>
+      <p className="mt-3 text-xs text-gray-500">Final taxes will be confirmed at checkout based on your billing province.</p>
+    </section>
+  );
+}
+
+function ActionButtons({ onAccept, onHuman, onSave, disabled }) {
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={onAccept}
+          disabled={disabled}
+          className={classNames(
+            'inline-flex items-center justify-center rounded-lg bg-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors',
+            disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-cyan-700'
+          )}
+        >
+          Accept &amp; Pay
+        </button>
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+          <button
+            type="button"
+            onClick={onHuman}
+            disabled={disabled}
+            className={classNames(
+              'font-medium text-cyan-700 transition-colors',
+              disabled ? 'cursor-not-allowed opacity-60' : 'hover:text-cyan-800'
+            )}
+          >
+            Request human quote
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={disabled}
+            className={classNames(
+              'font-medium text-gray-600 transition-colors',
+              disabled ? 'cursor-not-allowed opacity-60' : 'hover:text-gray-800'
+            )}
+          >
+            Save &amp; Email
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DisclaimerBox() {
+  return (
+    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 text-amber-500">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+            <path d="m10.29 3.86-7.5 13A1 1 0 0 0 3.62 18h16.76a1 1 0 0 0 .87-1.5l-7.5-13a1 1 0 0 0-1.74 0Z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-amber-900">AI generated pricing</h3>
+          <p className="mt-1 text-xs text-amber-800">This quote was generated automatically. A certified translator will verify everything once you checkout, and you can request a human quote at any time.</p>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default function Step3() {
-  const [{ quote, job }, setParams] = useState({ quote: null, job: null });
-  const [quoteData, setQuoteData] = useState(null);
-  const [deliveryDates, setDeliveryDates] = useState(null);
-  const [timezone, setTimezone] = useState('America/Edmonton');
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [quoteId, setQuoteId] = useState(null);
+  const [jobId, setJobId] = useState(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showHITL, setShowHITL] = useState(false);
   const [error, setError] = useState('');
-  const [totalPages, setTotalPages] = useState(null);
-  const [waiting, setWaiting] = useState(true);
-  const [hitl, setHitl] = useState(false);
-
-  useEffect(() => { setParams(getQueryParams()); }, []);
+  const [infoMessage, setInfoMessage] = useState('');
+  const [quoteMeta, setQuoteMeta] = useState(null);
+  const [lineItems, setLineItems] = useState([]);
+  const [pricing, setPricing] = useState({ subtotal: 0, estimatedTax: 0, total: 0 });
+  const [deliveryEstimates, setDeliveryEstimates] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [deliveryOptions, setDeliveryOptions] = useState([]);
+  const [qualifiers, setQualifiers] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [sameDayEligible, setSameDayEligible] = useState(false);
+  const [minimumOrder, setMinimumOrder] = useState(65);
 
   useEffect(() => {
-    if (!quote) return;
-    let cancelled = false;
-    const run = async () => {
-      setWaiting(true);
-      const gate = await pollForAnalysis(quote, { maxDuration: 45000, pollInterval: 2000 });
-      if (cancelled) return;
-      if (!gate.success) {
-        setWaiting(false);
-        setHitl(true);
-        setLoading(false);
+    if (!router.isReady) return;
+    const { quote, job } = router.query;
+    if (!quote) {
+      setError('We could not find your quote reference.');
+      setShowHITL(true);
+      return;
+    }
+    setQuoteId(String(quote));
+    if (job) setJobId(String(job));
+  }, [router.isReady, router.query]);
+
+  const loadQuote = useCallback(async (targetQuoteId) => {
+    if (!targetQuoteId) return;
+    setIsLoading(true);
+    setError('');
+    setInfoMessage('');
+    if (!supabase) {
+      setError('Supabase is not configured.');
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const [submissionRes, lineItemsRes, filesRes, deliveryOptionsRes, settingsRes, qualifiersRes] = await Promise.all([
+        supabase
+          .from('quote_submissions')
+          .select('job_id, source_lang, target_lang, intended_use, country_of_issue')
+          .eq('quote_id', targetQuoteId)
+          .maybeSingle(),
+        supabase
+          .from('quote_sub_orders')
+          .select('id, filename, doc_type, billable_pages, unit_rate, certification_amount, line_total, total_pages, source_language, target_language')
+          .eq('quote_id', targetQuoteId)
+          .order('id'),
+        supabase
+          .from('quote_files')
+          .select('filename, country_of_issue')
+          .eq('quote_id', targetQuoteId),
+        supabase
+          .from('delivery_options')
+          .select('id, name, base_business_days, addl_business_days_per_pages, addl_business_days, fee_type, fee_amount, is_expedited, is_same_day, active, display_order')
+          .eq('active', true)
+          .order('display_order'),
+        supabase
+          .from('app_settings')
+          .select('base_rate, same_day_cutoff_local_time, same_day_cutoff_weekdays, timezone, rush_percent')
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('same_day_qualifiers')
+          .select('doc_type, country')
+          .eq('active', true)
+      ]);
+
+      if (submissionRes.error) throw submissionRes.error;
+      const submission = submissionRes.data;
+      if (!submission) {
+        setError('We could not find your quote details.');
+        await triggerHitlReview(targetQuoteId);
+        setShowHITL(true);
+        return;
+      }
+      if (!jobId && submission.job_id) {
+        setJobId(String(submission.job_id));
+      }
+
+      const normalizedItems = normalizeLineItems(lineItemsRes.data || []);
+      if (normalizedItems.length === 0) {
+        setError('No billable documents were returned. Our team will prepare a manual quote.');
+        await triggerHitlReview(targetQuoteId);
+        setShowHITL(true);
         return;
       }
 
-      setLoading(true);
-      setError('');
+      const totals = calculateTotals(normalizedItems);
+      if (totals.total <= 0) {
+        setError('The automated calculation returned $0. Our team will review this manually.');
+        await triggerHitlReview(targetQuoteId);
+        setShowHITL(true);
+        return;
+      }
+
+      const settingsData = settingsRes.data || {};
+      const baseRate = parseNumber(settingsData.base_rate) || 65;
+      if (totals.subtotal < baseRate) {
+        setMinimumOrder(baseRate);
+        setError('Your order is below our minimum. A human specialist will provide a custom quote.');
+        await triggerHitlReview(targetQuoteId);
+        setShowHITL(true);
+        return;
+      }
+
+      const filesList = filesRes.data || [];
+      const qualifiersList = qualifiersRes.data || [];
+      const deliveryOptionsList = (deliveryOptionsRes.data || []).filter((option) => option);
+      const sameDay = determineSameDayEligibility({
+        items: normalizedItems,
+        files: filesList,
+        qualifiers: qualifiersList,
+        settings: settingsData,
+        fallbackCountry: submission.country_of_issue,
+        holidays: HOLIDAYS_2025
+      });
+      const delivery = computeDeliveryEstimates({
+        items: normalizedItems,
+        deliveryOptions: deliveryOptionsList,
+        settings: settingsData,
+        sameDayEligible: sameDay,
+        holidays: HOLIDAYS_2025
+      });
+
       try {
-        const [summary, items, holidays] = await Promise.all([
-          fetchQuoteSummary(quote),
-          fetchBillableItems(quote),
-          fetchHolidays()
-        ]);
+        await saveQuoteResults({
+          quoteId: targetQuoteId,
+          totals,
+          items: normalizedItems,
+          delivery,
+          currency: CURRENCY
+        });
+      } catch (saveError) {
+        console.error('Failed to persist quote results', saveError);
+        setError('We loaded your quote, but we were unable to save the summary. Our team will double-check before checkout.');
+      }
+
+      setQuoteMeta(submission);
+      setLineItems(normalizedItems);
+      setPricing(totals);
+      setDeliveryEstimates(delivery);
+      setSettings(settingsData);
+      setDeliveryOptions(deliveryOptionsList);
+      setQualifiers(qualifiersList);
+      setFiles(filesList);
+      setSameDayEligible(sameDay);
+      setMinimumOrder(baseRate);
+      setShowHITL(false);
+    } catch (err) {
+      console.error('Failed to load quote', err);
+      setError(getErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    if (!quoteId) return;
+    if (!supabase) {
+      setError('Supabase is not configured.');
+      setShowHITL(true);
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    let elapsed = 0;
+    const pollIntervalMs = 2500;
+    const maxWaitMs = 45000;
+    setIsPolling(true);
+    setIsLoading(true);
+    setError('');
+
+    const checkStatus = async () => {
+      try {
+        const { data, error: statusError } = await supabase
+          .from('quote_submissions')
+          .select('n8n_status, hitl_required')
+          .eq('quote_id', quoteId)
+          .maybeSingle();
         if (cancelled) return;
-        setQuoteData(summary);
-        const { dates, settings, totalPages } = await calculateAllDeliveryDates(quote, items, holidays);
-        if (cancelled) return;
-        setDeliveryDates(dates);
-        setTimezone(settings?.timezone || 'America/Edmonton');
-        setTotalPages(totalPages);
-      } catch (e) {
-        if (!cancelled) setError('Failed to load quote.');
-      } finally {
+        if (statusError) throw statusError;
+        if (!data) {
+          setError('We could not locate your quote.');
+          setIsPolling(false);
+          setIsLoading(false);
+          setShowHITL(true);
+          clearInterval(timerId);
+          return;
+        }
+        if (data.hitl_required) {
+          setIsPolling(false);
+          setIsLoading(false);
+          setShowHITL(true);
+          clearInterval(timerId);
+          return;
+        }
+        if ((data.n8n_status || '').toLowerCase() === 'ready') {
+          clearInterval(timerId);
+          setIsPolling(false);
+          await loadQuote(quoteId);
+          return;
+        }
+        elapsed += pollIntervalMs;
+        if (elapsed >= maxWaitMs) {
+          clearInterval(timerId);
+          setError('Analysis is taking longer than expected. A human specialist will finish this quote.');
+          await triggerHitlReview(quoteId);
+          setIsPolling(false);
+          setIsLoading(false);
+          setShowHITL(true);
+        }
+      } catch (err) {
         if (!cancelled) {
-          setWaiting(false);
-          setLoading(false);
+          console.error('Polling error', err);
+          setError(getErrorMessage(err));
+          setIsPolling(false);
         }
       }
     };
-    run();
-    return () => { cancelled = true; };
-  }, [quote]);
 
-  const canContinue = useMemo(() => !!deliveryDates && !!deliveryDates.standard, [deliveryDates]);
+    const timerId = setInterval(checkStatus, pollIntervalMs);
+    checkStatus();
+
+    return () => {
+      cancelled = true;
+      clearInterval(timerId);
+    };
+  }, [quoteId, loadQuote]);
+
+  const handleRemoveItem = useCallback(async (itemId) => {
+    if (!quoteId) return;
+    if (lineItems.length <= 1) {
+      if (typeof window !== 'undefined') {
+        window.alert('You must keep at least one document in your quote.');
+      }
+      return;
+    }
+    if (typeof window !== 'undefined' && !window.confirm('Remove this document from your quote?')) {
+      return;
+    }
+    if (!supabase) {
+      setError('Supabase is not configured.');
+      return;
+    }
+    setIsSaving(true);
+    setError('');
+    try {
+      const { error: deleteError } = await supabase
+        .from('quote_sub_orders')
+        .delete()
+        .eq('id', itemId);
+      if (deleteError) throw deleteError;
+      const updatedItems = lineItems.filter((item) => item.id !== itemId);
+      if (updatedItems.length === 0) {
+        setError('All documents were removed. A human specialist will follow up with you.');
+        await triggerHitlReview(quoteId);
+        setShowHITL(true);
+        return;
+      }
+      const totals = calculateTotals(updatedItems);
+      if (totals.total <= 0) {
+        setError('Quote total dropped to $0. Our human team will finish this quote.');
+        await triggerHitlReview(quoteId);
+        setShowHITL(true);
+        return;
+      }
+      if (totals.subtotal < minimumOrder) {
+        setError(`Our minimum order is ${formatCurrency(minimumOrder)}. We will prepare a manual quote for you.`);
+        await triggerHitlReview(quoteId);
+        setShowHITL(true);
+        return;
+      }
+      const sameDay = determineSameDayEligibility({
+        items: updatedItems,
+        files,
+        qualifiers,
+        settings,
+        fallbackCountry: quoteMeta?.country_of_issue,
+        holidays: HOLIDAYS_2025
+      });
+      const delivery = computeDeliveryEstimates({
+        items: updatedItems,
+        deliveryOptions,
+        settings,
+        sameDayEligible: sameDay,
+        holidays: HOLIDAYS_2025
+      });
+      try {
+        await saveQuoteResults({
+          quoteId,
+          totals,
+          items: updatedItems,
+          delivery,
+          currency: CURRENCY
+        });
+      } catch (saveError) {
+        console.error('Failed to persist updated quote results', saveError);
+        setError('We removed the document, but we could not sync the totals. Our team will double-check before checkout.');
+      }
+      setLineItems(updatedItems);
+      setPricing(totals);
+      setDeliveryEstimates(delivery);
+      setSameDayEligible(sameDay);
+    } catch (err) {
+      console.error('Remove item failed', err);
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  }, [quoteId, lineItems, minimumOrder, files, qualifiers, settings, quoteMeta, deliveryOptions]);
+
+  const handleAcceptPay = useCallback(() => {
+    if (!quoteId) return;
+    const target = {
+      pathname: '/order/step-4',
+      query: { quote: quoteId }
+    };
+    if (jobId) target.query.job = jobId;
+    router.push(target);
+  }, [router, quoteId, jobId]);
+
+  const handleRequestHumanQuote = useCallback(async () => {
+    if (!quoteId) return;
+    setIsSaving(true);
+    setError('');
+    try {
+      await triggerHitlReview(quoteId);
+      setShowHITL(true);
+      setInfoMessage('Our certified team has been notified. We will send a manual quote shortly.');
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  }, [quoteId]);
+
+  const handleSaveAndEmail = useCallback(() => {
+    setInfoMessage('We saved your quote and will email you a copy shortly.');
+  }, []);
 
   return (
     <>
       <Head>
         <title>Step 3 - Quote Review</title>
       </Head>
-      <div className="min-h-screen bg-white">
-        <div className="max-w-2xl mx-auto px-4 py-8 relative">
-          <div className="mb-4 text-sm font-medium text-gray-600">Order ID: {quoteData?.job_id || job || ''}</div>
-
-          {hitl && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5 mb-6">
-              <p className="text-sm font-medium text-yellow-900">Human review in progress</p>
-              <p className="text-sm text-yellow-800 mt-1">Your documents need a quick manual review. We’ll notify you as soon as the quote is ready.</p>
-              <p className="text-xs text-yellow-700 mt-2">Order ID: {job || quote}</p>
-              <div className="mt-3 flex gap-3">
-                <button suppressHydrationWarning onClick={() => window.location.reload()} className="px-3 py-2 text-sm rounded-lg border border-yellow-300 text-yellow-900">Retry</button>
-                <button suppressHydrationWarning onClick={() => { window.location.href = `/order/step-2?quote=${quote || ''}&job=${job || ''}`; }} className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white">Back</button>
-              </div>
-            </div>
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-4 py-8">
+          {isPolling && (
+            <LoadingState
+              heading="AI is analyzing your documents..."
+              message="This usually takes about 30–45 seconds. You can leave this tab open while we prepare your quote."
+            />
           )}
-
-          {!hitl && loading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-              <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full" />
-              <div>
-                <p className="text-sm font-medium text-blue-800">Analyzing your documents...</p>
-                <p className="text-xs text-blue-600">This may take up to 45 seconds.</p>
-              </div>
-            </div>
+          {!isPolling && isLoading && (
+            <LoadingState
+              heading="Preparing your quote..."
+              message="Hang tight while we calculate pricing on your documents."
+            />
           )}
-
-          {!hitl && !loading && error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
+          {!isPolling && !isLoading && showHITL && (
+            <HitlFallback jobId={jobId || quoteMeta?.job_id} quoteMeta={quoteMeta} />
           )}
-
-          {!hitl && quoteData && deliveryDates && (
-            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-              <p className="font-semibold text-lg">Order ID: {quoteData.job_id || job}</p>
-              <p className="text-gray-700">{quoteData.source_lang} → {quoteData.target_lang} | {quoteData.intended_use}</p>
-
-              {deliveryDates.standard ? (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Standard Delivery</p>
-                  <p className="text-lg font-semibold text-gray-900">📅 {formatDate(deliveryDates.standard.date, timezone)}</p>
-                  <p className="text-sm text-green-600 font-medium">Free</p>
-                </div>
-              ) : (
-                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <p className="text-sm text-yellow-800">Standard delivery option is temporarily unavailable. We’ll show options at checkout.</p>
-                </div>
+          {!isPolling && !isLoading && !showHITL && (
+            <div className="space-y-6 pb-12">
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
               )}
-
-              <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm font-semibold text-gray-700 mb-2">⚡ Faster options available:</p>
-
-                {deliveryDates.expedited && (
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-sm text-gray-700">🚀 Expedited: {formatDate(deliveryDates.expedited.date, timezone)}</span>
-                    <span className="text-sm font-medium text-cyan-600">{deliveryDates.expedited.price}</span>
-                  </div>
-                )}
-
-                {deliveryDates.sameDay && (
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-sm text-gray-700">⚡ Same-day: {deliveryDates.sameDay.label}</span>
-                    <span className="text-sm font-medium text-cyan-600">{deliveryDates.sameDay.price}</span>
-                  </div>
-                )}
-
-                {!deliveryDates.sameDay && totalPages === 1 && (
-                  <p className="text-xs text-gray-400 italic mt-1">Same-day available for orders placed before 2 PM MST</p>
-                )}
-
-                <p className="text-xs text-gray-500 mt-2">→ Choose your delivery speed at checkout</p>
-              </div>
-            </div>
-          )}
-
-          {!hitl && (
-            <div className="flex items-center gap-3">
-              <button
-                suppressHydrationWarning
-                onClick={() => { window.location.href = `/order/step-2?quote=${quote || ''}&job=${job || ''}`; }}
-                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700"
-              >
-                Back
-              </button>
-              <button
-                suppressHydrationWarning
-                disabled={!canContinue}
-                onClick={() => { window.location.href = `/order/step-4?quote=${quote || ''}&job=${job || ''}`; }}
-                className={classNames('px-4 py-2 rounded-lg text-white', canContinue ? 'bg-blue-600' : 'bg-gray-400 cursor-not-allowed')}
-              >
-                Continue to Checkout
-              </button>
+              {infoMessage && !error && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{infoMessage}</div>
+              )}
+              <QuoteSummaryCard quoteMeta={quoteMeta} jobId={jobId || quoteMeta?.job_id} />
+              <DeliveryOptionsCard delivery={deliveryEstimates} timezone={settings?.timezone || DEFAULT_TIMEZONE} />
+              <LineItemsTable
+                items={lineItems}
+                onRemove={handleRemoveItem}
+                disableRemove={lineItems.length <= 1}
+                isSaving={isSaving}
+              />
+              <PricingSummary pricing={pricing} />
+              <ActionButtons
+                onAccept={handleAcceptPay}
+                onHuman={handleRequestHumanQuote}
+                onSave={handleSaveAndEmail}
+                disabled={isSaving || lineItems.length === 0}
+              />
+              <DisclaimerBox />
             </div>
           )}
         </div>
-
-        {waiting && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-lg p-5 w-[320px] text-center">
-              <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-              <p className="text-sm font-medium text-gray-900">Analyzing your documents...</p>
-              <p className="text-xs text-gray-600 mt-1">This can take up to 45 seconds.</p>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
