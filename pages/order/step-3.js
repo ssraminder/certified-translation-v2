@@ -10,31 +10,6 @@ function getQueryParams() {
 
 function classNames(...arr) { return arr.filter(Boolean).join(' '); }
 
-function parseCutoffTime(timeString) {
-  if (!timeString || typeof timeString !== 'string') return { hours: 18, minutes: 0 };
-  const str = timeString.trim();
-  const ampmMatch = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (ampmMatch) {
-    let h = parseInt(ampmMatch[1], 10);
-    const m = parseInt(ampmMatch[2], 10) || 0;
-    const ampm = ampmMatch[3].toUpperCase();
-    if (ampm === 'PM' && h !== 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-    return { hours: h, minutes: m };
-  }
-  const parts = str.split(':').map(s => s.trim());
-  if (parts.length >= 2) {
-    const h = Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0));
-    const m = Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0));
-    return { hours: h, minutes: m };
-  }
-  const onlyHour = parseInt(str, 10);
-  if (Number.isFinite(onlyHour)) {
-    return { hours: Math.max(0, Math.min(23, onlyHour)), minutes: 0 };
-  }
-  return { hours: 18, minutes: 0 };
-}
-
 function toISODate(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -42,32 +17,90 @@ function toISODate(d) {
   return `${y}-${m}-${day}`;
 }
 
-function calculateBusinessDays(days, holidays, startDate) {
-  const hol = new Set((holidays || []).map(x => String(x)));
-  const currentDate = new Date(startDate || new Date());
-  let addedDays = 0;
-  while (addedDays < days) {
-    currentDate.setDate(currentDate.getDate() + 1);
-    const dow = currentDate.getDay();
-    const ds = toISODate(currentDate);
-    if (dow !== 0 && dow !== 6 && !hol.has(ds)) {
-      addedDays++;
+function formatCutoffTime(timeString) {
+  if (!timeString) return '6:00 PM';
+  const [hRaw, mRaw = '00'] = String(timeString).split(':');
+  let h = Math.max(0, Math.min(23, parseInt(hRaw, 10) || 0));
+  const m = Math.max(0, Math.min(59, parseInt(mRaw, 10) || 0));
+  const period = h >= 12 ? 'PM' : 'AM';
+  const displayHours = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  return `${displayHours}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function getTodayInEdmonton(edmontonTimezone = 'America/Edmonton') {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: edmontonTimezone,
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year')?.value || '1970';
+  const m = parts.find(p => p.type === 'month')?.value || '01';
+  const d = parts.find(p => p.type === 'day')?.value || '01';
+  return `${y}-${m}-${d}`;
+}
+
+function isTodayWeekendInEdmonton(edmontonTimezone = 'America/Edmonton') {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: edmontonTimezone,
+    weekday: 'short'
+  }).format(new Date());
+  return weekday === 'Sat' || weekday === 'Sun';
+}
+
+function isBeforeCutoff(cutoffTimeString, edmontonTimezone = 'America/Edmonton') {
+  try {
+    if (!cutoffTimeString) return true;
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: edmontonTimezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).formatToParts(now);
+    const y = parseInt(parts.find(p => p.type === 'year')?.value || '1970', 10);
+    const mo = parseInt(parts.find(p => p.type === 'month')?.value || '01', 10);
+    const d = parseInt(parts.find(p => p.type === 'day')?.value || '01', 10);
+    const [cH = 0, cM = 0, cS = 0] = String(cutoffTimeString).split(':').map(n => parseInt(n, 10) || 0);
+    const edmontonNow = new Date(Date.UTC(y, mo - 1, d));
+    // Build a date string for Edmonton today at cutoff time and compare via time strings in that TZ
+    const edmontonNowStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: edmontonTimezone,
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    }).format(now);
+    const [nH = 0, nM = 0, nS = 0] = edmontonNowStr.split(':').map(n => parseInt(n, 10) || 0);
+    if (nH < cH) return true;
+    if (nH > cH) return false;
+    if (nM < cM) return true;
+    if (nM > cM) return false;
+    return nS < cS;
+  } catch (e) {
+    return false;
+  }
+}
+
+function calculateBusinessDaysFromToday(days, edmontonTimezone = 'America/Edmonton', holidays = []) {
+  const hol = new Set((holidays || []).map(String));
+  // Start from Edmonton "today"
+  let current = new Date(new Date().toLocaleString('en-US', { timeZone: edmontonTimezone }));
+  let added = 0;
+  while (added < days) {
+    current.setDate(current.getDate() + 1);
+    const asEdmonton = new Date(current.toLocaleString('en-US', { timeZone: edmontonTimezone }));
+    const dow = asEdmonton.getDay();
+    const iso = toISODate(asEdmonton);
+    if (dow !== 0 && dow !== 6 && !hol.has(iso)) {
+      added++;
     }
   }
-  return toISODate(currentDate);
+  const finalAsEdmonton = new Date(current.toLocaleString('en-US', { timeZone: edmontonTimezone }));
+  return toISODate(finalAsEdmonton);
 }
 
 function formatDate(dateStr, timezone) {
   try {
-    const date = new Date(dateStr);
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone || undefined,
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    return fmt.format(date);
+    const dt = new Date(`${dateStr}T12:00:00Z`);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone || 'America/Edmonton',
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    }).format(dt);
   } catch {
     return dateStr;
   }
@@ -76,35 +109,38 @@ function formatDate(dateStr, timezone) {
 async function fetchHolidays() {
   try {
     const { data, error } = await supabase.from('holidays').select('date').order('date');
-    if (error) return [
-      '2025-01-01', '2025-04-18', '2025-05-19',
-      '2025-07-01', '2025-09-01', '2025-10-13',
-      '2025-12-25', '2025-12-26'
-    ];
+    if (error) throw error;
     const arr = (data || []).map(r => r.date).filter(Boolean);
-    if (arr.length === 0) {
-      return [
-        '2025-01-01', '2025-04-18', '2025-05-19',
-        '2025-07-01', '2025-09-01', '2025-10-13',
-        '2025-12-25', '2025-12-26'
-      ];
-    }
-    return arr;
-  } catch {
-    return [
-      '2025-01-01', '2025-04-18', '2025-05-19',
-      '2025-07-01', '2025-09-01', '2025-10-13',
-      '2025-12-25', '2025-12-26'
-    ];
-  }
+    if (arr.length > 0) return arr;
+  } catch {}
+  return [
+    '2025-01-01', '2025-04-18', '2025-05-19',
+    '2025-07-01', '2025-09-01', '2025-10-13',
+    '2025-12-25', '2025-12-26'
+  ];
 }
 
 async function fetchSettings() {
-  const { data } = await supabase
-    .from('app_settings')
-    .select('same_day_cutoff_local_time, timezone')
-    .single();
-  return data || { same_day_cutoff_local_time: '18:00', timezone: undefined };
+  // Try new columns first, fall back to older naming if needed
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('order_cutoff_time, same_day_cutoff_time, timezone')
+      .single();
+    if (error) throw error;
+    return data || { order_cutoff_time: '18:00:00', same_day_cutoff_time: '14:00:00', timezone: 'America/Edmonton' };
+  } catch {
+    try {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('same_day_cutoff_local_time, timezone')
+        .single();
+      const sameDay = data?.same_day_cutoff_local_time || '14:00:00';
+      return { order_cutoff_time: '18:00:00', same_day_cutoff_time: sameDay, timezone: data?.timezone || 'America/Edmonton' };
+    } catch {
+      return { order_cutoff_time: '18:00:00', same_day_cutoff_time: '14:00:00', timezone: 'America/Edmonton' };
+    }
+  }
 }
 
 async function fetchDeliveryOptions() {
@@ -126,70 +162,125 @@ async function fetchQuoteSummary(quoteId) {
 }
 
 async function fetchBillableItems(quoteId) {
-  // Try multiple sources to discover billable pages; fall back to baseline 2 pages if unknown
+  // Prefer OCR analysis items for detailed doc_type and filename
   try {
-    const { data: items1 } = await supabase
+    const { data: items1, error: e1 } = await supabase
       .from('ocr_analysis_items')
-      .select('billable_pages')
+      .select('quote_id, filename, doc_type, billable_pages')
       .eq('quote_id', quoteId);
-    if (items1 && items1.length > 0) return items1.map(i => ({ billable_pages: Number(i.billable_pages) || 0 }));
+    if (!e1 && items1 && items1.length > 0) return items1.map(i => ({
+      quote_id: i.quote_id,
+      filename: i.filename,
+      doc_type: i.doc_type,
+      billable_pages: Number(i.billable_pages) || 0
+    }));
   } catch {}
+  // Fall back to summary count
   try {
     const { data: item2 } = await supabase
       .from('ocr_analysis')
       .select('billable_pages')
       .eq('quote_id', quoteId)
       .maybeSingle();
-    if (item2 && typeof item2.billable_pages !== 'undefined') return [{ billable_pages: Number(item2.billable_pages) || 0 }];
+    if (item2 && typeof item2.billable_pages !== 'undefined') return [{ quote_id: quoteId, filename: null, doc_type: null, billable_pages: Number(item2.billable_pages) || 0 }];
   } catch {}
+  // Fall back to files.pages if available
   try {
     const { data: items3 } = await supabase
       .from('quote_files')
-      .select('pages')
+      .select('filename, pages')
       .eq('quote_id', quoteId);
     if (items3 && items3.length > 0 && typeof items3[0].pages !== 'undefined') {
-      return items3.map(i => ({ billable_pages: Number(i.pages) || 0 }));
+      return items3.map(i => ({ quote_id: quoteId, filename: i.filename, doc_type: null, billable_pages: Number(i.pages) || 0 }));
     }
   } catch {}
-  return [{ billable_pages: 2 }];
+  // Final fallback
+  return [{ quote_id: quoteId, filename: null, doc_type: null, billable_pages: 2 }];
 }
 
 async function checkSameDayEligibility(quoteId, items) {
-  const totalPages = (items || []).reduce((sum, i) => sum + (Number(i.billable_pages) || 0), 0);
-  if (totalPages <= 1) return true;
-  return false;
+  try {
+    const totalPages = (items || []).reduce((sum, item) => sum + (Number(item.billable_pages) || 0), 0);
+    if (totalPages !== 1) return false;
+
+    const settings = await fetchSettings();
+    const tz = settings?.timezone || 'America/Edmonton';
+
+    const beforeSameDayCutoff = isBeforeCutoff(settings.same_day_cutoff_time || '14:00:00', tz);
+    if (!beforeSameDayCutoff) return false;
+
+    if (isTodayWeekendInEdmonton(tz)) return false;
+
+    const today = getTodayInEdmonton(tz);
+    const holidays = await fetchHolidays();
+    if (holidays.includes(today)) return false;
+
+    // Verify qualification by country/doc type
+    const { data: files } = await supabase
+      .from('quote_files')
+      .select('filename, country_of_issue')
+      .eq('quote_id', quoteId);
+
+    if (!files || files.length === 0) return false;
+
+    for (const item of (items || [])) {
+      const file = files.find(f => !item.filename || f.filename === item.filename);
+      const country = file?.country_of_issue || null;
+      const docType = item?.doc_type || null;
+      if (!country || !docType) return false;
+      const { data: qualifiers } = await supabase
+        .from('same_day_qualifiers')
+        .select('id')
+        .eq('active', true)
+        .eq('country', country)
+        .ilike('doc_type', `%${docType}%`);
+      if (!qualifiers || qualifiers.length === 0) return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function calculateBusinessDaysNeeded(totalPages, baseDays, addlDays, addlPagesPerDay) {
+  const additionalPages = Math.max(0, (Number(totalPages) || 0) - 2);
+  const per = Math.max(1, Number(addlPagesPerDay) || 1);
+  const addlBlocks = Math.ceil(additionalPages / per);
+  return (Number(baseDays) || 0) + addlBlocks * (Number(addlDays) || 0);
 }
 
 async function calculateAllDeliveryDates(quoteId, items, holidays) {
-  const [deliveryOptions, settings] = await Promise.all([
-    fetchDeliveryOptions(),
-    fetchSettings()
+  const [settings, deliveryOptions] = await Promise.all([
+    fetchSettings(),
+    fetchDeliveryOptions()
   ]);
 
+  const tz = settings?.timezone || 'America/Edmonton';
   const totalPages = (items || []).reduce((sum, item) => sum + (Number(item.billable_pages) || 0), 0);
   const dates = {};
 
-  const standardOption = deliveryOptions.find(opt => !opt.is_expedited && !opt.is_same_day);
+  const afterOrderCutoff = !isBeforeCutoff(settings.order_cutoff_time || '18:00:00', tz);
+
+  const standardOption = deliveryOptions.find(opt => opt.delivery_type === 'standard' || (!opt.is_expedited && !opt.is_same_day));
   if (standardOption) {
-    const per = Math.max(1, Number(standardOption.addl_business_days_per_pages) || 1);
-    const addlBlocks = Math.ceil(Math.max(0, totalPages - 2) / per);
-    const standardDays = (Number(standardOption.base_business_days) || 0) + addlBlocks * (Number(standardOption.addl_business_days) || 0);
+    const needed = calculateBusinessDaysNeeded(totalPages, standardOption.base_business_days, standardOption.addl_business_days, standardOption.addl_business_days_per_pages);
+    const adjusted = afterOrderCutoff ? needed + 1 : needed;
     dates.standard = {
-      date: calculateBusinessDays(standardDays, holidays),
+      date: calculateBusinessDaysFromToday(adjusted, tz, holidays),
       label: 'Standard Delivery',
       price: 'Free',
       modifier: 0
     };
   }
 
-  const expeditedOption = deliveryOptions.find(opt => opt.is_expedited && !opt.is_same_day);
+  const expeditedOption = deliveryOptions.find(opt => opt.delivery_type === 'expedited' || (opt.is_expedited && !opt.is_same_day));
   if (expeditedOption) {
-    const per = Math.max(1, Number(expeditedOption.addl_business_days_per_pages) || 1);
-    const addlBlocks = Math.ceil(Math.max(0, totalPages - 2) / per);
-    const expeditedDays = (Number(expeditedOption.base_business_days) || 0) + addlBlocks * (Number(expeditedOption.addl_business_days) || 0);
+    const needed = calculateBusinessDaysNeeded(totalPages, expeditedOption.base_business_days, expeditedOption.addl_business_days, expeditedOption.addl_business_days_per_pages);
+    const adjusted = afterOrderCutoff ? needed + 1 : needed;
     const pct = Number(expeditedOption.price_modifier_percent) || 40;
     dates.expedited = {
-      date: calculateBusinessDays(expeditedDays, holidays),
+      date: calculateBusinessDaysFromToday(adjusted, tz, holidays),
       label: 'Expedited Delivery',
       price: `+${pct}%`,
       modifier: pct / 100
@@ -198,32 +289,26 @@ async function calculateAllDeliveryDates(quoteId, items, holidays) {
 
   const eligible = await checkSameDayEligibility(quoteId, items);
   if (eligible) {
-    const now = new Date();
-    const cutoff = parseCutoffTime(settings?.same_day_cutoff_local_time || '18:00');
-    const cutoffToday = new Date();
-    cutoffToday.setHours(cutoff.hours, cutoff.minutes, 0, 0);
-    if (now < cutoffToday) {
-      const pct = 100;
-      dates.sameDay = {
-        date: toISODate(now),
-        time: settings?.same_day_cutoff_local_time || '18:00',
-        label: 'Same-day Delivery',
-        price: `+${pct}%`,
-        modifier: pct / 100
-      };
-    }
+    dates.sameDay = {
+      date: getTodayInEdmonton(tz),
+      time: formatCutoffTime(settings.same_day_cutoff_time || '14:00:00'),
+      label: `Today by ${formatCutoffTime(settings.same_day_cutoff_time || '14:00:00')} MST`,
+      price: '+100%',
+      modifier: 1
+    };
   }
 
-  return { dates, settings };
+  return { dates, settings, totalPages };
 }
 
 export default function Step3() {
   const [{ quote, job }, setParams] = useState({ quote: null, job: null });
   const [quoteData, setQuoteData] = useState(null);
   const [deliveryDates, setDeliveryDates] = useState(null);
-  const [timezone, setTimezone] = useState(undefined);
+  const [timezone, setTimezone] = useState('America/Edmonton');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [totalPages, setTotalPages] = useState(null);
 
   useEffect(() => { setParams(getQueryParams()); }, []);
 
@@ -241,10 +326,11 @@ export default function Step3() {
         ]);
         if (cancelled) return;
         setQuoteData(summary);
-        const { dates, settings } = await calculateAllDeliveryDates(quote, items, holidays);
+        const { dates, settings, totalPages } = await calculateAllDeliveryDates(quote, items, holidays);
         if (cancelled) return;
         setDeliveryDates(dates);
-        setTimezone(settings?.timezone || undefined);
+        setTimezone(settings?.timezone || 'America/Edmonton');
+        setTotalPages(totalPages);
       } catch (e) {
         if (!cancelled) setError('Failed to load quote.');
       } finally {
@@ -281,14 +367,12 @@ export default function Step3() {
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <p className="font-semibold text-lg">Order ID: {quoteData.job_id || job}</p>
               <p className="text-gray-700">
-                {quoteData.source_lang} 							→ {quoteData.target_lang} | {quoteData.intended_use}
+                {quoteData.source_lang} → {quoteData.target_lang} | {quoteData.intended_use}
               </p>
 
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600">Standard Delivery</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  📅 {formatDate(deliveryDates.standard.date, timezone)}
-                </p>
+                <p className="text-lg font-semibold text-gray-900">📅 {formatDate(deliveryDates.standard.date, timezone)}</p>
                 <p className="text-sm text-green-600 font-medium">Free</p>
               </div>
 
@@ -304,9 +388,13 @@ export default function Step3() {
 
                 {deliveryDates.sameDay && (
                   <div className="flex justify-between items-center py-1">
-                    <span className="text-sm text-gray-700">⚡ Same-day: Today by {deliveryDates.sameDay.time}</span>
+                    <span className="text-sm text-gray-700">⚡ Same-day: {deliveryDates.sameDay.label}</span>
                     <span className="text-sm font-medium text-cyan-600">{deliveryDates.sameDay.price}</span>
                   </div>
+                )}
+
+                {!deliveryDates.sameDay && totalPages === 1 && (
+                  <p className="text-xs text-gray-400 italic mt-1">Same-day available for orders placed before 2 PM MST</p>
                 )}
 
                 <p className="text-xs text-gray-500 mt-2">→ Choose your delivery speed at checkout</p>
