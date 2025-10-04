@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase, getSupabase } from '../../lib/supabaseClient';
 
 function getQueryParams() {
   if (typeof window === 'undefined') return { quote: null, job: null };
   const params = new URLSearchParams(window.location.search);
   return { quote: params.get('quote'), job: params.get('job') };
 }
+
+function getSb() { return supabase || getSupabase(); }
 
 function classNames(...arr) { return arr.filter(Boolean).join(' '); }
 
@@ -55,17 +57,10 @@ function isBeforeCutoff(cutoffTimeString, edmontonTimezone = 'America/Edmonton')
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
     }).formatToParts(now);
-    const y = parseInt(parts.find(p => p.type === 'year')?.value || '1970', 10);
-    const mo = parseInt(parts.find(p => p.type === 'month')?.value || '01', 10);
-    const d = parseInt(parts.find(p => p.type === 'day')?.value || '01', 10);
     const [cH = 0, cM = 0, cS = 0] = String(cutoffTimeString).split(':').map(n => parseInt(n, 10) || 0);
-    const edmontonNow = new Date(Date.UTC(y, mo - 1, d));
-    // Build a date string for Edmonton today at cutoff time and compare via time strings in that TZ
-    const edmontonNowStr = new Intl.DateTimeFormat('en-CA', {
-      timeZone: edmontonTimezone,
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-    }).format(now);
-    const [nH = 0, nM = 0, nS = 0] = edmontonNowStr.split(':').map(n => parseInt(n, 10) || 0);
+    const nH = parseInt(parts.find(p => p.type === 'hour')?.value || '00', 10);
+    const nM = parseInt(parts.find(p => p.type === 'minute')?.value || '00', 10);
+    const nS = parseInt(parts.find(p => p.type === 'second')?.value || '00', 10);
     if (nH < cH) return true;
     if (nH > cH) return false;
     if (nM < cM) return true;
@@ -78,7 +73,6 @@ function isBeforeCutoff(cutoffTimeString, edmontonTimezone = 'America/Edmonton')
 
 function calculateBusinessDaysFromToday(days, edmontonTimezone = 'America/Edmonton', holidays = []) {
   const hol = new Set((holidays || []).map(String));
-  // Start from Edmonton "today"
   let current = new Date(new Date().toLocaleString('en-US', { timeZone: edmontonTimezone }));
   let added = 0;
   while (added < days) {
@@ -96,19 +90,23 @@ function calculateBusinessDaysFromToday(days, edmontonTimezone = 'America/Edmont
 
 function formatDate(dateStr, timezone) {
   try {
-    const dt = new Date(`${dateStr}T12:00:00Z`);
+    if (!dateStr) return 'TBD';
+    const dt = new Date(`${dateStr}T12:00:00`);
+    if (isNaN(dt.getTime())) return String(dateStr);
     return new Intl.DateTimeFormat('en-US', {
       timeZone: timezone || 'America/Edmonton',
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     }).format(dt);
   } catch {
-    return dateStr;
+    return String(dateStr || 'TBD');
   }
 }
 
 async function fetchHolidays() {
   try {
-    const { data, error } = await supabase.from('holidays').select('date').order('date');
+    const s = getSb();
+    if (!s) throw new Error('no supabase');
+    const { data, error } = await s.from('holidays').select('date').order('date');
     if (error) throw error;
     const arr = (data || []).map(r => r.date).filter(Boolean);
     if (arr.length > 0) return arr;
@@ -121,9 +119,10 @@ async function fetchHolidays() {
 }
 
 async function fetchSettings() {
-  // Try new columns first, fall back to older naming if needed
   try {
-    const { data, error } = await supabase
+    const s = getSb();
+    if (!s) throw new Error('no supabase');
+    const { data, error } = await s
       .from('app_settings')
       .select('order_cutoff_time, same_day_cutoff_time, timezone')
       .single();
@@ -131,7 +130,9 @@ async function fetchSettings() {
     return data || { order_cutoff_time: '18:00:00', same_day_cutoff_time: '14:00:00', timezone: 'America/Edmonton' };
   } catch {
     try {
-      const { data } = await supabase
+      const s = getSb();
+      if (!s) throw new Error('no supabase');
+      const { data } = await s
         .from('app_settings')
         .select('same_day_cutoff_local_time, timezone')
         .single();
@@ -144,7 +145,9 @@ async function fetchSettings() {
 }
 
 async function fetchDeliveryOptions() {
-  const { data } = await supabase
+  const s = getSb();
+  if (!s) return [];
+  const { data } = await s
     .from('delivery_options')
     .select('id, delivery_type, base_business_days, addl_business_days, addl_business_days_per_pages, is_expedited, is_same_day, price_modifier_percent, active, display_order')
     .eq('active', true)
@@ -153,7 +156,9 @@ async function fetchDeliveryOptions() {
 }
 
 async function fetchQuoteSummary(quoteId) {
-  const { data } = await supabase
+  const s = getSb();
+  if (!s) return null;
+  const { data } = await s
     .from('quote_submissions')
     .select('job_id, source_lang, target_lang, intended_use')
     .eq('quote_id', quoteId)
@@ -162,31 +167,34 @@ async function fetchQuoteSummary(quoteId) {
 }
 
 async function fetchBillableItems(quoteId) {
-  // Prefer OCR analysis items for detailed doc_type and filename
   try {
-    const { data: items1, error: e1 } = await supabase
+    const s = getSb();
+    if (!s) throw new Error('no supabase');
+    const { data: items1 } = await s
       .from('ocr_analysis_items')
       .select('quote_id, filename, doc_type, billable_pages')
       .eq('quote_id', quoteId);
-    if (!e1 && items1 && items1.length > 0) return items1.map(i => ({
+    if (items1 && items1.length > 0) return items1.map(i => ({
       quote_id: i.quote_id,
       filename: i.filename,
       doc_type: i.doc_type,
       billable_pages: Number(i.billable_pages) || 0
     }));
   } catch {}
-  // Fall back to summary count
   try {
-    const { data: item2 } = await supabase
+    const s = getSb();
+    if (!s) throw new Error('no supabase');
+    const { data: item2 } = await s
       .from('ocr_analysis')
       .select('billable_pages')
       .eq('quote_id', quoteId)
       .maybeSingle();
     if (item2 && typeof item2.billable_pages !== 'undefined') return [{ quote_id: quoteId, filename: null, doc_type: null, billable_pages: Number(item2.billable_pages) || 0 }];
   } catch {}
-  // Fall back to files.pages if available
   try {
-    const { data: items3 } = await supabase
+    const s = getSb();
+    if (!s) throw new Error('no supabase');
+    const { data: items3 } = await s
       .from('quote_files')
       .select('filename, pages')
       .eq('quote_id', quoteId);
@@ -194,7 +202,6 @@ async function fetchBillableItems(quoteId) {
       return items3.map(i => ({ quote_id: quoteId, filename: i.filename, doc_type: null, billable_pages: Number(i.pages) || 0 }));
     }
   } catch {}
-  // Final fallback
   return [{ quote_id: quoteId, filename: null, doc_type: null, billable_pages: 2 }];
 }
 
@@ -215,8 +222,9 @@ async function checkSameDayEligibility(quoteId, items) {
     const holidays = await fetchHolidays();
     if (holidays.includes(today)) return false;
 
-    // Verify qualification by country/doc type
-    const { data: files } = await supabase
+    const s = getSb();
+    if (!s) return false;
+    const { data: files } = await s
       .from('quote_files')
       .select('filename, country_of_issue')
       .eq('quote_id', quoteId);
@@ -228,7 +236,7 @@ async function checkSameDayEligibility(quoteId, items) {
       const country = file?.country_of_issue || null;
       const docType = item?.doc_type || null;
       if (!country || !docType) return false;
-      const { data: qualifiers } = await supabase
+      const { data: qualifiers } = await s
         .from('same_day_qualifiers')
         .select('id')
         .eq('active', true)
@@ -366,15 +374,19 @@ export default function Step3() {
           {quoteData && deliveryDates && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <p className="font-semibold text-lg">Order ID: {quoteData.job_id || job}</p>
-              <p className="text-gray-700">
-                {quoteData.source_lang} → {quoteData.target_lang} | {quoteData.intended_use}
-              </p>
+              <p className="text-gray-700">{quoteData.source_lang} → {quoteData.target_lang} | {quoteData.intended_use}</p>
 
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-600">Standard Delivery</p>
-                <p className="text-lg font-semibold text-gray-900">📅 {formatDate(deliveryDates.standard.date, timezone)}</p>
-                <p className="text-sm text-green-600 font-medium">Free</p>
-              </div>
+              {deliveryDates.standard ? (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-600">Standard Delivery</p>
+                  <p className="text-lg font-semibold text-gray-900">📅 {formatDate(deliveryDates.standard.date, timezone)}</p>
+                  <p className="text-sm text-green-600 font-medium">Free</p>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800">Standard delivery option is temporarily unavailable. We’ll show options at checkout.</p>
+                </div>
+              )}
 
               <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm font-semibold text-gray-700 mb-2">⚡ Faster options available:</p>
