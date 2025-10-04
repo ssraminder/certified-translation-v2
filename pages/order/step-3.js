@@ -200,16 +200,25 @@ async function saveQuoteResults(quoteId, totals, currentLineItems, { currency = 
     throw new Error('Supabase client unavailable');
   }
 
-  const sanitizedItems = (currentLineItems || []).map((item) => ({
-    id: item.id,
-    filename: item.filename,
-    doc_type: item.doc_type || item.docType,
-    billable_pages: safeNumber(item.billable_pages ?? item.billablePages),
-    unit_rate: safeNumber(item.unit_rate ?? item.unitRate),
-    certification_type_name: item.certification_type_name || null,
-    certification_amount: safeNumber(item.certification_amount ?? item.certificationAmount),
-    line_total: safeNumber(item.line_total ?? item.lineTotal)
-  }));
+  const sanitizedItems = (currentLineItems || []).map((item) => {
+    const billablePages = roundToCents(safeNumber(item.billable_pages ?? item.billablePages));
+    const unitRate = roundToCents(safeNumber(item.unit_rate ?? item.unitRate));
+    const certificationAmount = roundToCents(safeNumber(item.certification_amount ?? item.certificationAmount));
+    const lineTotal = roundToCents(safeNumber(item.line_total ?? item.lineTotal));
+    const totalPages = safeNumber(item.total_pages ?? item.totalPages);
+
+    return {
+      id: item.id,
+      filename: item.filename,
+      doc_type: item.doc_type || item.docType,
+      billable_pages: billablePages,
+      total_pages: totalPages,
+      unit_rate: unitRate,
+      certification_type_name: item.certification_type_name || null,
+      certification_amount: certificationAmount,
+      line_total: lineTotal
+    };
+  });
 
   const resultsPayload = {
     version: 1,
