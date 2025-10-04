@@ -525,56 +525,187 @@ function DeliveryOptionsCard({ delivery, timezone }) {
 
 function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
   if (!items || items.length === 0) return null;
+  const isSingleItem = disableRemove || items.length <= 1;
+
   return (
-    <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-gray-900">Documents</h2>
-        <p className="text-sm text-gray-600">Remove any document you do not need translated.</p>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
+        <p className="text-sm text-gray-600 mt-1">Remove any document you do not need translated.</p>
       </div>
-      <div className="mt-4 overflow-hidden rounded-xl border border-gray-100">
-        <table className="min-w-full divide-y divide-gray-100 text-sm">
-          <thead className="bg-slate-50">
+
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-4 py-3 text-left font-medium text-slate-600">Filename</th>
-              <th scope="col" className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-slate-600">Pages</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-slate-600">Rate</th>
-              <th scope="col" className="px-4 py-3 text-right font-medium text-slate-600">Total</th>
-              <th scope="col" className="px-3 py-3" />
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pages</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price Breakdown</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td className="max-w-xs truncate px-4 py-3 text-sm text-gray-900" title={item.filename}>{item.filename}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{item.docType}</td>
-                <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">{item.billablePages}</td>
-                <td className="px-4 py-3 text-right text-sm text-gray-600">{item.unitRate > 0 ? formatCurrency(item.unitRate) : '—'}</td>
-                <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{formatCurrency(item.lineTotal)}</td>
-                <td className="px-3 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onRemove(item.id)}
-                    disabled={disableRemove || isSaving}
-                    className={classNames(
-                      'text-sm font-medium transition-colors',
-                      disableRemove || isSaving
-                        ? 'cursor-not-allowed text-gray-300'
-                        : 'text-rose-600 hover:text-rose-700'
-                    )}
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {items.map((item) => {
+              const translationCost = safeNumber(item.billable_pages ?? item.billablePages) * safeNumber(item.unit_rate ?? item.unitRate);
+              const certificationCost = safeNumber(item.certification_amount ?? item.certificationAmount);
+              const hasCertification = certificationCost > 0;
+              const buttonDisabled = isSingleItem || isSaving;
+
+              return (
+                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-900">{item.filename}</span>
+                      {(item.certification_type_name || item.certificationTypeName) && (
+                        <span className="text-xs text-gray-500 mt-1">{(item.certification_type_name || item.certificationTypeName)} Certification</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {item.doc_type || item.docType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col text-sm">
+                      <span className="text-gray-900">Total: {item.total_pages ?? item.totalPages}</span>
+                      <span className="text-gray-500 text-xs">Billable: {item.billable_pages ?? item.billablePages}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-600">Translation:</span>
+                        <span className="font-medium text-gray-900 ml-3">${translationCost.toFixed(2)}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 pl-2">
+                        {item.billable_pages ?? item.billablePages} pages × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)}
+                      </div>
+                      {hasCertification && (
+                        <div className="flex justify-between items-center text-sm pt-1.5 border-top border-gray-100">
+                          <span className="text-gray-600">{item.certification_type_name || item.certificationTypeName || 'Certification'}:</span>
+                          <span className="font-medium text-gray-900 ml-3">${certificationCost.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="text-base font-semibold text-gray-900">${safeNumber(item.line_total ?? item.lineTotal).toFixed(2)}</div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => onRemove(item.id)}
+                      disabled={buttonDisabled}
+                      className={classNames(
+                        'text-sm font-medium transition-colors',
+                        buttonDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:text-red-800'
+                      )}
+                      title={isSingleItem ? 'You must keep at least one document' : 'Remove document'}
+                    >
+                      {isSingleItem ? (
+                        <span className="flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Keep
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Remove
+                        </span>
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      {disableRemove && (
-        <p className="mt-3 text-xs text-gray-500">You must keep at least one document in your quote.</p>
-      )}
-    </section>
+
+      <div className="md:hidden divide-y divide-gray-200">
+        {items.map((item) => {
+          const translationCost = safeNumber(item.billable_pages ?? item.billablePages) * safeNumber(item.unit_rate ?? item.unitRate);
+          const certificationCost = safeNumber(item.certification_amount ?? item.certificationAmount);
+          const hasCertification = certificationCost > 0;
+          const buttonDisabled = isSingleItem || isSaving;
+
+          return (
+            <div key={item.id} className="p-4 hover:bg-gray-50">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-gray-900 mb-1">{item.filename}</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{item.doc_type || item.docType}</span>
+                    {(item.certification_type_name || item.certificationTypeName) && (
+                      <span className="text-xs text-gray-500">+ {item.certification_type_name || item.certificationTypeName}</span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => onRemove(item.id)}
+                  disabled={buttonDisabled}
+                  className={classNames(
+                    'ml-3 p-2 rounded-full transition-colors',
+                    buttonDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'
+                  )}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                <div>
+                  <span className="text-gray-500">Total Pages:</span>
+                  <span className="ml-2 font-medium text-gray-900">{item.total_pages ?? item.totalPages}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Billable:</span>
+                  <span className="ml-2 font-medium text-gray-900">{item.billable_pages ?? item.billablePages}</span>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Translation</span>
+                  <span className="font-medium text-gray-900">${translationCost.toFixed(2)}</span>
+                </div>
+                <div className="text-xs text-gray-500 pl-2">
+                  {item.billable_pages ?? item.billablePages} pages × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)}
+                </div>
+
+                {hasCertification && (
+                  <>
+                    <div className="border-t border-gray-200 pt-2" />
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">{item.certification_type_name || item.certificationTypeName || 'Certification'}</span>
+                      <span className="font-medium text-gray-900">${certificationCost.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+
+                <div className="border-t border-gray-300 pt-2 mt-2" />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-900">Line Total</span>
+                  <span className="text-lg font-bold text-gray-900">${safeNumber(item.line_total ?? item.lineTotal).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+        <p className="text-sm text-gray-600">You must keep at least one document in your quote.</p>
+      </div>
+    </div>
   );
 }
 
