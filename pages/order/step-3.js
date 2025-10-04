@@ -584,7 +584,7 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
                         {item.billable_pages ?? item.billablePages} pages × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)}
                       </div>
                       {hasCertification && (
-                        <div className="flex justify-between items-center text-sm pt-1.5 border-top border-gray-100">
+                        <div className="flex justify-between items-center text-sm pt-1.5 border-t border-gray-100">
                           <span className="text-gray-600">{item.certification_type_name || item.certificationTypeName || 'Certification'}:</span>
                           <span className="font-medium text-gray-900 ml-3">${certificationCost.toFixed(2)}</span>
                         </div>
