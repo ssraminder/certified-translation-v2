@@ -1078,6 +1078,7 @@ export default function Step3() {
       if (updatedItems.length === 0) {
         setLineItems(updatedItems);
         setPricing({ subtotal: 0, estimatedTax: 0, total: 0 });
+        setDeliveryEstimates(null);
         setError('All documents were removed. A human specialist will follow up with you.');
         await triggerHitlReview(quoteId);
         setShowHITL(true);
@@ -1090,6 +1091,7 @@ export default function Step3() {
 
       if (newTotals.total <= 0) {
         setPricing(newTotals);
+        setDeliveryEstimates(null);
         setError('Quote total dropped to $0. Our human team will finish this quote.');
         await triggerHitlReview(quoteId);
         setShowHITL(true);
@@ -1098,6 +1100,7 @@ export default function Step3() {
 
       if (newTotals.subtotal < minimumOrder) {
         setPricing(newTotals);
+        setDeliveryEstimates(null);
         if (typeof window !== 'undefined') {
           window.alert(`Removing this document brings your order below the ${formatCurrency(minimumOrder)} minimum. Requesting human review.`);
         }
