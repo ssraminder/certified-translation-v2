@@ -928,12 +928,9 @@ export default function Step3() {
       });
 
       try {
-        await saveQuoteResults({
-          quoteId: targetQuoteId,
-          totals,
-          items: normalizedItems,
-          delivery,
-          currency: CURRENCY
+        await saveQuoteResults(targetQuoteId, totals, normalizedItems, {
+          currency: CURRENCY,
+          delivery
         });
       } catch (saveError) {
         console.error('Failed to persist quote results', saveError);
