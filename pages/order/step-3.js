@@ -628,7 +628,7 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type (Certification)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pages</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price Breakdown</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
@@ -647,37 +647,36 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-gray-900">{item.filename}</span>
-                      {(item.certification_type_name || item.certificationTypeName) && (
-                        <span className="text-xs text-gray-500 mt-1">{(item.certification_type_name || item.certificationTypeName)} Certification</span>
-                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="text-sm font-medium text-gray-900">
                       {item.doc_type || item.docType}
+                      {(item.certification_type_name || item.certificationTypeName) ? ` (${item.certification_type_name || item.certificationTypeName} Certification)` : ''}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-col text-sm">
-                      <span className="text-gray-900">Total: {item.total_pages ?? item.totalPages}</span>
-                      <span className="text-gray-500 text-xs">Billable: {item.billable_pages ?? item.billablePages}</span>
+                    <div className="flex flex-col">
+                      <span className="text-base font-semibold text-gray-900">Billable: {item.billable_pages ?? item.billablePages}</span>
+                      <span className="text-xs text-gray-500">({item.total_pages ?? item.totalPages} total pages)</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-600">Translation:</span>
-                        <span className="font-medium text-gray-900 ml-3">${translationCost.toFixed(2)}</span>
+                        <span className="font-medium text-gray-900 ml-3">
+                          {item.billable_pages ?? item.billablePages} {(item.billable_pages ?? item.billablePages) === 1 ? 'page' : 'pages'} × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)} = ${translationCost.toFixed(2)}
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-500 pl-2">
-                        {item.billable_pages ?? item.billablePages} pages × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)}
+                      <div className="flex justify-between items-center text-sm pt-1.5 border-t border-gray-100">
+                        <span className="text-gray-600">{
+                          (item.certification_type_name || item.certificationTypeName)
+                            ? `Certification (${item.certification_type_name || item.certificationTypeName}):`
+                            : 'Certification:'
+                        }</span>
+                        <span className="font-medium text-gray-900 ml-3">${certificationCost.toFixed(2)}</span>
                       </div>
-                      {hasCertification && (
-                        <div className="flex justify-between items-center text-sm pt-1.5 border-t border-gray-100">
-                          <span className="text-gray-600">{item.certification_type_name || item.certificationTypeName || 'Certification'}:</span>
-                          <span className="font-medium text-gray-900 ml-3">${certificationCost.toFixed(2)}</span>
-                        </div>
-                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -729,11 +728,9 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <h4 className="text-sm font-medium text-gray-900 mb-1">{item.filename}</h4>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">{item.doc_type || item.docType}</span>
-                    {(item.certification_type_name || item.certificationTypeName) && (
-                      <span className="text-xs text-gray-500">+ {item.certification_type_name || item.certificationTypeName}</span>
-                    )}
+                  <div className="text-xs text-gray-600">
+                    {item.doc_type || item.docType}
+                    {(item.certification_type_name || item.certificationTypeName) ? ` (${item.certification_type_name || item.certificationTypeName} Certification)` : ''}
                   </div>
                 </div>
                 <button
@@ -750,36 +747,29 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+              <div className="grid grid-cols-1 gap-3 mb-3">
                 <div>
-                  <span className="text-gray-500">Total Pages:</span>
-                  <span className="ml-2 font-medium text-gray-900">{item.total_pages ?? item.totalPages}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Billable:</span>
-                  <span className="ml-2 font-medium text-gray-900">{item.billable_pages ?? item.billablePages}</span>
+                  <span className="block text-base font-semibold text-gray-900">Billable: {item.billable_pages ?? item.billablePages}</span>
+                  <span className="text-xs text-gray-500">({item.total_pages ?? item.totalPages} total pages)</span>
                 </div>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Translation</span>
-                  <span className="font-medium text-gray-900">${translationCost.toFixed(2)}</span>
+                  <span className="text-gray-600">Translation:</span>
+                  <span className="font-medium text-gray-900">
+                    {item.billable_pages ?? item.billablePages} {(item.billable_pages ?? item.billablePages) === 1 ? 'page' : 'pages'} × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)} = ${translationCost.toFixed(2)}
+                  </span>
                 </div>
-                <div className="text-xs text-gray-500 pl-2">
-                  {item.billable_pages ?? item.billablePages} pages × ${safeNumber(item.unit_rate ?? item.unitRate).toFixed(2)}
+                <div className="border-t border-gray-200 pt-2" />
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">{
+                    (item.certification_type_name || item.certificationTypeName)
+                      ? `Certification (${item.certification_type_name || item.certificationTypeName}):`
+                      : 'Certification:'
+                  }</span>
+                  <span className="font-medium text-gray-900">${certificationCost.toFixed(2)}</span>
                 </div>
-
-                {hasCertification && (
-                  <>
-                    <div className="border-t border-gray-200 pt-2" />
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">{item.certification_type_name || item.certificationTypeName || 'Certification'}</span>
-                      <span className="font-medium text-gray-900">${certificationCost.toFixed(2)}</span>
-                    </div>
-                  </>
-                )}
-
                 <div className="border-t border-gray-300 pt-2 mt-2" />
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-900">Line Total</span>
