@@ -30,6 +30,7 @@ export default function Step4() {
 
   const [savedBilling, setSavedBilling] = useState([]);
   const [savedShipping, setSavedShipping] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   const [quoteTotals, setQuoteTotals] = useState({ subtotal: 0, tax: 0, total: 0 });
 
@@ -55,7 +56,6 @@ export default function Step4() {
       try {
         setLoading(true);
         setError('');
-        // Load shipping options
         const resp = await fetch('/api/shipping-options');
         const json = await resp.json();
         if (!resp.ok) throw new Error(json.error || 'Failed to load shipping options');
@@ -70,7 +70,6 @@ export default function Step4() {
         setOptions(opts);
         setSelected(nextSel);
 
-        // Load quote results for base totals and contact info (from Step 2)
         const q = await fetch(`/api/quote-results?quote=${quoteId}`);
         if (q.ok) {
           const qj = await q.json();
@@ -93,28 +92,30 @@ export default function Step4() {
     return () => { isMounted = false; };
   }, [quoteId]);
 
-  // Load saved addresses if user is authenticated
+  // Load saved addresses and session user id if authenticated
   useEffect(() => {
     let cancelled = false;
     async function run() {
       try {
         const sess = await fetch('/api/auth/session');
         const sj = await sess.json();
-        if (!sj?.authenticated || cancelled) return;
-        const [billRes, shipRes] = await Promise.all([
-          fetch('/api/dashboard/user-addresses?type=billing'),
-          fetch('/api/dashboard/user-addresses?type=shipping')
-        ]);
-        if (cancelled) return;
-        if (billRes.ok) {
-          const list = await billRes.json();
-          setSavedBilling(Array.isArray(list) ? list : []);
-          const def = (list || []).find(a=>a.is_default);
-          if (def) applyBillingFrom(def);
-        }
-        if (shipRes.ok) {
-          const list = await shipRes.json();
-          setSavedShipping(Array.isArray(list) ? list : []);
+        if (sj?.authenticated) {
+          setCurrentUserId(sj.user?.id || null);
+          const [billRes, shipRes] = await Promise.all([
+            fetch('/api/dashboard/user-addresses?type=billing'),
+            fetch('/api/dashboard/user-addresses?type=shipping')
+          ]);
+          if (cancelled) return;
+          if (billRes.ok) {
+            const list = await billRes.json();
+            setSavedBilling(Array.isArray(list) ? list : []);
+            const def = (list || []).find(a=>a.is_default);
+            if (def) applyBillingFrom(def);
+          }
+          if (shipRes.ok) {
+            const list = await shipRes.json();
+            setSavedShipping(Array.isArray(list) ? list : []);
+          }
         }
       } catch {
         // ignore
@@ -214,7 +215,8 @@ export default function Step4() {
             quote_id: quoteId,
             billing_address: billing,
             shipping_address: shippingPayload,
-            shipping_option_ids: Array.from(selected)
+            shipping_option_ids: Array.from(selected),
+            user_id: currentUserId || undefined
           })
         });
         const orderJson = await createOrder.json().catch(()=>null);
