@@ -803,25 +803,53 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
   );
 }
 
-function PricingSummary({ pricing }) {
+function PricingSummary({ basePricing, adjustedPricing, selectedOption }) {
+  const baseSubtotal = roundToCents(basePricing?.subtotal ?? 0);
+  const subtotal = roundToCents(adjustedPricing?.subtotal ?? 0);
+  const estimatedTax = roundToCents(adjustedPricing?.estimatedTax ?? 0);
+  const total = roundToCents(adjustedPricing?.total ?? 0);
+  const deliveryPremium = roundToCents(subtotal - baseSubtotal);
+  const showPremium = deliveryPremium > 0.01;
+
   return (
     <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">Pricing summary</h2>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Pricing summary</h2>
+          {selectedOption && (
+            <p className="mt-1 text-xs text-gray-500">
+              Delivery: {selectedOption.label} ({selectedOption.priceLabel})
+            </p>
+          )}
+        </div>
+        {showPremium && (
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">Updated</span>
+        )}
+      </div>
       <dl className="mt-4 space-y-3 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-gray-600">Subtotal</dt>
-          <dd className="font-medium text-gray-900">{formatCurrency(pricing.subtotal)}</dd>
+          <dd className="font-medium text-gray-900">{formatCurrency(subtotal)}</dd>
         </div>
+        {showPremium && (
+          <div className="flex items-center justify-between text-xs">
+            <dt className="text-gray-500">Includes delivery premium</dt>
+            <dd className="font-medium text-gray-700">+{formatCurrency(deliveryPremium)}</dd>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <dt className="text-gray-600">Estimated GST (5%)</dt>
-          <dd className="font-medium text-gray-900">{formatCurrency(pricing.estimatedTax)}</dd>
+          <dd className="font-medium text-gray-900">{formatCurrency(estimatedTax)}</dd>
         </div>
         <div className="flex items-center justify-between border-t border-gray-100 pt-3 text-base font-semibold text-gray-900">
           <dt>Total due today</dt>
-          <dd>{formatCurrency(pricing.total)}</dd>
+          <dd>{formatCurrency(total)}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-xs text-gray-500">Final taxes will be confirmed at checkout based on your billing province.</p>
+      <p className="mt-3 text-xs text-gray-500">
+        {showPremium && selectedOption?.modifierType === 'percent' ? 'Delivery premium is applied to the translation subtotal before tax. ' : ''}
+        Final taxes will be confirmed at checkout based on your billing province.
+      </p>
     </section>
   );
 }
