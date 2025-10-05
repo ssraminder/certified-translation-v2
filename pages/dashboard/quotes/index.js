@@ -131,6 +131,9 @@ export default function QuotesListPage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <Link href={`/dashboard/quotes/${q.id}`} className="px-3 py-2 bg-gray-100 rounded-lg text-sm">View</Link>
+                {q.quote_state === 'draft' && (
+                  <Link href={`/order/step-${(q.last_completed_step || 1) + 1}?quote_id=${q.id}`} className="px-3 py-2 bg-cyan-500 text-white rounded-lg text-sm">Resume Quote</Link>
+                )}
                 {q.quote_state === 'expired' && (
                   <button onClick={() => handleRegenerate(q.id)} className="px-3 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm">Regenerate</button>
                 )}
