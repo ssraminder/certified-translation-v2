@@ -1,6 +1,7 @@
+import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 
-const GST_RATE = 0.05; // TODO: replace with tax rate lookup per province if needed
+const GST_RATE = 0.05;
 
 function round2(n){ const x = Number(n); return Math.round((Number.isFinite(x)?x:0)*100)/100; }
 
@@ -71,7 +72,7 @@ function normalizeAddress(addr){
   };
 }
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -86,12 +87,10 @@ export default async function handler(req, res){
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
 
     if (quote.converted_to_order_id) {
-      // Return existing order
       const existing = await getOrderWithDetails(supabase, quote.converted_to_order_id);
       return res.status(200).json({ order: existing, message: 'Quote already converted to order' });
     }
 
-    // Determine selected shipping options: prefer explicit payload, fallback to quote selections
     let selectedIds = Array.isArray(shipping_option_ids) ? shipping_option_ids : null;
     if (!selectedIds || selectedIds.length === 0) {
       selectedIds = await getSelectedQuoteShippingOptions(supabase, quote_id);
@@ -114,10 +113,6 @@ export default async function handler(req, res){
     const billAddr = normalizeAddress(billing_address);
     const shipAddrInput = normalizeAddress(shipping_address);
 
-    // Use a faux transaction with sequential operations; Supabase JS does not support multi-statement transactions
-    // We try to keep consistency by short-circuiting on any error and best-effort cleanup is omitted to avoid partial deletes
-
-    // 1) Create order
     const orderInsert = {
       quote_id,
       user_id: user_id || null,
@@ -133,7 +128,6 @@ export default async function handler(req, res){
       tax_total,
       total,
       currency: 'CAD',
-      // Delivery snapshots left null unless present in quote.results_json; can be extended later
       customer_email: billAddr?.email || '',
       customer_phone: billAddr?.phone || null,
       is_guest: !user_id,
@@ -146,7 +140,6 @@ export default async function handler(req, res){
     if (orderErr) throw orderErr;
     const order = orderRows;
 
-    // 2) Insert addresses (billing required)
     let billingAddressId = null;
     if (billAddr) {
       const { data: bRow, error: bErr } = await supabase
@@ -170,22 +163,18 @@ export default async function handler(req, res){
       if (sErr) throw sErr;
       shippingAddressId = sRow?.id || null;
     } else {
-      // If any of the selected shipping options requires a shipping address, enforce it
       if (shippingOptions.some(o => o.require_shipping_address)) {
         throw new Error('shipping_address is required for selected shipping options');
       }
-      // else reuse billing for convenience
       shippingAddressId = billingAddressId;
     }
 
-    // 3) Update order with address IDs
     const { error: updErr } = await supabase
       .from('orders')
       .update({ billing_address_id: billingAddressId, shipping_address_id: shippingAddressId })
       .eq('id', order.id);
     if (updErr) throw updErr;
 
-    // 4) Snapshot shipping options
     if (shippingOptions.length) {
       const rows = shippingOptions.map(o => ({
         order_id: order.id,
@@ -200,19 +189,16 @@ export default async function handler(req, res){
       if (shipErr) throw shipErr;
     }
 
-    // 5) Link quote files to order (acts as document link)
     await supabase
       .from('quote_files')
       .update({ order_id: order.id })
       .eq('quote_id', quote_id);
 
-    // 6) Mark quote as converted
     await supabase
       .from('quote_results')
       .update({ converted_to_order_id: order.id, converted_at: new Date().toISOString() })
       .eq('quote_id', quote_id);
 
-    // 7) Status history
     await supabase.from('order_status_history').insert([
       {
         order_id: order.id,
@@ -223,7 +209,6 @@ export default async function handler(req, res){
       }
     ]);
 
-    // 8) Return full order
     const full = await getOrderWithDetails(supabase, order.id);
 
     return res.status(201).json({ success: true, order: full });
@@ -258,3 +243,4 @@ async function getOrderWithDetails(supabase, orderId){
 }
 
 export { getOrderWithDetails };
+export default withApiBreadcrumbs(handler);
