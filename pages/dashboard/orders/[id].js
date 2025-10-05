@@ -71,8 +71,8 @@ export default function OrderDetailPage(){
               <div><span className="text-gray-600">Order Number</span><div className="font-medium text-gray-900">{o.order_number}</div></div>
               <div><span className="text-gray-600">Status</span><div className="font-medium text-gray-900">{String(o.status||'').split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ')}</div></div>
               <div><span className="text-gray-600">Payment Status</span><div className="font-medium text-gray-900">{String(o.payment_status||'').split('_').map(w=>w[0]?.toUpperCase()+w.slice(1)).join(' ')}</div></div>
-              <div><span className="text-gray-600">Delivery Date</span><div className="font-medium text-gray-900">{o.delivery_date ? formatDate(o.delivery_date) : '—'}</div></div>
-              <div><span className="text-gray-600">Estimated Completion</span><div className="font-medium text-gray-900">{o.estimated_completion_date ? formatDate(o.estimated_completion_date) : '—'}</div></div>
+              <div><span className="text-gray-600">Delivery Date</span><div className="font-medium text-gray-900">{deliveryDate ? formatDate(deliveryDate) : '—'}</div></div>
+              <div><span className="text-gray-600">Estimated Completion</span><div className="font-medium text-gray-900">{estimatedCompletion ? formatDate(estimatedCompletion) : '—'}</div></div>
             </div>
           </div>
 
