@@ -54,6 +54,8 @@ export default async function handler(req, res) {
 }
 
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
+import { getOrderWithDetails } from '../orders/create-from-quote';
+import { sendOrderConfirmationEmail, sendPaymentFailedEmail } from '../../../lib/email';
 
 async function handlePaymentSuccess(paymentIntent){
   const orderId = paymentIntent?.metadata?.order_id;
@@ -70,6 +72,12 @@ async function handlePaymentSuccess(paymentIntent){
   await supabase.from('order_status_history').insert([
     { order_id: orderId, from_status: 'pending_payment', to_status: 'paid', changed_by_type: 'payment_webhook', notes: 'Payment succeeded', metadata: { payment_intent_id: paymentIntent.id } }
   ]);
+
+  // Fetch full order details and send confirmation email
+  const order = await getOrderWithDetails(supabase, orderId);
+  if (order) {
+    await sendOrderConfirmationEmail(order);
+  }
 }
 
 async function handlePaymentFailed(paymentIntent){
@@ -85,6 +93,12 @@ async function handlePaymentFailed(paymentIntent){
   await supabase.from('order_status_history').insert([
     { order_id: orderId, from_status: 'pending_payment', to_status: 'payment_failed', changed_by_type: 'payment_webhook', notes: `Payment failed: ${paymentIntent?.last_payment_error?.message || ''}`, metadata: { payment_intent_id: paymentIntent.id } }
   ]);
+
+  const order = await getOrderWithDetails(supabase, orderId);
+  if (order) {
+    const msg = paymentIntent?.last_payment_error?.message || 'Payment declined';
+    await sendPaymentFailedEmail(order, msg);
+  }
 }
 
 async function handleRefund(charge){
