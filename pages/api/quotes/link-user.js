@@ -91,7 +91,7 @@ export default async function handler(req, res){
     if (updErr) throw updErr;
 
     // Ensure quote_number is set if missing
-    const { data: qrow, error: qselErr } = await supabase.from('quote_submissions').select('id, quote_number').eq('quote_id', quote_id).maybeSingle();
+    const { data: qrow, error: qselErr } = await supabase.from('quote_submissions').select('quote_number').eq('quote_id', quote_id).maybeSingle();
     if (qselErr) throw qselErr;
     if (!qrow?.quote_number) {
       const { data: gen, error: rpcErr } = await supabase.rpc('generate_quote_number');
