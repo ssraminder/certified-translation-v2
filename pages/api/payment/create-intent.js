@@ -1,4 +1,6 @@
-export default async function handler(req, res){
+import { withApiBreadcrumbs } from '../../../lib/sentry';
+
+async function handler(req, res){
   if (req.method !== 'POST') { res.setHeader('Allow','POST'); return res.status(405).json({ error: 'Method Not Allowed' }); }
   const secret = process.env.STRIPE_SECRET_KEY;
   const publishable = process.env.STRIPE_PUBLISHABLE_KEY;
@@ -22,3 +24,5 @@ export default async function handler(req, res){
     return res.status(500).json({ error: err.message || 'Failed to create payment intent' });
   }
 }
+
+export default withApiBreadcrumbs(handler);
