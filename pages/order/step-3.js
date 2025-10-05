@@ -963,20 +963,24 @@ export default function Step3() {
       const filesList = filesRes.data || [];
       const qualifiersList = qualifiersRes.data || [];
       const deliveryOptionsList = (deliveryOptionsRes.data || []).filter((option) => option);
+      if (holidaysRes?.error) {
+        console.error('Failed to load holidays data', holidaysRes.error);
+      }
+      const holidaysSet = createHolidaySet(holidaysRes?.data);
       const sameDay = determineSameDayEligibility({
         items: normalizedItems,
         files: filesList,
         qualifiers: qualifiersList,
         settings: settingsData,
         fallbackCountry: submission.country_of_issue,
-        holidays: HOLIDAYS_2025
+        holidays: holidaysSet
       });
       const delivery = computeDeliveryEstimates({
         items: normalizedItems,
         deliveryOptions: deliveryOptionsList,
         settings: settingsData,
         sameDayEligible: sameDay,
-        holidays: HOLIDAYS_2025
+        holidays: holidaysSet
       });
 
       try {
