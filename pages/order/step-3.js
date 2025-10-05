@@ -389,7 +389,7 @@ function computeDeliveryEstimates({
       displayDate: formatDateForDisplay(rawDate, tz),
       priceLabel,
       modifier: hasFee ? roundToCents(feeAmount) : 0,
-      modifierType: hasFee ? 'flat' : 'percent',
+      modifierType: hasFee ? 'flat' : 'none',
       timezone: tz,
       requiredBusinessDays: requiredDays
     };
