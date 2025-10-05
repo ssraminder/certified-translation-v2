@@ -363,60 +363,64 @@ function computeDeliveryEstimates({
   const delivery = {};
   const afterCutoff = !isBeforeLocalTime(orderCutoff, tz);
   const options = deliveryOptions || [];
+  const holidaySet = holidays instanceof Set ? holidays : FALLBACK_HOLIDAYS;
 
   const standardOption = options.find((option) => !option.is_expedited && !option.is_same_day);
   if (standardOption) {
-    const baseDays = parseNumber(standardOption.base_business_days);
-    const addlPages = parseNumber(standardOption.addl_business_days_per_pages);
-    const addlDays = parseNumber(standardOption.addl_business_days);
-    const extraBlocks = addlPages > 0 ? Math.max(0, Math.ceil(Math.max(totalPages - 1, 0) / addlPages)) : 0;
-    let requiredDays = baseDays + extraBlocks * addlDays;
-    if (afterCutoff) requiredDays += 1;
-    if (requiredDays < 0) requiredDays = 0;
-    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidays);
+    const baseDays = parseNumber(standardOption.base_business_days) || 2;
+    const extraDayIncrement = parseNumber(standardOption.addl_business_days) || 1;
+    const pageBlock = parseNumber(standardOption.addl_business_days_per_pages) || 4;
+    const requiredDays = calculateRequiredDays({
+      baseDays,
+      basePageAllowance: 2,
+      extraPageBlock: pageBlock,
+      extraDayIncrement,
+      totalPages,
+      afterCutoff
+    });
+    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
     const feeAmount = parseNumber(standardOption.fee_amount);
-    const priceLabel = feeAmount > 0 ? `+${formatCurrency(feeAmount)}` : 'Included';
+    const hasFee = feeAmount > 0;
+    const priceLabel = hasFee ? `+${formatCurrency(feeAmount)}` : 'Included';
     delivery.standard = {
       key: 'standard',
       label: standardOption.name || 'Standard delivery',
       rawDate,
       displayDate: formatDateForDisplay(rawDate, tz),
       priceLabel,
-      modifier: 0,
-      timezone: tz
+      modifier: hasFee ? roundToCents(feeAmount) : 0,
+      modifierType: hasFee ? 'flat' : 'percent',
+      timezone: tz,
+      requiredBusinessDays: requiredDays
     };
   }
 
   const expeditedOption = options.find((option) => option.is_expedited && !option.is_same_day);
   if (expeditedOption) {
-    const baseDays = parseNumber(expeditedOption.base_business_days);
-    const addlPages = parseNumber(expeditedOption.addl_business_days_per_pages);
-    const addlDays = parseNumber(expeditedOption.addl_business_days);
-    const extraBlocks = addlPages > 0 ? Math.max(0, Math.ceil(Math.max(totalPages - 1, 0) / addlPages)) : 0;
-    let requiredDays = baseDays + extraBlocks * addlDays;
-    if (afterCutoff) requiredDays += 1;
-    if (requiredDays < 0) requiredDays = 0;
-    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidays);
-    let modifier = 0;
-    let priceLabel = 'Included';
-    if ((expeditedOption.fee_type || '').toLowerCase() === 'percent') {
-      modifier = parseNumber(expeditedOption.fee_amount);
-      priceLabel = toPercentLabel(modifier > 0 ? modifier : parseNumber(settings?.rush_percent));
-    } else if ((expeditedOption.fee_type || '').toLowerCase() === 'flat') {
-      modifier = parseNumber(expeditedOption.fee_amount);
-      priceLabel = modifier > 0 ? `+${formatCurrency(modifier)}` : 'Included';
-    } else {
-      modifier = parseNumber(settings?.rush_percent);
-      priceLabel = toPercentLabel(modifier);
-    }
+    const baseDays = parseNumber(expeditedOption.base_business_days) || 1;
+    const extraDayIncrement = parseNumber(expeditedOption.addl_business_days) || 1;
+    const pageBlock = parseNumber(expeditedOption.addl_business_days_per_pages) || 5;
+    const requiredDays = calculateRequiredDays({
+      baseDays,
+      basePageAllowance: 2,
+      extraPageBlock: pageBlock,
+      extraDayIncrement,
+      totalPages,
+      afterCutoff
+    });
+    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
+    const modifier = 0.3;
+    const priceLabel = '+30%';
     delivery.expedited = {
-      key: 'expedited',
-      label: expeditedOption.name || 'Expedited delivery',
+      key: 'rush',
+      label: expeditedOption.name || 'Rush delivery',
       rawDate,
       displayDate: formatDateForDisplay(rawDate, tz),
       priceLabel,
       modifier,
-      timezone: tz
+      modifierType: 'percent',
+      timezone: tz,
+      requiredBusinessDays: requiredDays
     };
   }
 
