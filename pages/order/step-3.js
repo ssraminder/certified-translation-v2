@@ -1002,6 +1002,7 @@ export default function Step3() {
       setDeliveryOptions(deliveryOptionsList);
       setQualifiers(qualifiersList);
       setFiles(filesList);
+      setHolidays(holidaysSet);
       setMinimumOrder(baseRate);
       setShowHITL(false);
     } catch (err) {
