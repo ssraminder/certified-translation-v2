@@ -1164,7 +1164,7 @@ export default function Step3() {
         qualifiers,
         settings,
         fallbackCountry: quoteMeta?.country_of_issue,
-        holidays: HOLIDAYS_2025
+        holidays
       });
 
       const delivery = computeDeliveryEstimates({
@@ -1172,7 +1172,7 @@ export default function Step3() {
         deliveryOptions,
         settings,
         sameDayEligible: sameDay,
-        holidays: HOLIDAYS_2025
+        holidays
       });
 
       setPricing(newTotals);
