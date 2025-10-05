@@ -68,12 +68,18 @@ export default function Step4() {
         setOptions(opts);
         setSelected(nextSel);
 
-        // Load quote results for base totals
+        // Load quote results for base totals and contact info (from Step 2)
         const q = await fetch(`/api/quote-results?quote=${quoteId}`);
         if (q.ok) {
           const qj = await q.json();
-          const { subtotal = 0 } = qj || {};
+          const { subtotal = 0, contact_name, contact_email, contact_phone } = qj || {};
           setQuoteTotals({ subtotal, tax: 0, total: subtotal });
+          setBilling(prev => ({
+            ...prev,
+            full_name: prev.full_name || contact_name || '',
+            email: prev.email || contact_email || '',
+            phone: prev.phone || contact_phone || ''
+          }));
         }
       } catch (err) {
         if (!isMounted) return;
@@ -142,7 +148,7 @@ export default function Step4() {
       const optJson = await optResp.json();
       if (!optResp.ok) throw new Error(optJson.error || 'Failed to save shipping');
 
-      // 3) Create order from quote, then try to create a Stripe PaymentIntent
+      // 3) Create order from quote and go to Checkout
       let createdOrder = null;
       try {
         const createOrder = await fetch('/api/orders/create-from-quote', {
@@ -158,25 +164,12 @@ export default function Step4() {
         createdOrder = orderJson?.order || null;
       } catch {}
 
-      // 4) If Stripe is configured, create PaymentIntent and redirect to /payment
       if (createdOrder) {
-        try {
-          const payResp = await fetch('/api/payment/create-intent', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: createdOrder.id, amount: createdOrder.total, currency: 'cad' })
-          });
-          if (payResp.ok) {
-            const { clientSecret } = await payResp.json();
-            if (clientSecret) {
-              router.push({ pathname: '/payment', query: { order: createdOrder.id, client_secret: clientSecret } });
-              return;
-            }
-          }
-        } catch {}
+        router.push({ pathname: '/checkout', query: { order: createdOrder.id } });
+        return;
       }
 
-      // Fallback: Go to step 5 (placeholder) if payment could not be initiated
-      router.push({ pathname: '/order/step-5', query: { quote: quoteId } });
+      throw new Error('Failed to create order. Please try again.');
     } catch (err) {
       setError(getErrorMessage(err));
     }

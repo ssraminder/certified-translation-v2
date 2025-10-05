@@ -1,0 +1,31 @@
+.checkoutPage{display:grid;grid-template-columns:1fr 400px;gap:32px;max-width:1200px;margin:0 auto;padding:32px 16px}
+@media (max-width:968px){.checkoutPage{grid-template-columns:1fr}.checkoutSidebar{order:-1}}
+.orderSummary{background:#fff;border-radius:8px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.summarySection{margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid #e9ecef}
+.summarySection:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.sectionHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.sectionHeader h3{margin:0;font-size:16px;font-weight:600}
+.editLink{background:none;border:none;color:#0066cc;cursor:pointer;font-size:14px;text-decoration:underline;padding:4px 8px}
+.editLink:hover{color:#0052a3}
+.addressDisplay{font-size:14px;line-height:1.6;color:#495057}
+.priceSummary{background:#fff;border-radius:8px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1);position:sticky;top:32px}
+.priceSummary h3{margin:0 0 20px 0;font-size:18px}
+.priceLine{display:flex;justify-content:space-between;margin-bottom:12px;font-size:14px}
+.total{font-size:18px;font-weight:700;margin-top:12px}
+.priceDivider{height:1px;background:#dee2e6;margin:16px 0}
+.paymentSection{background:#fff;border-radius:8px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-top:24px}
+.paymentElementContainer{margin-bottom:24px}
+.paymentElementContainer h2{margin:0 0 16px 0;font-size:18px}
+.termsAcceptance{margin-bottom:24px}
+.termsAcceptance label{display:flex;align-items:start;gap:8px;cursor:pointer}
+.termsAcceptance input[type=checkbox]{margin-top:4px;flex-shrink:0}
+.termsAcceptance a{color:#0066cc;text-decoration:none}
+.termsAcceptance a:hover{text-decoration:underline}
+.payButton{width:100%;padding:16px;font-size:18px;font-weight:600;background:#5cb3cc;color:#fff;border:none;border-radius:8px;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.payButton:hover:not(:disabled){background:#4a9bb3}
+.payButton:disabled{background:#adb5bd;cursor:not-allowed}
+.spinner{width:20px;height:20px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.securityNote{text-align:center;font-size:13px;color:#6c757d;margin-top:16px;line-height:1.4}
+.errorMessage{padding:12px;background:#f8d7da;border:1px solid #f5c2c7;border-radius:4px;color:#842029;margin-bottom:16px}
+.loadingContainer{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:16px}
