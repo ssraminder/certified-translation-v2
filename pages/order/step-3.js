@@ -410,7 +410,7 @@ function computeDeliveryEstimates({
     });
     const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
     const modifier = 0.3;
-    const priceLabel = '+30%';
+    const priceLabel = toPercentLabel(modifier);
     delivery.expedited = {
       key: 'rush',
       label: expeditedOption.name || 'Rush delivery',
