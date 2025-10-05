@@ -72,12 +72,10 @@ export default async function handler(req, res){
     }
 
     // Update quote_submissions
-    const nowIso = new Date().toISOString();
     const updates = {
       user_id: userId,
       user_created_at_step2: userCreated,
       completion_percentage: 50,
-      updated_at: nowIso,
       name: full_name,
       email: normEmail,
       phone: phone || null,
