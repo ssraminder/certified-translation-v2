@@ -854,6 +854,7 @@ export default function Step3() {
   const [deliveryOptions, setDeliveryOptions] = useState([]);
   const [qualifiers, setQualifiers] = useState([]);
   const [files, setFiles] = useState([]);
+  const [holidays, setHolidays] = useState(() => createHolidaySet());
   const [minimumOrder, setMinimumOrder] = useState(65);
 
   useEffect(() => {
