@@ -890,6 +890,47 @@ export default function Step3() {
   const [holidays, setHolidays] = useState(() => createHolidaySet());
   const [minimumOrder, setMinimumOrder] = useState(65);
 
+  const deliveryOptionsList = useMemo(() => {
+    if (!deliveryEstimates) return [];
+    return [deliveryEstimates.standard, deliveryEstimates.expedited, deliveryEstimates.sameDay].filter(Boolean);
+  }, [deliveryEstimates]);
+
+  const defaultDeliveryKey = deliveryEstimates?.defaultKey || null;
+
+  useEffect(() => {
+    if (deliveryOptionsList.length === 0) {
+      setSelectedDeliveryKey(null);
+      return;
+    }
+    setSelectedDeliveryKey((current) => {
+      if (current && deliveryOptionsList.some((option) => option.key === current)) {
+        return current;
+      }
+      if (defaultDeliveryKey && deliveryOptionsList.some((option) => option.key === defaultDeliveryKey)) {
+        return defaultDeliveryKey;
+      }
+      const preferredOrder = ['standard', 'rush', 'sameDay'];
+      const fallbackOption = preferredOrder
+        .map((key) => deliveryOptionsList.find((option) => option.key === key))
+        .find(Boolean) || deliveryOptionsList[0];
+      return fallbackOption?.key || null;
+    });
+  }, [deliveryOptionsList, defaultDeliveryKey]);
+
+  const selectedDeliveryOption = useMemo(() => {
+    if (!selectedDeliveryKey) return null;
+    return deliveryOptionsList.find((option) => option.key === selectedDeliveryKey) || null;
+  }, [deliveryOptionsList, selectedDeliveryKey]);
+
+  const pricingWithDelivery = useMemo(
+    () => applyDeliveryModifier(pricing, selectedDeliveryOption),
+    [pricing, selectedDeliveryOption]
+  );
+
+  const handleDeliverySelect = useCallback((key) => {
+    setSelectedDeliveryKey(key);
+  }, []);
+
   useEffect(() => {
     if (!router.isReady) return;
     const { quote, job } = router.query;
