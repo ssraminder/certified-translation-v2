@@ -62,6 +62,9 @@ async function handleGetQuotes(req, res) {
       } else {
         query = query.eq('quote_state', status);
       }
+    } else {
+      // Hide converted quotes from user profile by default
+      query = query.neq('quote_state', 'converted');
     }
 
     if (search) {
