@@ -7,6 +7,8 @@ export default function SendTestEmail() {
   useEffect(() => {
     const url = new URL(window.location.href);
     const recipient = url.searchParams.get('recipient') || '';
+    const orderId = url.searchParams.get('order_id');
+    const useLatestPaid = url.searchParams.get('use_latest_paid') === '1';
 
     async function run() {
       if (!recipient) {
@@ -16,10 +18,11 @@ export default function SendTestEmail() {
       }
       setStatus('sending');
       try {
+        const body = orderId ? { order_id: orderId, recipient } : { use_latest_paid: useLatestPaid || true, recipient };
         const resp = await fetch('/api/test/send-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ use_latest_paid: true, recipient })
+          body: JSON.stringify(body)
         });
         const json = await resp.json();
         if (!resp.ok) throw new Error(json.error || 'Failed');
@@ -39,7 +42,7 @@ export default function SendTestEmail() {
       <h1>Send Test Email</h1>
       <p>Status: <strong>{status}</strong></p>
       {message && <pre style={{ background: '#f8f9fa', padding: 12, borderRadius: 6 }}>{message}</pre>}
-      <p>Pass ?recipient=email@example.com in the URL.</p>
+      <p>Pass ?recipient=email@example.com&order_id=UUID (or &use_latest_paid=1).</p>
     </main>
   );
 }
