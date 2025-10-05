@@ -460,6 +460,11 @@ function computeDeliveryEstimates({
     };
   }
 
+  const defaultKey = delivery.standard?.key || delivery.expedited?.key || delivery.sameDay?.key || null;
+  if (defaultKey) {
+    delivery.defaultKey = defaultKey;
+  }
+
   return delivery;
 }
 
