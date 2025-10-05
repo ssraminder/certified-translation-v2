@@ -331,7 +331,7 @@ function determineSameDayEligibility({
   if (!weekdays.has(weekdayNumber)) return false;
 
   const todayIso = getLocalDateString(tz);
-  const blockedDates = holidays || HOLIDAYS_2025;
+  const blockedDates = holidays instanceof Set ? holidays : FALLBACK_HOLIDAYS;
   if (blockedDates.has(todayIso)) return false;
 
   const fileCountryMap = new Map((files || []).map((file) => [file.filename, (file.country_of_issue || '').trim().toLowerCase()]));
