@@ -156,6 +156,37 @@ export default function QuoteDetailPage() {
         </div>
 
         <aside className="space-y-6">
+          {quote.quote_state === 'draft' && (
+            <section className="bg-white rounded-lg border border-gray-200 p-4">
+              <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
+              <Link href={`/order/step-${(quote.last_completed_step || 1) + 1}?quote_id=${quote.id}`}>
+                <button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-lg font-semibold">Resume Quote</button>
+              </Link>
+            </section>
+          )}
+
+          {quote.quote_state === 'draft' && (
+            <section className="bg-white rounded-lg border border-gray-200 p-4">
+              <h2 className="font-semibold text-gray-900 mb-3">Progress</h2>
+              <ol className="space-y-2">
+                {[1,2,3,4].map((step) => {
+                  const isCompleted = step <= (quote.last_completed_step || 1);
+                  const isNext = step === ((quote.last_completed_step || 1) + 1);
+                  return (
+                    <li key={step} className="flex items-center gap-2 text-sm">
+                      <span className={`flex items-center justify-center w-6 h-6 rounded-full text-white text-xs ${isCompleted ? 'bg-green-500' : isNext ? 'bg-cyan-500' : 'bg-gray-300'}`}>
+                        {isCompleted ? '✓' : step}
+                      </span>
+                      <span className={`${isCompleted ? 'text-gray-900' : isNext ? 'text-cyan-700' : 'text-gray-500'}`}>
+                        {step === 1 ? 'Upload Documents' : step === 2 ? 'Details' : step === 3 ? 'Shipping & Options' : 'Review Quote'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
+
           <section className="bg-white rounded-lg border border-gray-200 p-4">
             <h2 className="font-semibold text-gray-900 mb-3">Pricing</h2>
             {quote.quote_results?.pricing ? (
