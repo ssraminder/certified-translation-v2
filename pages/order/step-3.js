@@ -350,6 +350,33 @@ function toPercentLabel(decimal) {
   return `+${Math.round(value * 100)}%`;
 }
 
+function applyDeliveryModifier(pricing, option) {
+  const baseSubtotal = roundToCents(pricing?.subtotal ?? 0);
+  const baseTax = roundToCents(pricing?.estimatedTax ?? 0);
+  const baseTotal = roundToCents(pricing?.total ?? 0);
+  const base = { subtotal: baseSubtotal, estimatedTax: baseTax, total: baseTotal };
+  if (!option || !option.modifier || option.modifier <= 0) {
+    return base;
+  }
+
+  if (option.modifierType === 'percent') {
+    const multiplier = 1 + option.modifier;
+    const subtotal = roundToCents(baseSubtotal * multiplier);
+    const estimatedTax = roundToCents(subtotal * GST_RATE);
+    const total = roundToCents(subtotal + estimatedTax);
+    return { subtotal, estimatedTax, total };
+  }
+
+  if (option.modifierType === 'flat') {
+    const subtotal = roundToCents(baseSubtotal + option.modifier);
+    const estimatedTax = roundToCents(subtotal * GST_RATE);
+    const total = roundToCents(subtotal + estimatedTax);
+    return { subtotal, estimatedTax, total };
+  }
+
+  return base;
+}
+
 function computeDeliveryEstimates({
   items,
   deliveryOptions,
