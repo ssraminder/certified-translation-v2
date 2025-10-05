@@ -8,13 +8,16 @@
     "start": "next start -p 3000"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^5.0.0",
+    "@stripe/stripe-js": "^8.0.0",
     "@supabase/supabase-js": "^2.45.4",
     "jspdf": "^2.5.1",
     "mammoth": "^1.6.0",
     "next": "^14.2.3",
     "pdf-lib": "^1.17.1",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "stripe": "^19.1.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
