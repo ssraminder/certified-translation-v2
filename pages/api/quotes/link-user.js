@@ -47,8 +47,7 @@ export default async function handler(req, res){
         first_name: first_name || existingUser.first_name,
         last_name: last_name || existingUser.last_name,
         phone: phone || null,
-        company_name: company_name || null,
-        updated_at: new Date().toISOString()
+        company_name: company_name || null
       }).eq('id', userId);
       if (updUserErr) throw updUserErr;
     } else {
