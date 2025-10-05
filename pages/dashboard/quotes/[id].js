@@ -159,7 +159,7 @@ export default function QuoteDetailPage() {
           {quote.quote_state === 'draft' && (
             <section className="bg-white rounded-lg border border-gray-200 p-4">
               <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
-              <Link href={`/order/step-${(quote.last_completed_step || 1) + 1}?quote_id=${quote.id}`}>
+              <Link href={`/order/step-3?quote=${quote.id}`}>
                 <button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-lg font-semibold">Resume Quote</button>
               </Link>
             </section>
