@@ -48,6 +48,8 @@ export default function OrderDetailPage(){
   }
 
   const o = data;
+  const deliveryDate = o.delivery_date || o.quote?.delivery_date || null;
+  const estimatedCompletion = o.estimated_completion_date || o.quote?.estimated_completion_date || deliveryDate || null;
 
   return (
     <DashboardLayout user={user}>
