@@ -112,3 +112,9 @@ async function handleRefund(charge){
 }
 
 export default withApiBreadcrumbs(handler);
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
