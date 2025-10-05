@@ -28,6 +28,9 @@ export default function Step4() {
     full_name: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
   });
 
+  const [savedBilling, setSavedBilling] = useState([]);
+  const [savedShipping, setSavedShipping] = useState([]);
+
   const [quoteTotals, setQuoteTotals] = useState({ subtotal: 0, tax: 0, total: 0 });
 
   const requiresShippingAddress = useMemo(() => {
@@ -57,7 +60,6 @@ export default function Step4() {
         const json = await resp.json();
         if (!resp.ok) throw new Error(json.error || 'Failed to load shipping options');
         const opts = Array.isArray(json.options) ? json.options : [];
-        // Always select the always-selected option
         const nextSel = new Set();
         opts.forEach(o => { if (o.is_always_selected) nextSel.add(o.id); });
         if (nextSel.size === 0 && opts.length > 0) {
@@ -91,14 +93,74 @@ export default function Step4() {
     return () => { isMounted = false; };
   }, [quoteId]);
 
+  // Load saved addresses if user is authenticated
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const sess = await fetch('/api/auth/session');
+        const sj = await sess.json();
+        if (!sj?.authenticated || cancelled) return;
+        const [billRes, shipRes] = await Promise.all([
+          fetch('/api/dashboard/user-addresses?type=billing'),
+          fetch('/api/dashboard/user-addresses?type=shipping')
+        ]);
+        if (cancelled) return;
+        if (billRes.ok) {
+          const list = await billRes.json();
+          setSavedBilling(Array.isArray(list) ? list : []);
+          const def = (list || []).find(a=>a.is_default);
+          if (def) applyBillingFrom(def);
+        }
+        if (shipRes.ok) {
+          const list = await shipRes.json();
+          setSavedShipping(Array.isArray(list) ? list : []);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, []);
+
+  function applyBillingFrom(addr){
+    if (!addr) return;
+    setBilling(prev => ({
+      ...prev,
+      full_name: addr.full_name || prev.full_name,
+      phone: addr.phone || prev.phone,
+      address_line1: addr.address_line_1 || prev.address_line1,
+      address_line2: addr.address_line_2 || '',
+      city: addr.city || prev.city,
+      province_state: addr.state_province || prev.province_state,
+      postal_code: addr.postal_code || prev.postal_code,
+      country: addr.country || prev.country
+    }));
+  }
+
+  function applyShippingFrom(addr){
+    if (!addr) return;
+    setShipping(prev => ({
+      ...prev,
+      full_name: addr.full_name || prev.full_name,
+      phone: addr.phone || prev.phone,
+      address_line1: addr.address_line_1 || prev.address_line1,
+      address_line2: addr.address_line_2 || '',
+      city: addr.city || prev.city,
+      province_state: addr.state_province || prev.province_state,
+      postal_code: addr.postal_code || prev.postal_code,
+      country: addr.country || prev.country
+    }));
+  }
+
   function toggle(id, forced) {
     const copy = new Set(selected);
     const opt = options.find(o => o.id === id);
     if (!opt) return;
-    if (opt.is_always_selected) return; // cannot unselect
+    if (opt.is_always_selected) return;
     if (forced === true) copy.add(id); else if (forced === false) copy.delete(id); else if (copy.has(id)) copy.delete(id); else copy.add(id);
     if (copy.size === 0) {
-      // ensure at least one selected (always include scanned copy if present)
       const always = options.find(o => o.is_always_selected);
       if (always) copy.add(always.id);
     }
@@ -110,7 +172,6 @@ export default function Step4() {
   async function handleSave() {
     try {
       setError('');
-      // Validate required selections
       if (selected.size === 0) {
         throw new Error('Please select at least one delivery method');
       }
@@ -119,11 +180,10 @@ export default function Step4() {
       const requiredBilling = ['full_name','address_line1','city','province_state','postal_code','country'];
       for (const k of requiredBilling) if (!String(billing[k]||'').trim()) throw new Error('Please complete all required billing fields');
 
-      // Prepare shipping address object
       let shippingPayload = null;
       if (requiresShippingAddress) {
         if (shipSame) {
-          const { email: _e, ...copyBill } = billing; // shipping does not include email
+          const { email: _e, ...copyBill } = billing;
           shippingPayload = copyBill;
         } else {
           const requiredShip = ['full_name','phone','address_line1','city','province_state','postal_code','country'];
@@ -132,7 +192,6 @@ export default function Step4() {
         }
       }
 
-      // 1) Save addresses
       const addrResp = await fetch('/api/addresses', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quoteId, billing, shipping: shippingPayload })
@@ -140,7 +199,6 @@ export default function Step4() {
       const addrJson = await addrResp.json();
       if (!addrResp.ok) throw new Error(addrJson.error || 'Failed to save addresses');
 
-      // 2) Save shipping option selections
       const optResp = await fetch(`/api/quotes/${quoteId}/shipping`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optionIds: Array.from(selected) })
@@ -148,7 +206,6 @@ export default function Step4() {
       const optJson = await optResp.json();
       if (!optResp.ok) throw new Error(optJson.error || 'Failed to save shipping');
 
-      // 3) Create order from quote and go to Checkout
       let createdOrder = null;
       try {
         const createOrder = await fetch('/api/orders/create-from-quote', {
@@ -211,7 +268,24 @@ export default function Step4() {
           </section>
 
           <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Billing Address</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Billing Address</h2>
+            </div>
+            {savedBilling.length > 0 && (
+              <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 p-3">
+                <div className="text-sm text-cyan-900">Saved billing addresses</div>
+                <div className="mt-2">
+                  <select className="w-full rounded-md border border-cyan-300 px-3 py-2 text-sm" onChange={e=>{
+                    const id = e.target.value; const addr = savedBilling.find(a=>String(a.id)===String(id)); if (addr) applyBillingFrom(addr);
+                  }}>
+                    <option value="">Select a saved address</option>
+                    {savedBilling.map(a => (
+                      <option key={a.id} value={a.id}>{`${a.full_name || ''} — ${a.address_line_1 || ''} ${a.city ? '('+a.city+')' : ''}`}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Full Name" required value={billing.full_name} onChange={v=>updateField(setBilling,'full_name',v)} />
               <Input label="Email" required type="email" value={billing.email} onChange={v=>updateField(setBilling,'email',v)} />
@@ -236,16 +310,33 @@ export default function Step4() {
                 </label>
               </div>
               {!shipSame && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input label="Full Name" required value={shipping.full_name} onChange={v=>updateField(setShipping,'full_name',v)} />
-                  <Input label="Phone" required value={shipping.phone} onChange={v=>updateField(setShipping,'phone',v)} />
-                  <Input label="Address Line 1" required className="md:col-span-2" value={shipping.address_line1} onChange={v=>updateField(setShipping,'address_line1',v)} />
-                  <Input label="Address Line 2" className="md:col-span-2" value={shipping.address_line2} onChange={v=>updateField(setShipping,'address_line2',v)} />
-                  <Input label="City" required value={shipping.city} onChange={v=>updateField(setShipping,'city',v)} />
-                  <Input label="Province/State" required value={shipping.province_state} onChange={v=>updateField(setShipping,'province_state',v)} />
-                  <Input label="Postal Code" required value={shipping.postal_code} onChange={v=>updateField(setShipping,'postal_code',v)} />
-                  <Input label="Country" required value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
-                </div>
+                <>
+                  {savedShipping.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 p-3">
+                      <div className="text-sm text-cyan-900">Saved shipping addresses</div>
+                      <div className="mt-2">
+                        <select className="w-full rounded-md border border-cyan-300 px-3 py-2 text-sm" onChange={e=>{
+                          const id = e.target.value; const addr = savedShipping.find(a=>String(a.id)===String(id)); if (addr) applyShippingFrom(addr);
+                        }}>
+                          <option value="">Select a saved address</option>
+                          {savedShipping.map(a => (
+                            <option key={a.id} value={a.id}>{`${a.full_name || ''} — ${a.address_line_1 || ''} ${a.city ? '('+a.city+')' : ''}`}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input label="Full Name" required value={shipping.full_name} onChange={v=>updateField(setShipping,'full_name',v)} />
+                    <Input label="Phone" required value={shipping.phone} onChange={v=>updateField(setShipping,'phone',v)} />
+                    <Input label="Address Line 1" required className="md:col-span-2" value={shipping.address_line1} onChange={v=>updateField(setShipping,'address_line1',v)} />
+                    <Input label="Address Line 2" className="md:col-span-2" value={shipping.address_line2} onChange={v=>updateField(setShipping,'address_line2',v)} />
+                    <Input label="City" required value={shipping.city} onChange={v=>updateField(setShipping,'city',v)} />
+                    <Input label="Province/State" required value={shipping.province_state} onChange={v=>updateField(setShipping,'province_state',v)} />
+                    <Input label="Postal Code" required value={shipping.postal_code} onChange={v=>updateField(setShipping,'postal_code',v)} />
+                    <Input label="Country" required value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
+                  </div>
+                </>
               )}
             </section>
           )}
