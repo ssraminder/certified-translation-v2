@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@getbrevo/brevo": "^2.0.0",
+    "@sentry/node": "^8.55.0",
     "@stripe/react-stripe-js": "^5.0.0",
     "@stripe/stripe-js": "^8.0.0",
     "@supabase/supabase-js": "^2.45.4",

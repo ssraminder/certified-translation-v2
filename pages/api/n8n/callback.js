@@ -1,3 +1,4 @@
+import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 
 function extractSecret(req) {
@@ -24,7 +25,7 @@ function normaliseStatus(rawStatus) {
   return value;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -58,3 +59,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ ok: true });
 }
+
+export default withApiBreadcrumbs(handler);

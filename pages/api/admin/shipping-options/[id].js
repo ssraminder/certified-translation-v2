@@ -1,6 +1,7 @@
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { id } = req.query;
   const supabase = getSupabaseServerClient();
 
@@ -10,7 +11,6 @@ export default async function handler(req, res) {
       if (body.price != null && Number(body.price) < 0) return res.status(400).json({ error: 'Price must be non-negative' });
 
       if (body.is_always_selected) {
-        // Ensure only one always selected
         await supabase.from('shipping_options').update({ is_always_selected: false }).eq('is_always_selected', true).neq('id', id);
       }
 
@@ -32,7 +32,6 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    // Prevent deleting always-selected
     const { data: row } = await supabase.from('shipping_options').select('is_always_selected').eq('id', id).maybeSingle();
     if (row?.is_always_selected) return res.status(400).json({ error: 'Cannot delete an always-selected option' });
     const { error } = await supabase.from('shipping_options').delete().eq('id', id);
@@ -43,3 +42,5 @@ export default async function handler(req, res) {
   res.setHeader('Allow', 'PUT, DELETE');
   return res.status(405).json({ error: 'Method Not Allowed' });
 }
+
+export default withApiBreadcrumbs(handler);

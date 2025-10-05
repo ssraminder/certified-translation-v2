@@ -1,3 +1,4 @@
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
 function parseCookies(cookieHeader) {
@@ -6,7 +7,7 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { id } = req.query;
   if (req.method === 'GET') return handleGetQuote(req, res, id);
   if (req.method === 'DELETE') return handleDeleteQuote(req, res, id);
@@ -203,3 +204,5 @@ async function handleDeleteQuote(req, res, quoteId) {
     return res.status(500).json({ error: 'Failed to delete quote' });
   }
 }
+
+export default withApiBreadcrumbs(handler);

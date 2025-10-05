@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { getSupabaseServerClient, hasServiceRoleKey } from '../../../lib/supabaseServer';
 import { sendWelcomeEmail, sendQuoteSavedEmail } from '../../../lib/email';
+import { withApiBreadcrumbs } from '../../../lib/sentry';
 
 function normalizeEmail(email){
   return String(email || '').trim().toLowerCase().slice(0, 255);
@@ -14,7 +15,7 @@ function splitName(full){
   return { first_name, last_name };
 }
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     if (!hasServiceRoleKey()) {
@@ -71,7 +72,6 @@ export default async function handler(req, res){
       userCreated = true;
     }
 
-    // Update quote_submissions
     const updates = {
       user_id: userId,
       user_created_at_step2: userCreated,
@@ -90,7 +90,6 @@ export default async function handler(req, res){
       .eq('quote_id', quote_id);
     if (updErr) throw updErr;
 
-    // Ensure quote_number is set if missing
     const { data: qrow, error: qselErr } = await supabase.from('quote_submissions').select('quote_number').eq('quote_id', quote_id).maybeSingle();
     if (qselErr) throw qselErr;
     if (!qrow?.quote_number) {
@@ -103,20 +102,16 @@ export default async function handler(req, res){
       }
     }
 
-    // Log activity
     const { error: logErr } = await supabase.from('quote_activity_log').insert([
       { quote_id, event_type: 'step_completed', metadata: { step: 2, user_created: userCreated }, actor_type: 'user', actor_id: userId, ip: ip || null, user_agent: userAgent || null }
     ]);
     if (logErr) throw logErr;
 
-    // Fetch final quote number
     const { data: qfinal, error: qfinErr } = await supabase.from('quote_submissions').select('quote_number').eq('quote_id', quote_id).maybeSingle();
     if (qfinErr) throw qfinErr;
     const quote_number = qfinal?.quote_number || '';
 
-    // Emails
     if (userCreated) {
-      // Create a magic link token for quick access in welcome email
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24*60*60*1000).toISOString();
       const { error: magicErr } = await supabase.from('magic_links').insert([
@@ -146,3 +141,5 @@ export default async function handler(req, res){
     return res.status(500).json({ error: message });
   }
 }
+
+export default withApiBreadcrumbs(handler);

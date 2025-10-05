@@ -1,6 +1,7 @@
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { quote } = req.query;
   if (!quote) return res.status(400).json({ error: 'Missing quote' });
 
@@ -17,14 +18,12 @@ export default async function handler(req, res) {
 
     const supabase = getSupabaseServerClient();
 
-    // Fetch option snapshots to validate and get prices
     const { data: options, error: optErr } = await supabase
       .from('shipping_options')
       .select('id, price, is_active, is_always_selected')
       .in('id', optionIds);
     if (optErr) throw optErr;
 
-    // Ensure all exist and are active
     const activeMap = new Map(options.map(o => [o.id, o]));
     for (const id of optionIds) {
       const row = activeMap.get(id);
@@ -33,10 +32,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // Ensure at least one always-selected exists in the selection (Scanned Copy)
     const hasAlways = options.some(o => o.is_always_selected);
     if (!hasAlways) {
-      // Also check database for always-selected and add it if missing
       const { data: alwaysRows } = await supabase
         .from('shipping_options')
         .select('id')
@@ -46,13 +43,11 @@ export default async function handler(req, res) {
       if (alwaysRows?.id && !optionIds.includes(alwaysRows.id)) optionIds.push(alwaysRows.id);
     }
 
-    // Replace existing junction rows for the quote
     await supabase.from('quote_shipping_options').delete().eq('quote_id', quote);
     const rows = optionIds.map(id => ({ quote_id: quote, shipping_option_id: id, price: activeMap.get(id)?.price ?? 0 }));
     const { error: insertErr } = await supabase.from('quote_shipping_options').insert(rows);
     if (insertErr) throw insertErr;
 
-    // Compute total and persist to quote_results.shipping_total (optional)
     const shippingTotal = rows.reduce((sum, r) => sum + Number(r.price || 0), 0);
     await supabase
       .from('quote_results')
@@ -64,3 +59,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);

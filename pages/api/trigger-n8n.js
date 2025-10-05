@@ -1,3 +1,5 @@
+import { withApiBreadcrumbs } from '../../lib/sentry';
+
 function getBaseUrl(req) {
   const hostHeader = req.headers.host;
   if (!hostHeader) return null;
@@ -15,7 +17,7 @@ function getBaseUrl(req) {
   return `${proto}://${hostHeader}`;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -47,3 +49,5 @@ export default async function handler(req, res) {
 
   return res.status(202).json({ ok: true });
 }
+
+export default withApiBreadcrumbs(handler);

@@ -1,6 +1,7 @@
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const supabase = getSupabaseServerClient();
 
   if (req.method === 'GET') {
@@ -20,7 +21,6 @@ export default async function handler(req, res) {
       if (Number(body.price) < 0) return res.status(400).json({ error: 'Price must be non-negative' });
 
       if (body.is_always_selected) {
-        // Ensure only one always selected
         await supabase.from('shipping_options').update({ is_always_selected: false }).eq('is_always_selected', true);
       }
 
@@ -49,3 +49,5 @@ export default async function handler(req, res) {
   res.setHeader('Allow', 'GET, POST');
   return res.status(405).json({ error: 'Method Not Allowed' });
 }
+
+export default withApiBreadcrumbs(handler);

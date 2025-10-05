@@ -1,19 +1,19 @@
 import crypto from 'crypto';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 import { sendOtpCodeEmail } from '../../../../lib/email';
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 
 function normalizeEmail(email){
   return String(email || '').trim().toLowerCase().slice(0, 255);
 }
 
 function generateOtp(){
-  // cryptographically secure 6-digit code 100000-999999
   const buf = crypto.randomBytes(4).readUInt32BE(0);
-  const code = (buf % 900000) + 100000; // 100000..999999
+  const code = (buf % 900000) + 100000;
   return String(code).padStart(6, '0');
 }
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const { email, user_type } = req.body || {};
@@ -68,3 +68,5 @@ export default async function handler(req, res){
     return res.status(500).json({ error: 'Unexpected error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);

@@ -1,4 +1,4 @@
-export const config = { api: { bodyParser: false } };
+import { withApiBreadcrumbs } from '../../../lib/sentry';
 
 function write405(res){ res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method Not Allowed' }); }
 
@@ -10,7 +10,7 @@ async function buffer(readable) {
   return Buffer.concat(chunks);
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return write405(res);
 
   const secret = process.env.STRIPE_SECRET_KEY;
@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     return res.status(501).json({ error: 'Stripe not configured' });
   }
 
-  // Dynamic import to avoid dependency unless configured
   const { default: Stripe } = await import('stripe');
   const stripe = new Stripe(secret);
 
@@ -73,7 +72,6 @@ async function handlePaymentSuccess(paymentIntent){
     { order_id: orderId, from_status: 'pending_payment', to_status: 'paid', changed_by_type: 'payment_webhook', notes: 'Payment succeeded', metadata: { payment_intent_id: paymentIntent.id } }
   ]);
 
-  // Fetch full order details and send confirmation email
   const order = await getOrderWithDetails(supabase, orderId);
   if (order) {
     await sendOrderConfirmationEmail(order);
@@ -112,3 +110,5 @@ async function handleRefund(charge){
     { order_id: order.id, from_status: order.status, to_status: 'refunded', changed_by_type: 'payment_webhook', notes: 'Payment refunded', metadata: { charge_id: charge.id } }
   ]);
 }
+
+export default withApiBreadcrumbs(handler);

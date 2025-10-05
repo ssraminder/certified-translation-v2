@@ -1,3 +1,4 @@
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
 const VALID_TRANSITIONS = {
@@ -10,7 +11,7 @@ const VALID_TRANSITIONS = {
   delivered: ['completed']
 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { orderId } = req.query;
   if (!orderId) return res.status(400).json({ error: 'Missing orderId' });
 
@@ -76,3 +77,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);

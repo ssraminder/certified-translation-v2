@@ -1,3 +1,4 @@
+import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
 function parseCookies(cookieHeader) {
@@ -6,7 +7,7 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') return handleGetQuotes(req, res);
   return res.status(405).json({ error: 'Method not allowed' });
 }
@@ -147,3 +148,5 @@ async function handleGetQuotes(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);
