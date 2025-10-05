@@ -70,21 +70,32 @@ async function handleGetQuote(req, res, quoteId) {
     let lineItems = [];
     let pricing = null;
 
-    if (Array.isArray(quote.quote_results) && quote.quote_results.length > 0) {
+    // Build line items from sub-orders first; fallback to results_json if needed
+    if (Array.isArray(subOrders) && subOrders.length > 0) {
+      lineItems = subOrders.map((so) => ({
+        id: so.id,
+        description: `${so.doc_type || 'Document'} - ${so.filename || 'Document'}`,
+        pages: so.billable_pages,
+        unit_rate: so.unit_rate,
+        line_total: so.line_total,
+        certification: so.certification_amount || 0,
+        filename: so.filename,
+        doc_type: so.doc_type,
+        certification_type_name: so.certification_type_name,
+        total_pages: so.total_pages,
+        source_language: so.source_language,
+        target_language: so.target_language,
+      }));
+    } else if (Array.isArray(quote.quote_results) && quote.quote_results.length > 0) {
       const resultsJson = quote.quote_results[0]?.results_json || null;
-
-      if (Array.isArray(subOrders) && subOrders.length > 0) {
-        lineItems = subOrders.map((so) => ({
-          description: `${so.doc_type || 'Document'} - ${so.filename || 'Document'}`,
-          pages: so.billable_pages,
-          unit_rate: so.unit_rate,
-          line_total: so.line_total,
-          certification: so.certification_amount || 0,
-        }));
-      } else if (resultsJson?.sub_orders) {
+      if (resultsJson?.sub_orders) {
         lineItems = resultsJson.sub_orders;
       }
+    }
 
+    // Build pricing if we have stored totals or snapshot
+    if (Array.isArray(quote.quote_results) && quote.quote_results.length > 0) {
+      const resultsJson = quote.quote_results[0]?.results_json || null;
       pricing = {
         subtotal: quote.quote_results[0].subtotal ?? (resultsJson?.pricing?.subtotal ?? null),
         tax: quote.quote_results[0].tax ?? (resultsJson?.pricing?.tax ?? null),
