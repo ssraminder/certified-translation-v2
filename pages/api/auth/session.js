@@ -1,3 +1,4 @@
+import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 
 function parseCookies(cookieHeader){
@@ -6,7 +7,7 @@ function parseCookies(cookieHeader){
   return out;
 }
 
-export default async function handler(req, res){
+async function handler(req, res){
   try {
     const cookies = parseCookies(req.headers.cookie || '');
     const token = cookies['session_token'];
@@ -42,3 +43,5 @@ export default async function handler(req, res){
     return res.status(500).json({ error: 'Unexpected error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);
