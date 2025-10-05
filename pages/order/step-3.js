@@ -125,9 +125,10 @@ function isBeforeLocalTime(timeString, timezone) {
 
 function addBusinessDaysFromNow(days, timezone, holidaysSet) {
   const tz = timezone || DEFAULT_TIMEZONE;
-  const holidays = holidaysSet || HOLIDAYS_2025;
+  const skipDates = holidaysSet instanceof Set ? holidaysSet : FALLBACK_HOLIDAYS;
   if (days <= 0) {
-    return getDateStringInTimezone(new Date(), tz);
+    const todayIso = getDateStringInTimezone(new Date(), tz);
+    return skipDates.has(todayIso) ? addBusinessDaysFromNow(1, tz, skipDates) : todayIso;
   }
   let added = 0;
   let reference = new Date();
@@ -140,7 +141,7 @@ function addBusinessDaysFromNow(days, timezone, holidaysSet) {
     }).format(reference);
     const weekdayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayName);
     const isWeekend = weekdayIndex === 0 || weekdayIndex === 6;
-    if (!isWeekend && !holidays.has(iso)) {
+    if (!isWeekend && !skipDates.has(iso)) {
       added += 1;
     }
   }
@@ -477,7 +478,7 @@ function HitlFallback({ jobId, quoteMeta }) {
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Target language</dt>
-          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.target_lang || '���'}</dd>
+          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.target_lang || '—'}</dd>
         </div>
       </dl>
     </section>
