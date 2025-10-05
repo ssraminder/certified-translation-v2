@@ -33,13 +33,18 @@ async function handleGetQuote(req, res, quoteId) {
 
     const { data: quote, error } = await supabase
       .from('quote_submissions')
-      .select(`*, quote_results(*), quote_files(*)`)
+      .select(`*, quote_results(*)`)
       .eq('quote_id', quoteId)
       .eq('user_id', session.user_id)
       .maybeSingle();
 
     if (error) return res.status(500).json({ error: error.message });
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
+
+    const { data: quoteFiles } = await supabase
+      .from('quote_files')
+      .select('*')
+      .eq('quote_id', quoteId);
 
     const { data: activityLog } = await supabase
       .from('quote_activity_log')
@@ -132,7 +137,7 @@ async function handleGetQuote(req, res, quoteId) {
       last_completed_step: lastCompletedStep,
       currency: (Array.isArray(quote.quote_results) && quote.quote_results[0]?.currency) || 'CAD',
       quote_results: pricing ? { line_items: lineItems, pricing } : null,
-      documents: (quote.quote_files || []).map((file) => ({
+      documents: (quoteFiles || []).map((file) => ({
         id: file.id,
         original_filename: file.filename,
         file_url: file.file_url || file.signed_url,
