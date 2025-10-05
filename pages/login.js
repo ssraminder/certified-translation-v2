@@ -29,9 +29,10 @@ export default function Login(){
   const [status, setStatus] = useState('idle'); // idle | sending | code-sent
   const [error, setError] = useState('');
   const [otp, setOtp] = useState(['','','','','','']);
+  const [userType, setUserType] = useState(null); // 'admin' | 'customer' | null
   const inputsRef = useRef([]);
 
-  const onKnown = () => {};
+  const onKnown = (data) => { setUserType(data?.user_type || null); };
 
   const handleContinue = async () => {
     setError('');
@@ -39,12 +40,12 @@ export default function Login(){
     try {
       setStatus('sending');
       if (method === 'magic') {
-        const resp = await fetch('/api/auth/magic-link/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        const resp = await fetch('/api/auth/magic-link/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, user_type: userType }) });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Failed');
         setStatus('code-sent');
       } else {
-        const resp = await fetch('/api/auth/otp/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        const resp = await fetch('/api/auth/otp/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, user_type: userType }) });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data?.error || 'Failed');
         setStatus('code-sent');
