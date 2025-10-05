@@ -142,6 +142,21 @@ export default function Step4() {
       const optJson = await optResp.json();
       if (!optResp.ok) throw new Error(optJson.error || 'Failed to save shipping');
 
+      // 3) Create order from quote (best-effort; proceed regardless to keep flow)
+      try {
+        const createOrder = await fetch('/api/orders/create-from-quote', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quote_id: quoteId,
+            billing_address: billing,
+            shipping_address: shippingPayload,
+            shipping_option_ids: Array.from(selected)
+          })
+        });
+        // We ignore failure here to avoid blocking the user; backend logs can track issues
+        await createOrder.json().catch(()=>null);
+      } catch {}
+
       // Go to checkout/payment (Step 5)
       router.push({ pathname: '/order/step-5', query: { quote: quoteId } });
     } catch (err) {
