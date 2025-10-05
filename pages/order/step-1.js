@@ -475,7 +475,10 @@ export default function Step1() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Country of issue</label>
-              <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.countryOfIssue} onChange={e => setFormData(fd => ({ ...fd, countryOfIssue: e.target.value }))} />
+              <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.countryOfIssue} onChange={e => setFormData(fd => ({ ...fd, countryOfIssue: e.target.value }))}>
+                <option value="">Select...</option>
+                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
               {errors.countryOfIssue && <p className="text-xs text-red-600 mt-1">{errors.countryOfIssue}</p>}
             </div>
           </div>
