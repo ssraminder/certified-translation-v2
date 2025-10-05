@@ -11,28 +11,26 @@ function setSessionCookie(res, token) {
 export default function VerifyPage({ error }) {
   if (error) {
     return (
-      <html>
-        <body style={{ fontFamily: 'system-ui, -apple-system', padding: 40 }}>
-          <div style={{ maxWidth: 560, margin: '0 auto' }}>
-            <h1 style={{ margin: '0 0 12px', color: '#111' }}>Login Error</h1>
-            <p style={{ color: '#444', margin: '0 0 18px' }}>{error}</p>
-            <a
-              href="/login"
-              style={{
-                display: 'inline-block',
-                background: '#00B8D4',
-                color: '#fff',
-                textDecoration: 'none',
-                padding: '10px 16px',
-                borderRadius: 8,
-                fontWeight: 700,
-              }}
-            >
-              Go to Login
-            </a>
-          </div>
-        </body>
-      </html>
+      <div style={{ fontFamily: 'system-ui, -apple-system', padding: 40 }}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <h1 style={{ margin: '0 0 12px', color: '#111' }}>Login Error</h1>
+          <p style={{ color: '#444', margin: '0 0 18px' }}>{error}</p>
+          <a
+            href="/login"
+            style={{
+              display: 'inline-block',
+              background: '#00B8D4',
+              color: '#fff',
+              textDecoration: 'none',
+              padding: '10px 16px',
+              borderRadius: 8,
+              fontWeight: 700,
+            }}
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
     );
   }
   return null;
