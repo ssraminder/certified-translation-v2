@@ -233,11 +233,19 @@ export default function Step1() {
   }
 
   async function triggerWebhook(quoteId) {
+    const payload = JSON.stringify({ quote_id: quoteId });
     try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function' && payload.length <= 64000) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        const sent = navigator.sendBeacon('/api/trigger-n8n', blob);
+        if (sent) return;
+      }
+
       await fetch('/api/trigger-n8n', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quote_id: quoteId })
+        body: payload,
+        keepalive: true,
       });
     } catch (e) {
       console.warn('Webhook trigger failed:', e);
@@ -339,7 +347,7 @@ export default function Step1() {
       if (filesErr) throw filesErr;
 
       setProcessingStep('Starting analysis...');
-      triggerWebhook(quoteId);
+      await triggerWebhook(quoteId);
       window.location.href = `/order/step-2?quote=${quoteId}&job=${jobId}`;
     } catch (err) {
       console.error(err);
