@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -10,7 +10,7 @@ const DEFAULT_TIMEZONE = 'America/Edmonton';
 const DEFAULT_ORDER_CUTOFF = '18:00';
 const DEFAULT_SAME_DAY_CUTOFF = '14:00';
 const CURRENCY = 'CAD';
-const HOLIDAYS_2025 = new Set([
+const FALLBACK_HOLIDAYS = new Set([
   '2025-01-01',
   '2025-04-18',
   '2025-05-19',
@@ -20,6 +20,16 @@ const HOLIDAYS_2025 = new Set([
   '2025-12-25',
   '2025-12-26'
 ]);
+
+function createHolidaySet(records) {
+  const dates = (records || [])
+    .map((record) => (record?.date ?? record?.holiday_date ?? record?.holidayDate ?? '').trim())
+    .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value));
+  if (dates.length === 0) {
+    return new Set(FALLBACK_HOLIDAYS);
+  }
+  return new Set(dates);
+}
 
 function classNames(...values) {
   return values.filter(Boolean).join(' ');
@@ -115,9 +125,10 @@ function isBeforeLocalTime(timeString, timezone) {
 
 function addBusinessDaysFromNow(days, timezone, holidaysSet) {
   const tz = timezone || DEFAULT_TIMEZONE;
-  const holidays = holidaysSet || HOLIDAYS_2025;
+  const skipDates = holidaysSet instanceof Set ? holidaysSet : FALLBACK_HOLIDAYS;
   if (days <= 0) {
-    return getDateStringInTimezone(new Date(), tz);
+    const todayIso = getDateStringInTimezone(new Date(), tz);
+    return skipDates.has(todayIso) ? addBusinessDaysFromNow(1, tz, skipDates) : todayIso;
   }
   let added = 0;
   let reference = new Date();
@@ -130,11 +141,25 @@ function addBusinessDaysFromNow(days, timezone, holidaysSet) {
     }).format(reference);
     const weekdayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayName);
     const isWeekend = weekdayIndex === 0 || weekdayIndex === 6;
-    if (!isWeekend && !holidays.has(iso)) {
+    if (!isWeekend && !skipDates.has(iso)) {
       added += 1;
     }
   }
   return getDateStringInTimezone(reference, tz);
+}
+
+function calculateRequiredDays({ baseDays, basePageAllowance, extraPageBlock, extraDayIncrement = 1, totalPages, afterCutoff }) {
+  const effectiveBaseDays = Math.max(0, baseDays);
+  const allowance = Math.max(0, basePageAllowance);
+  const blockSize = Math.max(0, extraPageBlock);
+  const increment = Math.max(0, extraDayIncrement);
+  const excessPages = Math.max(0, totalPages - allowance);
+  const extraBlocks = blockSize > 0 ? Math.ceil(excessPages / blockSize) : 0;
+  let required = effectiveBaseDays + extraBlocks * (increment || 0);
+  if (afterCutoff) {
+    required += 1;
+  }
+  return Math.max(required, 0);
 }
 
 function formatDateForDisplay(dateString, timezone) {
@@ -307,7 +332,7 @@ function determineSameDayEligibility({
   if (!weekdays.has(weekdayNumber)) return false;
 
   const todayIso = getLocalDateString(tz);
-  const blockedDates = holidays || HOLIDAYS_2025;
+  const blockedDates = holidays instanceof Set ? holidays : FALLBACK_HOLIDAYS;
   if (blockedDates.has(todayIso)) return false;
 
   const fileCountryMap = new Map((files || []).map((file) => [file.filename, (file.country_of_issue || '').trim().toLowerCase()]));
@@ -325,6 +350,33 @@ function toPercentLabel(decimal) {
   return `+${Math.round(value * 100)}%`;
 }
 
+function applyDeliveryModifier(pricing, option) {
+  const baseSubtotal = roundToCents(pricing?.subtotal ?? 0);
+  const baseTax = roundToCents(pricing?.estimatedTax ?? 0);
+  const baseTotal = roundToCents(pricing?.total ?? 0);
+  const base = { subtotal: baseSubtotal, estimatedTax: baseTax, total: baseTotal };
+  if (!option || !option.modifier || option.modifier <= 0) {
+    return base;
+  }
+
+  if (option.modifierType === 'percent') {
+    const multiplier = 1 + option.modifier;
+    const subtotal = roundToCents(baseSubtotal * multiplier);
+    const estimatedTax = roundToCents(subtotal * GST_RATE);
+    const total = roundToCents(subtotal + estimatedTax);
+    return { subtotal, estimatedTax, total };
+  }
+
+  if (option.modifierType === 'flat') {
+    const subtotal = roundToCents(baseSubtotal + option.modifier);
+    const estimatedTax = roundToCents(subtotal * GST_RATE);
+    const total = roundToCents(subtotal + estimatedTax);
+    return { subtotal, estimatedTax, total };
+  }
+
+  return base;
+}
+
 function computeDeliveryEstimates({
   items,
   deliveryOptions,
@@ -338,60 +390,64 @@ function computeDeliveryEstimates({
   const delivery = {};
   const afterCutoff = !isBeforeLocalTime(orderCutoff, tz);
   const options = deliveryOptions || [];
+  const holidaySet = holidays instanceof Set ? holidays : FALLBACK_HOLIDAYS;
 
   const standardOption = options.find((option) => !option.is_expedited && !option.is_same_day);
   if (standardOption) {
-    const baseDays = parseNumber(standardOption.base_business_days);
-    const addlPages = parseNumber(standardOption.addl_business_days_per_pages);
-    const addlDays = parseNumber(standardOption.addl_business_days);
-    const extraBlocks = addlPages > 0 ? Math.max(0, Math.ceil(Math.max(totalPages - 1, 0) / addlPages)) : 0;
-    let requiredDays = baseDays + extraBlocks * addlDays;
-    if (afterCutoff) requiredDays += 1;
-    if (requiredDays < 0) requiredDays = 0;
-    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidays);
+    const baseDays = parseNumber(standardOption.base_business_days) || 2;
+    const extraDayIncrement = parseNumber(standardOption.addl_business_days) || 1;
+    const pageBlock = parseNumber(standardOption.addl_business_days_per_pages) || 4;
+    const requiredDays = calculateRequiredDays({
+      baseDays,
+      basePageAllowance: 2,
+      extraPageBlock: pageBlock,
+      extraDayIncrement,
+      totalPages,
+      afterCutoff
+    });
+    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
     const feeAmount = parseNumber(standardOption.fee_amount);
-    const priceLabel = feeAmount > 0 ? `+${formatCurrency(feeAmount)}` : 'Included';
+    const hasFee = feeAmount > 0;
+    const priceLabel = hasFee ? `+${formatCurrency(feeAmount)}` : 'Included';
     delivery.standard = {
       key: 'standard',
       label: standardOption.name || 'Standard delivery',
       rawDate,
       displayDate: formatDateForDisplay(rawDate, tz),
       priceLabel,
-      modifier: 0,
-      timezone: tz
+      modifier: hasFee ? roundToCents(feeAmount) : 0,
+      modifierType: hasFee ? 'flat' : 'none',
+      timezone: tz,
+      requiredBusinessDays: requiredDays
     };
   }
 
   const expeditedOption = options.find((option) => option.is_expedited && !option.is_same_day);
   if (expeditedOption) {
-    const baseDays = parseNumber(expeditedOption.base_business_days);
-    const addlPages = parseNumber(expeditedOption.addl_business_days_per_pages);
-    const addlDays = parseNumber(expeditedOption.addl_business_days);
-    const extraBlocks = addlPages > 0 ? Math.max(0, Math.ceil(Math.max(totalPages - 1, 0) / addlPages)) : 0;
-    let requiredDays = baseDays + extraBlocks * addlDays;
-    if (afterCutoff) requiredDays += 1;
-    if (requiredDays < 0) requiredDays = 0;
-    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidays);
-    let modifier = 0;
-    let priceLabel = 'Included';
-    if ((expeditedOption.fee_type || '').toLowerCase() === 'percent') {
-      modifier = parseNumber(expeditedOption.fee_amount);
-      priceLabel = toPercentLabel(modifier > 0 ? modifier : parseNumber(settings?.rush_percent));
-    } else if ((expeditedOption.fee_type || '').toLowerCase() === 'flat') {
-      modifier = parseNumber(expeditedOption.fee_amount);
-      priceLabel = modifier > 0 ? `+${formatCurrency(modifier)}` : 'Included';
-    } else {
-      modifier = parseNumber(settings?.rush_percent);
-      priceLabel = toPercentLabel(modifier);
-    }
+    const baseDays = parseNumber(expeditedOption.base_business_days) || 1;
+    const extraDayIncrement = parseNumber(expeditedOption.addl_business_days) || 1;
+    const pageBlock = parseNumber(expeditedOption.addl_business_days_per_pages) || 5;
+    const requiredDays = calculateRequiredDays({
+      baseDays,
+      basePageAllowance: 2,
+      extraPageBlock: pageBlock,
+      extraDayIncrement,
+      totalPages,
+      afterCutoff
+    });
+    const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
+    const modifier = 0.3;
+    const priceLabel = toPercentLabel(modifier);
     delivery.expedited = {
-      key: 'expedited',
-      label: expeditedOption.name || 'Expedited delivery',
+      key: 'rush',
+      label: expeditedOption.name || 'Rush delivery',
       rawDate,
       displayDate: formatDateForDisplay(rawDate, tz),
       priceLabel,
       modifier,
-      timezone: tz
+      modifierType: 'percent',
+      timezone: tz,
+      requiredBusinessDays: requiredDays
     };
   }
 
@@ -412,6 +468,7 @@ function computeDeliveryEstimates({
       deadlineTime: `${sameDayCutoff} ${tz.replace('America/', '')}`,
       priceLabel,
       modifier,
+      modifierType: 'percent',
       timezone: tz
     };
   } else if (sameDayEligible) {
@@ -425,8 +482,14 @@ function computeDeliveryEstimates({
       deadlineTime: `${sameDayCutoff} ${tz.replace('America/', '')}`,
       priceLabel: '+100%',
       modifier: 1,
+      modifierType: 'percent',
       timezone: tz
     };
+  }
+
+  const defaultKey = delivery.standard?.key || delivery.expedited?.key || delivery.sameDay?.key || null;
+  if (defaultKey) {
+    delivery.defaultKey = defaultKey;
   }
 
   return delivery;
@@ -506,26 +569,48 @@ function QuoteSummaryCard({ quoteMeta, jobId }) {
   );
 }
 
-function DeliveryOptionsCard({ delivery, timezone }) {
-  if (!delivery || !delivery.standard) return null;
-  const options = [delivery.standard, delivery.expedited, delivery.sameDay].filter(Boolean);
+function DeliveryOptionsCard({ options, timezone, selectedKey, onSelect }) {
+  const list = (options || []).filter(Boolean);
+  if (list.length === 0) return null;
   return (
     <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">Delivery options</h2>
-      <p className="text-sm text-gray-600">Choose your delivery speed at checkout.</p>
+      <p className="text-sm text-gray-600">Choose your delivery speed. Pricing updates instantly.</p>
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {options.map((option) => (
-          <div key={option.key} className="relative flex h-full flex-col justify-between rounded-xl border border-gray-200 p-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{option.label}</p>
-              <p className="mt-2 text-lg font-semibold text-gray-900">{option.displayDate}</p>
-              {option.deadlineTime && (
-                <p className="mt-1 text-xs text-gray-500">Delivery by {option.deadlineTime}</p>
+        {list.map((option) => {
+          const optionKey = option.key || option.label;
+          const isSelected = optionKey === selectedKey;
+          return (
+            <button
+              type="button"
+              key={optionKey}
+              onClick={() => onSelect?.(optionKey)}
+              className={classNames(
+                'relative flex h-full flex-col justify-between rounded-xl border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600',
+                isSelected ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/50'
               )}
-            </div>
-            <p className="mt-3 text-sm font-medium text-cyan-700">{option.priceLabel}</p>
-          </div>
-        ))}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{option.label}</p>
+                  <p className="mt-2 text-lg font-semibold text-gray-900">{option.displayDate}</p>
+                  {typeof option.requiredBusinessDays === 'number' && option.requiredBusinessDays >= 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {option.requiredBusinessDays} business day{option.requiredBusinessDays === 1 ? '' : 's'}
+                    </p>
+                  )}
+                  {option.deadlineTime && (
+                    <p className="mt-1 text-xs text-gray-500">Delivery by {option.deadlineTime}</p>
+                  )}
+                </div>
+                <span className={classNames('text-xs font-medium uppercase tracking-wide', isSelected ? 'text-cyan-700' : 'text-gray-500')}>
+                  {isSelected ? 'Selected' : 'Select'}
+                </span>
+              </div>
+              <p className="mt-3 text-sm font-medium text-cyan-700">{option.priceLabel}</p>
+            </button>
+          );
+        })}
       </div>
       <p className="mt-4 text-xs text-gray-500">All times shown in {timezone || DEFAULT_TIMEZONE}.</p>
     </section>
@@ -718,25 +803,53 @@ function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
   );
 }
 
-function PricingSummary({ pricing }) {
+function PricingSummary({ basePricing, adjustedPricing, selectedOption }) {
+  const baseSubtotal = roundToCents(basePricing?.subtotal ?? 0);
+  const subtotal = roundToCents(adjustedPricing?.subtotal ?? 0);
+  const estimatedTax = roundToCents(adjustedPricing?.estimatedTax ?? 0);
+  const total = roundToCents(adjustedPricing?.total ?? 0);
+  const deliveryPremium = roundToCents(subtotal - baseSubtotal);
+  const showPremium = deliveryPremium > 0.01;
+
   return (
     <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">Pricing summary</h2>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Pricing summary</h2>
+          {selectedOption && (
+            <p className="mt-1 text-xs text-gray-500">
+              Delivery: {selectedOption.label} ({selectedOption.priceLabel})
+            </p>
+          )}
+        </div>
+        {showPremium && (
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">Updated</span>
+        )}
+      </div>
       <dl className="mt-4 space-y-3 text-sm">
         <div className="flex items-center justify-between">
           <dt className="text-gray-600">Subtotal</dt>
-          <dd className="font-medium text-gray-900">{formatCurrency(pricing.subtotal)}</dd>
+          <dd className="font-medium text-gray-900">{formatCurrency(subtotal)}</dd>
         </div>
+        {showPremium && (
+          <div className="flex items-center justify-between text-xs">
+            <dt className="text-gray-500">Includes delivery premium</dt>
+            <dd className="font-medium text-gray-700">+{formatCurrency(deliveryPremium)}</dd>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <dt className="text-gray-600">Estimated GST (5%)</dt>
-          <dd className="font-medium text-gray-900">{formatCurrency(pricing.estimatedTax)}</dd>
+          <dd className="font-medium text-gray-900">{formatCurrency(estimatedTax)}</dd>
         </div>
         <div className="flex items-center justify-between border-t border-gray-100 pt-3 text-base font-semibold text-gray-900">
           <dt>Total due today</dt>
-          <dd>{formatCurrency(pricing.total)}</dd>
+          <dd>{formatCurrency(total)}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-xs text-gray-500">Final taxes will be confirmed at checkout based on your billing province.</p>
+      <p className="mt-3 text-xs text-gray-500">
+        {showPremium && selectedOption?.modifierType === 'percent' ? 'Delivery premium is applied to the translation subtotal before tax. ' : ''}
+        Final taxes will be confirmed at checkout based on your billing province.
+      </p>
     </section>
   );
 }
@@ -819,11 +932,75 @@ export default function Step3() {
   const [lineItems, setLineItems] = useState([]);
   const [pricing, setPricing] = useState({ subtotal: 0, estimatedTax: 0, total: 0 });
   const [deliveryEstimates, setDeliveryEstimates] = useState(null);
+  const [selectedDeliveryKey, setSelectedDeliveryKey] = useState(null);
   const [settings, setSettings] = useState(null);
   const [deliveryOptions, setDeliveryOptions] = useState([]);
   const [qualifiers, setQualifiers] = useState([]);
   const [files, setFiles] = useState([]);
+  const [holidays, setHolidays] = useState(() => createHolidaySet());
   const [minimumOrder, setMinimumOrder] = useState(65);
+
+  const deliveryOptionsList = useMemo(() => {
+    if (!deliveryEstimates) return [];
+    return [deliveryEstimates.standard, deliveryEstimates.expedited, deliveryEstimates.sameDay].filter(Boolean);
+  }, [deliveryEstimates]);
+
+  const defaultDeliveryKey = deliveryEstimates?.defaultKey || null;
+
+  useEffect(() => {
+    if (deliveryOptionsList.length === 0) {
+      setSelectedDeliveryKey(null);
+      return;
+    }
+    setSelectedDeliveryKey((current) => {
+      if (current && deliveryOptionsList.some((option) => option.key === current)) {
+        return current;
+      }
+      if (defaultDeliveryKey && deliveryOptionsList.some((option) => option.key === defaultDeliveryKey)) {
+        return defaultDeliveryKey;
+      }
+      const preferredOrder = ['standard', 'rush', 'sameDay'];
+      const fallbackOption = preferredOrder
+        .map((key) => deliveryOptionsList.find((option) => option.key === key))
+        .find(Boolean) || deliveryOptionsList[0];
+      return fallbackOption?.key || null;
+    });
+  }, [deliveryOptionsList, defaultDeliveryKey]);
+
+  const selectedDeliveryOption = useMemo(() => {
+    if (!selectedDeliveryKey) return null;
+    return deliveryOptionsList.find((option) => option.key === selectedDeliveryKey) || null;
+  }, [deliveryOptionsList, selectedDeliveryKey]);
+
+  const pricingWithDelivery = useMemo(
+    () => applyDeliveryModifier(pricing, selectedDeliveryOption),
+    [pricing, selectedDeliveryOption]
+  );
+
+  const handleDeliverySelect = useCallback((key) => {
+    setSelectedDeliveryKey(key);
+  }, []);
+
+  useEffect(() => {
+    if (!quoteId || !selectedDeliveryOption || lineItems.length === 0 || !deliveryEstimates) return;
+    if (!supabase) return;
+    const persistSelection = async () => {
+      try {
+        const totalsWithDelivery = applyDeliveryModifier(pricing, selectedDeliveryOption);
+        const deliveryPayload = {
+          ...deliveryEstimates,
+          selectedKey: selectedDeliveryOption.key
+        };
+        await saveQuoteResults(quoteId, totalsWithDelivery, lineItems, {
+          currency: CURRENCY,
+          delivery: deliveryPayload
+        });
+      } catch (err) {
+        console.error('Failed to persist delivery selection', err);
+      }
+    };
+    persistSelection();
+  }, [quoteId, selectedDeliveryOption, deliveryEstimates, pricing, lineItems]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -848,7 +1025,15 @@ export default function Step3() {
       return;
     }
     try {
-      const [submissionRes, lineItemsRes, filesRes, deliveryOptionsRes, settingsRes, qualifiersRes] = await Promise.all([
+      const [
+        submissionRes,
+        lineItemsRes,
+        filesRes,
+        deliveryOptionsRes,
+        settingsRes,
+        qualifiersRes,
+        holidaysRes
+      ] = await Promise.all([
         supabase
           .from('quote_submissions')
           .select('job_id, source_lang, target_lang, intended_use, country_of_issue')
@@ -876,7 +1061,11 @@ export default function Step3() {
         supabase
           .from('same_day_qualifiers')
           .select('doc_type, country')
-          .eq('active', true)
+          .eq('active', true),
+        supabase
+          .from('holidays')
+          .select('date, holiday_name, year')
+          .order('date')
       ]);
 
       if (submissionRes.error) throw submissionRes.error;
@@ -920,20 +1109,24 @@ export default function Step3() {
       const filesList = filesRes.data || [];
       const qualifiersList = qualifiersRes.data || [];
       const deliveryOptionsList = (deliveryOptionsRes.data || []).filter((option) => option);
+      if (holidaysRes?.error) {
+        console.error('Failed to load holidays data', holidaysRes.error);
+      }
+      const holidaysSet = createHolidaySet(holidaysRes?.data);
       const sameDay = determineSameDayEligibility({
         items: normalizedItems,
         files: filesList,
         qualifiers: qualifiersList,
         settings: settingsData,
         fallbackCountry: submission.country_of_issue,
-        holidays: HOLIDAYS_2025
+        holidays: holidaysSet
       });
       const delivery = computeDeliveryEstimates({
         items: normalizedItems,
         deliveryOptions: deliveryOptionsList,
         settings: settingsData,
         sameDayEligible: sameDay,
-        holidays: HOLIDAYS_2025
+        holidays: holidaysSet
       });
 
       try {
@@ -954,6 +1147,7 @@ export default function Step3() {
       setDeliveryOptions(deliveryOptionsList);
       setQualifiers(qualifiersList);
       setFiles(filesList);
+      setHolidays(holidaysSet);
       setMinimumOrder(baseRate);
       setShowHITL(false);
     } catch (err) {
@@ -1115,7 +1309,7 @@ export default function Step3() {
         qualifiers,
         settings,
         fallbackCountry: quoteMeta?.country_of_issue,
-        holidays: HOLIDAYS_2025
+        holidays
       });
 
       const delivery = computeDeliveryEstimates({
@@ -1123,7 +1317,7 @@ export default function Step3() {
         deliveryOptions,
         settings,
         sameDayEligible: sameDay,
-        holidays: HOLIDAYS_2025
+        holidays
       });
 
       setPricing(newTotals);
@@ -1145,7 +1339,7 @@ export default function Step3() {
     } finally {
       setIsSaving(false);
     }
-  }, [quoteId, lineItems, minimumOrder, files, qualifiers, settings, quoteMeta, deliveryOptions]);
+  }, [quoteId, lineItems, minimumOrder, files, qualifiers, settings, quoteMeta, deliveryOptions, holidays]);
 
   const handleAcceptPay = useCallback(() => {
     if (!quoteId) return;
@@ -1207,14 +1401,23 @@ export default function Step3() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{infoMessage}</div>
               )}
               <QuoteSummaryCard quoteMeta={quoteMeta} jobId={jobId || quoteMeta?.job_id} />
-              <DeliveryOptionsCard delivery={deliveryEstimates} timezone={settings?.timezone || DEFAULT_TIMEZONE} />
               <LineItemsTable
                 items={lineItems}
                 onRemove={handleRemoveItem}
                 disableRemove={lineItems.length <= 1}
                 isSaving={isSaving}
               />
-              <PricingSummary pricing={pricing} />
+              <DeliveryOptionsCard
+                options={deliveryOptionsList}
+                timezone={settings?.timezone || DEFAULT_TIMEZONE}
+                selectedKey={selectedDeliveryKey}
+                onSelect={handleDeliverySelect}
+              />
+              <PricingSummary
+                basePricing={pricing}
+                adjustedPricing={pricingWithDelivery}
+                selectedOption={selectedDeliveryOption}
+              />
               <ActionButtons
                 onAccept={handleAcceptPay}
                 onHuman={handleRequestHumanQuote}
