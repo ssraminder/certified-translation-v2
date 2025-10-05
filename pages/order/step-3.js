@@ -855,6 +855,7 @@ export default function Step3() {
   const [lineItems, setLineItems] = useState([]);
   const [pricing, setPricing] = useState({ subtotal: 0, estimatedTax: 0, total: 0 });
   const [deliveryEstimates, setDeliveryEstimates] = useState(null);
+  const [selectedDeliveryKey, setSelectedDeliveryKey] = useState(null);
   const [settings, setSettings] = useState(null);
   const [deliveryOptions, setDeliveryOptions] = useState([]);
   const [qualifiers, setQualifiers] = useState([]);
