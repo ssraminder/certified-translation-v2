@@ -24,10 +24,61 @@ export default function Step2() {
     frequency: ''
   });
 
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [prefilledFields, setPrefilledFields] = useState(new Set());
+  const [prefillLocked, setPrefillLocked] = useState(false);
+
   const showBusinessFields = formData.orderingType === 'business';
 
   useEffect(() => {
     setParams(getQueryParams());
+  }, []);
+
+  // Check auth and prefill from profile if available
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const resp = await fetch('/api/auth/session');
+        const data = await resp.json();
+        if (cancelled) return;
+        if (data?.authenticated) {
+          setIsAuthed(true);
+          // Load full profile for more fields
+          const prof = await fetch('/api/dashboard/profile');
+          if (prof.ok) {
+            const pj = await prof.json();
+            const u = pj?.user || {};
+            const fromProfile = {
+              fullName: [u.first_name, u.last_name].filter(Boolean).join(' ').trim(),
+              email: u.email || '',
+              phone: u.phone || '',
+              orderingType: u.account_type === 'business' ? 'business' : (u.account_type === 'individual' ? 'individual' : ''),
+              companyName: u.company_name || ''
+            };
+            const newData = { ...formData };
+            const pf = new Set();
+            (['fullName','email','phone','orderingType','companyName']).forEach(k => {
+              if (fromProfile[k]) {
+                newData[k] = fromProfile[k];
+                pf.add(k);
+              }
+            });
+            setFormData(newData);
+            setPrefilledFields(pf);
+            if (pf.size > 0) setPrefillLocked(true);
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -96,15 +147,16 @@ export default function Step2() {
         .eq('quote_id', quote)
         .single();
       if (data) {
-        setFormData({
-          fullName: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          orderingType: data.ordering_type || '',
-          companyName: data.company_name || '',
-          designation: data.designation || '',
-          frequency: data.frequency || ''
-        });
+        setFormData(prev => ({
+          ...prev,
+          fullName: data.name || prev.fullName || '',
+          email: data.email || prev.email || '',
+          phone: data.phone || prev.phone || '',
+          orderingType: data.ordering_type || prev.orderingType || '',
+          companyName: data.company_name || prev.companyName || '',
+          designation: data.designation || prev.designation || '',
+          frequency: data.frequency || prev.frequency || ''
+        }));
       }
     };
     loadQuote();
@@ -163,6 +215,8 @@ export default function Step2() {
     }
   };
 
+  const locked = (key) => prefillLocked && prefilledFields.has(key);
+
   return (
     <>
       <Head>
@@ -170,10 +224,8 @@ export default function Step2() {
       </Head>
       <div className="min-h-screen bg-white">
         <div className="max-w-2xl mx-auto px-4 py-8">
-          {/* Progress + Order ID */}
           <div className="mb-4 text-sm font-medium text-gray-600">Order ID: {job || ''}</div>
 
-          {/* Processing Banner */}
           {processingStatus === 'processing' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
               <LoadingSpinner size="md" className="text-blue-600" label="Analyzing documents" />
@@ -203,7 +255,6 @@ export default function Step2() {
             </div>
           )}
 
-          {/* Back Link */}
           <button
             suppressHydrationWarning
             onClick={() => {
@@ -219,26 +270,40 @@ export default function Step2() {
             Back to Documents
           </button>
 
-          {/* Form */}
+          {!isAuthed && (
+            <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+              Already have an account? <a className="text-cyan-600 font-medium underline" href={`/login?redirect=${encodeURIComponent(`/order/step-2?quote=${quote||''}&job=${job||''}`)}`}>Log in</a>
+            </div>
+          )}
+
+          {prefilledFields.size > 0 && (
+            <div className="mb-4 rounded-lg border border-cyan-200 bg-cyan-50 p-3 flex items-center justify-between">
+              <div className="text-sm text-cyan-900">We prefilled some details from your account.</div>
+              <button type="button" onClick={()=>setPrefillLocked(v=>!v)} className="text-sm font-medium text-cyan-700 underline">
+                {prefillLocked ? 'Change' : 'Keep Locked'}
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.fullName} onChange={e => setFormData(f => ({ ...f, fullName: e.target.value }))} />
+              <input suppressHydrationWarning disabled={locked('fullName')} className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100" value={formData.fullName} onChange={e => setFormData(f => ({ ...f, fullName: e.target.value }))} />
               {errors.fullName && <p className="text-xs text-red-600 mt-1">{errors.fullName}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-              <input suppressHydrationWarning type="email" className="w-full border rounded-lg px-3 py-2" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} />
+              <input suppressHydrationWarning type="email" disabled={locked('email')} className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} />
               {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} />
+              <input suppressHydrationWarning disabled={locked('phone')} className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} />
               {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">I am ordering as</label>
-              <select suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.orderingType} onChange={e => setFormData(f => ({ ...f, orderingType: e.target.value }))}>
+              <select suppressHydrationWarning disabled={locked('orderingType')} className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100" value={formData.orderingType} onChange={e => setFormData(f => ({ ...f, orderingType: e.target.value }))}>
                 <option value="">Select...</option>
                 <option value="individual">Individual</option>
                 <option value="business">Company/Business</option>
@@ -246,13 +311,12 @@ export default function Step2() {
               {errors.orderingType && <p className="text-xs text-red-600 mt-1">{errors.orderingType}</p>}
             </div>
 
-            {/* Business Fields */}
             <div className={showBusinessFields ? 'business-section show' : 'business-section'}>
               {showBusinessFields && (
                 <div className="grid grid-cols-1 gap-4 mt-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-                    <input suppressHydrationWarning className="w-full border rounded-lg px-3 py-2" value={formData.companyName} onChange={e => setFormData(f => ({ ...f, companyName: e.target.value }))} />
+                    <input suppressHydrationWarning disabled={locked('companyName')} className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100" value={formData.companyName} onChange={e => setFormData(f => ({ ...f, companyName: e.target.value }))} />
                     {errors.companyName && <p className="text-xs text-red-600 mt-1">{errors.companyName}</p>}
                   </div>
                   <div>
@@ -283,7 +347,6 @@ export default function Step2() {
           </form>
         </div>
 
-        {/* Inline styles for business-section animation */}
         <style jsx>{`
           .business-section { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 300ms ease-out, opacity 300ms ease-out; }
           .business-section.show { max-height: 600px; opacity: 1; }
