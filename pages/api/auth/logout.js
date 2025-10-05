@@ -1,0 +1,25 @@
+import { getSupabaseServerClient } from '../../../lib/supabaseServer';
+
+function parseCookies(cookieHeader){
+  const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
+  for (const p of parts){ const [k, ...v] = p.trim().split('='); out[k] = decodeURIComponent(v.join('=')); }
+  return out;
+}
+
+export default async function handler(req, res){
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  try {
+    const supabase = getSupabaseServerClient();
+    const cookies = parseCookies(req.headers.cookie || '');
+    const token = cookies['session_token'];
+    if (token) {
+      await supabase.from('user_sessions').delete().eq('session_token', token);
+    }
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookie = `session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
+    res.setHeader('Set-Cookie', cookie);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+}
