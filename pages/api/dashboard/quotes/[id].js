@@ -102,6 +102,9 @@ async function handleGetQuote(req, res, quoteId) {
       else if (pct >= 25) lastCompletedStep = 2;
     }
 
+    const hasPricing = !!pricing;
+    const hasLineItems = Array.isArray(lineItems) && lineItems.length > 0;
+
     const enhancedQuote = {
       id: quote.quote_id,
       quote_number: quote.quote_number,
