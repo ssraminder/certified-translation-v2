@@ -1,6 +1,7 @@
+import { withApiBreadcrumbs } from '../../lib/sentry';
 import { getSupabaseServerClient } from '../../lib/supabaseServer';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -21,3 +22,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);
