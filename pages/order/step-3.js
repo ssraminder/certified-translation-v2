@@ -879,7 +879,15 @@ export default function Step3() {
       return;
     }
     try {
-      const [submissionRes, lineItemsRes, filesRes, deliveryOptionsRes, settingsRes, qualifiersRes] = await Promise.all([
+      const [
+        submissionRes,
+        lineItemsRes,
+        filesRes,
+        deliveryOptionsRes,
+        settingsRes,
+        qualifiersRes,
+        holidaysRes
+      ] = await Promise.all([
         supabase
           .from('quote_submissions')
           .select('job_id, source_lang, target_lang, intended_use, country_of_issue')
@@ -907,7 +915,11 @@ export default function Step3() {
         supabase
           .from('same_day_qualifiers')
           .select('doc_type, country')
-          .eq('active', true)
+          .eq('active', true),
+        supabase
+          .from('holidays')
+          .select('date, holiday_name, year')
+          .order('date')
       ]);
 
       if (submissionRes.error) throw submissionRes.error;
