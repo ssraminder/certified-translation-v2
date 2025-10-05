@@ -88,7 +88,9 @@ async function handleGetQuote(req, res, quoteId) {
       }));
     } else if (Array.isArray(quote.quote_results) && quote.quote_results.length > 0) {
       const resultsJson = quote.quote_results[0]?.results_json || null;
-      if (resultsJson?.sub_orders) {
+      if (Array.isArray(resultsJson?.lineItems)) {
+        lineItems = resultsJson.lineItems;
+      } else if (Array.isArray(resultsJson?.sub_orders)) {
         lineItems = resultsJson.sub_orders;
       }
     }
