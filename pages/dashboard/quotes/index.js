@@ -42,7 +42,6 @@ export default function QuotesListPage() {
     { key: 'open', label: `Open (${stats?.open ?? 0})` },
     { key: 'under_review', label: `Under Review (${stats?.under_review ?? 0})` },
     { key: 'expired', label: `Expired (${stats?.expired ?? 0})` },
-    { key: 'converted', label: `Converted (${stats?.converted ?? 0})` },
   ]), [stats]);
 
   const handleDelete = async (id) => {
