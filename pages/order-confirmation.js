@@ -33,7 +33,10 @@ export default function OrderConfirmation(){
         <div className="mx-auto max-w-md px-4 py-12 text-center">
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">Payment Failed</h1>
           <p className="text-gray-700 mb-6">There was an issue processing your payment. Please try again.</p>
-          <button className="rounded-lg bg-cyan-600 px-5 py-2 text-white" onClick={()=>router.push(`/checkout?order=${order_id}`)}>Retry Payment</button>
+          <div className="flex items-center justify-center gap-3">
+            <button className="rounded-lg bg-cyan-600 px-5 py-2 text-white" onClick={()=>router.push(`/checkout?order=${order_id}`)}>Retry Payment</button>
+            <button className="rounded-lg border px-5 py-2" onClick={()=>router.push('/dashboard')}>Return to Dashboard</button>
+          </div>
         </div>
       </div>
     );
@@ -54,6 +57,7 @@ export default function OrderConfirmation(){
         </div>
         <div className="flex items-center justify-center gap-3">
           <button className="rounded-lg bg-cyan-600 px-5 py-2 text-white" onClick={()=>router.push('/')}>Return Home</button>
+          <button className="rounded-lg border px-5 py-2" onClick={()=>router.push('/dashboard')}>Return to Dashboard</button>
         </div>
       </div>
     </div>

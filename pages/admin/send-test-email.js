@@ -42,7 +42,7 @@ export default function SendTestEmail() {
       <h1>Send Test Email</h1>
       <p>Status: <strong>{status}</strong></p>
       {message && <pre style={{ background: '#f8f9fa', padding: 12, borderRadius: 6 }}>{message}</pre>}
-      <p>Pass ?recipient=email@example.com&order_id=UUID (or &use_latest_paid=1).</p>
+      <p>Pass ?recipient=email@example.com&order_id=UUID_OR_ORDER_NUMBER (e.g., ORD-2025-000009) or &use_latest_paid=1.</p>
     </main>
   );
 }
