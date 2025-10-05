@@ -982,6 +982,27 @@ export default function Step3() {
   }, []);
 
   useEffect(() => {
+    if (!quoteId || !selectedDeliveryOption || lineItems.length === 0 || !deliveryEstimates) return;
+    if (!supabase) return;
+    const persistSelection = async () => {
+      try {
+        const totalsWithDelivery = applyDeliveryModifier(pricing, selectedDeliveryOption);
+        const deliveryPayload = {
+          ...deliveryEstimates,
+          selectedKey: selectedDeliveryOption.key
+        };
+        await saveQuoteResults(quoteId, totalsWithDelivery, lineItems, {
+          currency: CURRENCY,
+          delivery: deliveryPayload
+        });
+      } catch (err) {
+        console.error('Failed to persist delivery selection', err);
+      }
+    };
+    persistSelection();
+  }, [quoteId, selectedDeliveryOption, deliveryEstimates, pricing, lineItems]);
+
+  useEffect(() => {
     if (!router.isReady) return;
     const { quote, job } = router.query;
     if (!quote) {
