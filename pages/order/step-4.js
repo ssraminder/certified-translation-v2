@@ -142,7 +142,40 @@ export default function Step4() {
       const optJson = await optResp.json();
       if (!optResp.ok) throw new Error(optJson.error || 'Failed to save shipping');
 
-      // Go to checkout/payment (Step 5)
+      // 3) Create order from quote, then try to create a Stripe PaymentIntent
+      let createdOrder = null;
+      try {
+        const createOrder = await fetch('/api/orders/create-from-quote', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quote_id: quoteId,
+            billing_address: billing,
+            shipping_address: shippingPayload,
+            shipping_option_ids: Array.from(selected)
+          })
+        });
+        const orderJson = await createOrder.json().catch(()=>null);
+        createdOrder = orderJson?.order || null;
+      } catch {}
+
+      // 4) If Stripe is configured, create PaymentIntent and redirect to /payment
+      if (createdOrder) {
+        try {
+          const payResp = await fetch('/api/payment/create-intent', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: createdOrder.id, amount: createdOrder.total, currency: 'cad' })
+          });
+          if (payResp.ok) {
+            const { clientSecret } = await payResp.json();
+            if (clientSecret) {
+              router.push({ pathname: '/payment', query: { order: createdOrder.id, client_secret: clientSecret } });
+              return;
+            }
+          }
+        } catch {}
+      }
+
+      // Fallback: Go to step 5 (placeholder) if payment could not be initiated
       router.push({ pathname: '/order/step-5', query: { quote: quoteId } });
     } catch (err) {
       setError(getErrorMessage(err));
