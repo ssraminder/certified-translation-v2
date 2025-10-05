@@ -47,8 +47,7 @@ export default async function handler(req, res){
         first_name: first_name || existingUser.first_name,
         last_name: last_name || existingUser.last_name,
         phone: phone || null,
-        company_name: company_name || null,
-        updated_at: new Date().toISOString()
+        company_name: company_name || null
       }).eq('id', userId);
       if (updUserErr) throw updUserErr;
     } else {
@@ -73,12 +72,10 @@ export default async function handler(req, res){
     }
 
     // Update quote_submissions
-    const nowIso = new Date().toISOString();
     const updates = {
       user_id: userId,
       user_created_at_step2: userCreated,
       completion_percentage: 50,
-      updated_at: nowIso,
       name: full_name,
       email: normEmail,
       phone: phone || null,
@@ -94,7 +91,7 @@ export default async function handler(req, res){
     if (updErr) throw updErr;
 
     // Ensure quote_number is set if missing
-    const { data: qrow, error: qselErr } = await supabase.from('quote_submissions').select('id, quote_number').eq('quote_id', quote_id).maybeSingle();
+    const { data: qrow, error: qselErr } = await supabase.from('quote_submissions').select('quote_number').eq('quote_id', quote_id).maybeSingle();
     if (qselErr) throw qselErr;
     if (!qrow?.quote_number) {
       const { data: gen, error: rpcErr } = await supabase.rpc('generate_quote_number');
