@@ -63,7 +63,8 @@ export default function QuoteDetailPage() {
 
   if (!quote) return null;
 
-  const showHitl = ['pending_review', 'under_review', 'reviewed'].includes(quote.quote_state) || quote.hitl_required;
+  const HITL_STATES = new Set(['awaiting_review', 'pending_review', 'under_review', 'reviewed']);
+  const showHitl = HITL_STATES.has(quote.quote_state) || quote.hitl_required;
 
   return (
     <DashboardLayout user={user}>
