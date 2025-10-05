@@ -116,13 +116,17 @@ export default function OrderDetailPage(){
           )}
 
           {o.quote && (
-            <div className="rounded-lg p-6 bg-blue-50 border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-blue-900">Related Quote</h3>
-                  <p className="text-sm text-blue-800">This order was created from quote {o.quote.quote_number || String(o.quote.quote_id).slice(0,8)}</p>
-                </div>
-                <Link href={`/dashboard/quotes/${o.quote.quote_id}`} className="px-3 py-2 bg-blue-600 text-white rounded-lg">View Quote →</Link>
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><span className="text-gray-600">Quote Number</span><div className="font-medium text-gray-900">{o.quote.quote_number || String(o.quote.quote_id).slice(0,8)}</div></div>
+                <div><span className="text-gray-600">Languages</span><div className="font-medium text-gray-900">{o.quote.source_lang} → {o.quote.target_lang}</div></div>
+                <div><span className="text-gray-600">Intended Use</span><div className="font-medium text-gray-900">{o.quote.intended_use_name || o.quote.intended_use || '—'}</div></div>
+                <div><span className="text-gray-600">Certification Type</span><div className="font-medium text-gray-900">{o.quote.cert_type_name || o.quote.cert_type_code || '—'}</div></div>
+                <div><span className="text-gray-600">Country of Issue</span><div className="font-medium text-gray-900">{o.quote.country_of_issue || '—'}</div></div>
+                <div><span className="text-gray-600">Delivery Option</span><div className="font-medium text-gray-900">{o.quote.delivery_option || '—'}</div></div>
+                <div><span className="text-gray-600">Delivery Date</span><div className="font-medium text-gray-900">{o.quote.delivery_date ? formatDate(o.quote.delivery_date) : '—'}</div></div>
+                <div><span className="text-gray-600">Quote Created</span><div className="font-medium text-gray-900">{o.quote.created_at ? formatDate(o.quote.created_at) : '—'}</div></div>
               </div>
             </div>
           )}
