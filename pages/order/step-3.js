@@ -1352,14 +1352,23 @@ export default function Step3() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{infoMessage}</div>
               )}
               <QuoteSummaryCard quoteMeta={quoteMeta} jobId={jobId || quoteMeta?.job_id} />
-              <DeliveryOptionsCard delivery={deliveryEstimates} timezone={settings?.timezone || DEFAULT_TIMEZONE} />
               <LineItemsTable
                 items={lineItems}
                 onRemove={handleRemoveItem}
                 disableRemove={lineItems.length <= 1}
                 isSaving={isSaving}
               />
-              <PricingSummary pricing={pricing} />
+              <DeliveryOptionsCard
+                options={deliveryOptionsList}
+                timezone={settings?.timezone || DEFAULT_TIMEZONE}
+                selectedKey={selectedDeliveryKey}
+                onSelect={handleDeliverySelect}
+              />
+              <PricingSummary
+                basePricing={pricing}
+                adjustedPricing={pricingWithDelivery}
+                selectedOption={selectedDeliveryOption}
+              />
               <ActionButtons
                 onAccept={handleAcceptPay}
                 onHuman={handleRequestHumanQuote}
