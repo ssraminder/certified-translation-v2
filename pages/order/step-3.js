@@ -594,11 +594,6 @@ function DeliveryOptionsCard({ options, timezone, selectedKey, onSelect }) {
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{option.label}</p>
                   <p className="mt-2 text-lg font-semibold text-gray-900">{option.displayDate}</p>
-                  {typeof option.requiredBusinessDays === 'number' && option.requiredBusinessDays >= 0 && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      {option.requiredBusinessDays} business day{option.requiredBusinessDays === 1 ? '' : 's'}
-                    </p>
-                  )}
                   {option.deadlineTime && (
                     <p className="mt-1 text-xs text-gray-500">Delivery by {option.deadlineTime}</p>
                   )}
