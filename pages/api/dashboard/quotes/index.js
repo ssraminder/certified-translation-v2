@@ -136,12 +136,13 @@ async function handleGetQuotes(req, res) {
       .eq('user_id', userId)
       .is('archived_at', null);
 
+    const nonConverted = (allForStats || []).filter((q) => q.quote_state !== 'converted');
     const stats = {
-      all: allForStats?.length || 0,
-      draft: (allForStats || []).filter((q) => q.quote_state === 'draft').length || 0,
-      open: (allForStats || []).filter((q) => ['open', 'sent'].includes(q.quote_state)).length || 0,
-      under_review: (allForStats || []).filter((q) => ['pending_review', 'under_review', 'reviewed'].includes(q.quote_state)).length || 0,
-      expired: (allForStats || []).filter((q) => q.quote_state === 'expired').length || 0,
+      all: nonConverted.length || 0,
+      draft: nonConverted.filter((q) => q.quote_state === 'draft').length || 0,
+      open: nonConverted.filter((q) => ['open', 'sent'].includes(q.quote_state)).length || 0,
+      under_review: nonConverted.filter((q) => ['pending_review', 'under_review', 'reviewed'].includes(q.quote_state)).length || 0,
+      expired: nonConverted.filter((q) => q.quote_state === 'expired').length || 0,
       converted: (allForStats || []).filter((q) => q.quote_state === 'converted').length || 0,
     };
 
