@@ -140,7 +140,7 @@ async function handleGetQuote(req, res, quoteId) {
       completion_percentage: quote.completion_percentage,
       last_completed_step: lastCompletedStep,
       currency: (Array.isArray(quote.quote_results) && quote.quote_results[0]?.currency) || 'CAD',
-      quote_results: pricing ? { line_items: lineItems, pricing } : null,
+      quote_results: (hasPricing || hasLineItems) ? { line_items: lineItems, pricing } : null,
       documents: (quoteFiles || []).map((file) => ({
         id: file.id,
         original_filename: file.filename,
