@@ -10,7 +10,7 @@ const DEFAULT_TIMEZONE = 'America/Edmonton';
 const DEFAULT_ORDER_CUTOFF = '18:00';
 const DEFAULT_SAME_DAY_CUTOFF = '14:00';
 const CURRENCY = 'CAD';
-const HOLIDAYS_2025 = new Set([
+const FALLBACK_HOLIDAYS = new Set([
   '2025-01-01',
   '2025-04-18',
   '2025-05-19',
@@ -20,6 +20,16 @@ const HOLIDAYS_2025 = new Set([
   '2025-12-25',
   '2025-12-26'
 ]);
+
+function createHolidaySet(records) {
+  const dates = (records || [])
+    .map((record) => (record?.date ?? record?.holiday_date ?? record?.holidayDate ?? '').trim())
+    .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value));
+  if (dates.length === 0) {
+    return new Set(FALLBACK_HOLIDAYS);
+  }
+  return new Set(dates);
+}
 
 function classNames(...values) {
   return values.filter(Boolean).join(' ');
@@ -467,7 +477,7 @@ function HitlFallback({ jobId, quoteMeta }) {
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Target language</dt>
-          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.target_lang || '—'}</dd>
+          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.target_lang || '���'}</dd>
         </div>
       </dl>
     </section>
