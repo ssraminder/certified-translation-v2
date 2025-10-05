@@ -569,26 +569,48 @@ function QuoteSummaryCard({ quoteMeta, jobId }) {
   );
 }
 
-function DeliveryOptionsCard({ delivery, timezone }) {
-  if (!delivery || !delivery.standard) return null;
-  const options = [delivery.standard, delivery.expedited, delivery.sameDay].filter(Boolean);
+function DeliveryOptionsCard({ options, timezone, selectedKey, onSelect }) {
+  const list = (options || []).filter(Boolean);
+  if (list.length === 0) return null;
   return (
     <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">Delivery options</h2>
-      <p className="text-sm text-gray-600">Choose your delivery speed at checkout.</p>
+      <p className="text-sm text-gray-600">Choose your delivery speed. Pricing updates instantly.</p>
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {options.map((option) => (
-          <div key={option.key} className="relative flex h-full flex-col justify-between rounded-xl border border-gray-200 p-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{option.label}</p>
-              <p className="mt-2 text-lg font-semibold text-gray-900">{option.displayDate}</p>
-              {option.deadlineTime && (
-                <p className="mt-1 text-xs text-gray-500">Delivery by {option.deadlineTime}</p>
+        {list.map((option) => {
+          const optionKey = option.key || option.label;
+          const isSelected = optionKey === selectedKey;
+          return (
+            <button
+              type="button"
+              key={optionKey}
+              onClick={() => onSelect?.(optionKey)}
+              className={classNames(
+                'relative flex h-full flex-col justify-between rounded-xl border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600',
+                isSelected ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-gray-200 hover:border-cyan-300 hover:bg-cyan-50/50'
               )}
-            </div>
-            <p className="mt-3 text-sm font-medium text-cyan-700">{option.priceLabel}</p>
-          </div>
-        ))}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{option.label}</p>
+                  <p className="mt-2 text-lg font-semibold text-gray-900">{option.displayDate}</p>
+                  {typeof option.requiredBusinessDays === 'number' && option.requiredBusinessDays >= 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {option.requiredBusinessDays} business day{option.requiredBusinessDays === 1 ? '' : 's'}
+                    </p>
+                  )}
+                  {option.deadlineTime && (
+                    <p className="mt-1 text-xs text-gray-500">Delivery by {option.deadlineTime}</p>
+                  )}
+                </div>
+                <span className={classNames('text-xs font-medium uppercase tracking-wide', isSelected ? 'text-cyan-700' : 'text-gray-500')}>
+                  {isSelected ? 'Selected' : 'Select'}
+                </span>
+              </div>
+              <p className="mt-3 text-sm font-medium text-cyan-700">{option.priceLabel}</p>
+            </button>
+          );
+        })}
       </div>
       <p className="mt-4 text-xs text-gray-500">All times shown in {timezone || DEFAULT_TIMEZONE}.</p>
     </section>
