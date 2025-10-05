@@ -1,8 +1,9 @@
+import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 import { getOrderWithDetails } from '../orders/create-from-quote';
 import { sendOrderConfirmationEmail } from '../../../lib/email';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
@@ -45,3 +46,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message || 'Unexpected error' });
   }
 }
+
+export default withApiBreadcrumbs(handler);
