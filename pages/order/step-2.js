@@ -131,26 +131,25 @@ export default function Step2() {
     if (!validate()) return;
     setProcessing(true);
     try {
-      const updateData = {
-        name: formData.fullName,
+      const payload = {
+        quote_id: quote,
+        full_name: formData.fullName,
         email: formData.email,
         phone: formData.phone,
-        ordering_type: formData.orderingType
+        ordering_type: formData.orderingType,
+        company_name: formData.orderingType === 'business' ? formData.companyName : null,
+        designation: formData.orderingType === 'business' ? formData.designation : null,
+        frequency: formData.orderingType === 'business' ? formData.frequency : null
       };
-      if (formData.orderingType === 'business') {
-        updateData.company_name = formData.companyName;
-        updateData.designation = formData.designation;
-        updateData.frequency = formData.frequency;
-      } else {
-        updateData.company_name = null;
-        updateData.designation = null;
-        updateData.frequency = null;
+      const resp = await fetch('/api/quotes/link-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to save');
       }
-      const { error } = await supabase
-        .from('quote_submissions')
-        .update(updateData)
-        .eq('quote_id', quote);
-      if (error) throw error;
       window.location.href = `/order/step-3?quote=${quote}&job=${job}`;
     } catch (err) {
       console.error(err);
