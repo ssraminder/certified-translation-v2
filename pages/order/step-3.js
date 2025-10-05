@@ -1194,7 +1194,7 @@ export default function Step3() {
     } finally {
       setIsSaving(false);
     }
-  }, [quoteId, lineItems, minimumOrder, files, qualifiers, settings, quoteMeta, deliveryOptions]);
+  }, [quoteId, lineItems, minimumOrder, files, qualifiers, settings, quoteMeta, deliveryOptions, holidays]);
 
   const handleAcceptPay = useCallback(() => {
     if (!quoteId) return;
