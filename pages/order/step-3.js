@@ -148,13 +148,14 @@ function addBusinessDaysFromNow(days, timezone, holidaysSet) {
   return getDateStringInTimezone(reference, tz);
 }
 
-function calculateRequiredDays({ baseDays, basePageAllowance, extraPageBlock, totalPages, afterCutoff }) {
+function calculateRequiredDays({ baseDays, basePageAllowance, extraPageBlock, extraDayIncrement = 1, totalPages, afterCutoff }) {
   const effectiveBaseDays = Math.max(0, baseDays);
   const allowance = Math.max(0, basePageAllowance);
   const blockSize = Math.max(0, extraPageBlock);
+  const increment = Math.max(0, extraDayIncrement);
   const excessPages = Math.max(0, totalPages - allowance);
-  const extraDays = blockSize > 0 ? Math.ceil(excessPages / blockSize) : 0;
-  let required = effectiveBaseDays + extraDays;
+  const extraBlocks = blockSize > 0 ? Math.ceil(excessPages / blockSize) : 0;
+  let required = effectiveBaseDays + extraBlocks * (increment || 0);
   if (afterCutoff) {
     required += 1;
   }
