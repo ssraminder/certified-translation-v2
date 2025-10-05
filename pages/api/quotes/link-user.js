@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getSupabaseServerClient } from '../../../lib/supabaseServer';
+import { getSupabaseServerClient, hasServiceRoleKey } from '../../../lib/supabaseServer';
 import { sendWelcomeEmail, sendQuoteSavedEmail } from '../../../lib/email';
 
 function normalizeEmail(email){
@@ -17,6 +17,10 @@ function splitName(full){
 export default async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
+    if (!hasServiceRoleKey()) {
+      return res.status(500).json({ error: 'Server misconfigured: missing Supabase service role key' });
+    }
+
     const { quote_id, full_name, email, phone, ordering_type, company_name, designation, frequency } = req.body || {};
     if (!quote_id) return res.status(400).json({ error: 'Missing quote_id' });
     const normEmail = normalizeEmail(email);
@@ -24,11 +28,12 @@ export default async function handler(req, res){
 
     const supabase = getSupabaseServerClient();
 
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: selErr } = await supabase
       .from('users')
       .select('id, first_name, last_name, email')
       .ilike('email', normEmail)
       .maybeSingle();
+    if (selErr) throw selErr;
 
     const { first_name, last_name } = splitName(full_name);
 
@@ -38,13 +43,14 @@ export default async function handler(req, res){
     let userId = null; let userCreated = false;
     if (existingUser) {
       userId = existingUser.id;
-      await supabase.from('users').update({
+      const { error: updUserErr } = await supabase.from('users').update({
         first_name: first_name || existingUser.first_name,
         last_name: last_name || existingUser.last_name,
         phone: phone || null,
         company_name: company_name || null,
         updated_at: new Date().toISOString()
       }).eq('id', userId);
+      if (updUserErr) throw updUserErr;
     } else {
       const accountType = ordering_type === 'business' ? 'business' : 'individual';
       const { data: inserted, error: insErr } = await supabase.from('users').insert([
@@ -88,22 +94,27 @@ export default async function handler(req, res){
     if (updErr) throw updErr;
 
     // Ensure quote_number is set if missing
-    const { data: qrow } = await supabase.from('quote_submissions').select('id, quote_number').eq('quote_id', quote_id).maybeSingle();
+    const { data: qrow, error: qselErr } = await supabase.from('quote_submissions').select('id, quote_number').eq('quote_id', quote_id).maybeSingle();
+    if (qselErr) throw qselErr;
     if (!qrow?.quote_number) {
-      const { data: gen } = await supabase.rpc('generate_quote_number');
+      const { data: gen, error: rpcErr } = await supabase.rpc('generate_quote_number');
+      if (rpcErr) throw rpcErr;
       const quote_number = gen || null;
       if (quote_number) {
-        await supabase.from('quote_submissions').update({ quote_number }).eq('quote_id', quote_id);
+        const { error: updNumErr } = await supabase.from('quote_submissions').update({ quote_number }).eq('quote_id', quote_id);
+        if (updNumErr) throw updNumErr;
       }
     }
 
     // Log activity
-    await supabase.from('quote_activity_log').insert([
+    const { error: logErr } = await supabase.from('quote_activity_log').insert([
       { quote_id, event_type: 'step_completed', metadata: { step: 2, user_created: userCreated }, actor_type: 'user', actor_id: userId, ip: ip || null, user_agent: userAgent || null }
     ]);
+    if (logErr) throw logErr;
 
     // Fetch final quote number
-    const { data: qfinal } = await supabase.from('quote_submissions').select('quote_number').eq('quote_id', quote_id).maybeSingle();
+    const { data: qfinal, error: qfinErr } = await supabase.from('quote_submissions').select('quote_number').eq('quote_id', quote_id).maybeSingle();
+    if (qfinErr) throw qfinErr;
     const quote_number = qfinal?.quote_number || '';
 
     // Emails
@@ -111,14 +122,17 @@ export default async function handler(req, res){
       // Create a magic link token for quick access in welcome email
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 24*60*60*1000).toISOString();
-      await supabase.from('magic_links').insert([{
-        user_id: userId,
-        user_type: 'customer',
-        token,
-        purpose: 'login',
-        expires_at: expiresAt,
-        metadata: { redirect_url: '/dashboard' }
-      }]);
+      const { error: magicErr } = await supabase.from('magic_links').insert([
+        {
+          user_id: userId,
+          user_type: 'customer',
+          token,
+          purpose: 'login',
+          expires_at: expiresAt,
+          metadata: { redirect_url: '/dashboard' }
+        }
+      ]);
+      if (magicErr) throw magicErr;
       const details_html = `<p>You can access your account instantly using the button below, or continue to payment from your quote.</p>
       <div style="text-align:center;margin:18px 0;"><a href="${process.env.NEXT_PUBLIC_SITE_URL || ''}/auth/verify?token=${encodeURIComponent(token)}" style="display:inline-block;background:#00B8D4;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;">Access Your Account</a></div>
       <p>Your quote number is <strong>${quote_number}</strong>.</p>`;
@@ -130,6 +144,8 @@ export default async function handler(req, res){
 
     return res.status(200).json({ success: true, user_id: userId, user_created: userCreated, quote_number });
   } catch (err) {
-    return res.status(500).json({ error: 'Unexpected error' });
+    console.error('Error in link-user:', err);
+    const message = err?.message || 'Unexpected error';
+    return res.status(500).json({ error: message });
   }
 }
