@@ -3,6 +3,10 @@ import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 import { getOrderWithDetails } from '../orders/create-from-quote';
 import { sendOrderConfirmationEmail } from '../../../lib/email';
 
+function isUuid(v){
+  return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+
 async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -26,8 +30,19 @@ async function handler(req, res) {
       if (!latest) return res.status(404).json({ error: 'No paid orders found' });
       order = await getOrderWithDetails(supabase, latest.id);
     } else {
-      if (!order_id) return res.status(400).json({ error: 'order_id required' });
-      order = await getOrderWithDetails(supabase, order_id);
+      if (!order_id) return res.status(400).json({ error: 'order_id required (UUID or order number like ORD-YYYY-NNNNNN)' });
+      let idToFetch = order_id;
+      if (!isUuid(order_id)) {
+        const { data: byNumber, error: numErr } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('order_number', order_id)
+          .maybeSingle();
+        if (numErr) throw numErr;
+        if (!byNumber) return res.status(404).json({ error: 'Order not found by order_number' });
+        idToFetch = byNumber.id;
+      }
+      order = await getOrderWithDetails(supabase, idToFetch);
     }
 
     if (!order) return res.status(404).json({ error: 'Order not found' });
