@@ -455,6 +455,7 @@ function computeDeliveryEstimates({
       deadlineTime: `${sameDayCutoff} ${tz.replace('America/', '')}`,
       priceLabel: '+100%',
       modifier: 1,
+      modifierType: 'percent',
       timezone: tz
     };
   }
