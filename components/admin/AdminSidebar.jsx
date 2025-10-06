@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { canViewHITLQuotes, canViewQuotes, canViewOrders, canViewUsers, canViewSettings, canViewSystemSettings, canViewAnalytics, canManageAdmins } from '../../lib/permissions';
+import { canViewHITLQuotes, canViewQuotes, canViewOrders, canViewUsers, canViewSettings, canViewSystemSettings, canViewAnalytics, canManageAdmins, canViewLogs } from '../../lib/permissions';
 
 function NavItem({ href, icon, label, active, collapsed, badge }){
   return (
@@ -110,6 +110,13 @@ export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose, 
         {canManageAdmins(role) && (
           <NavItem href="/admin/admins" label="Admin Management" collapsed={collapsed} active={isActive('/admin/admins')} badge={null} icon={
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm-7 9a7 7 0 0114 0v1H5v-1z"/></svg>
+          } />
+        )}
+
+        {canViewLogs(role) && <SectionLabel collapsed={collapsed}>Audit</SectionLabel>}
+        {canViewLogs(role) && (
+          <NavItem href="/admin/logs" label="Activity Logs" collapsed={collapsed} active={isActive('/admin/logs')} badge={null} icon={
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M5 3h14a2 2 0 012 2v2H3V5a2 2 0 012-2zm-2 6h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm4 2v2h10v-2H7z"/></svg>
           } />
         )}
       </nav>

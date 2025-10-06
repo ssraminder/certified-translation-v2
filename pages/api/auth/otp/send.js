@@ -27,10 +27,10 @@ async function handler(req, res){
 
     const supabase = getSupabaseServerClient();
 
-    let first_name = null; let found = false;
+    let first_name = null; let found = false; let adminId = null;
     if (type === 'admin') {
-      const { data } = await supabase.from('admin_users').select('first_name').ilike('email', norm).maybeSingle();
-      if (data) { first_name = data.first_name || null; found = true; }
+      const { data } = await supabase.from('admin_users').select('id, first_name').ilike('email', norm).maybeSingle();
+      if (data) { first_name = data.first_name || null; found = true; adminId = data.id; }
     } else {
       const { data } = await supabase.from('users').select('first_name').ilike('email', norm).maybeSingle();
       if (data) { first_name = data.first_name || null; found = true; }
@@ -62,6 +62,11 @@ async function handler(req, res){
     if (insErr) throw insErr;
 
     await sendOtpCodeEmail({ email: norm, first_name, code });
+
+    if (type === 'admin' && adminId) {
+      const { logActivity } = await import('../../../../lib/activityLogger');
+      await logActivity({ adminUserId: adminId, actionType: 'otp_requested', targetType: 'auth', targetId: null, details: null, ipAddress: ip });
+    }
 
     return res.status(200).json({ success: true, message: '6-digit code sent to your email', expires_in: 600 });
   } catch (err) {
