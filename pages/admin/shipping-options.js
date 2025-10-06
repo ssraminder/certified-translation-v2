@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { useEffect, useState } from 'react';
+import { getServerSideAdminWithPermission } from '../../lib/withAdminPage';
+import { canEditSettings } from '../../lib/permissions';
+
+export const getServerSideProps = getServerSideAdminWithPermission('settings','view');
 
 function classNames(...v){return v.filter(Boolean).join(' ')}
 
@@ -9,6 +14,9 @@ export default function AdminShippingOptions(){
   const [options, setOptions] = useState([]);
   const [form, setForm] = useState({ name: '', description: '', price: 0, delivery_time: '', require_shipping_address: false, is_default: false, is_always_selected: false, is_active: true, sort_order: 0 });
   const [editingId, setEditingId] = useState(null);
+  const [role, setRole] = useState(null);
+
+  const canEdit = canEditSettings(role);
 
   async function load(){
     setLoading(true); setError('');
@@ -21,7 +29,11 @@ export default function AdminShippingOptions(){
     finally{ setLoading(false); }
   }
 
-  useEffect(()=>{ load(); },[]);
+  async function loadMe(){
+    try{ const r = await fetch('/api/admin/me'); const j = await r.json(); if(r.ok) setRole(j.role||null); } catch {}
+  }
+
+  useEffect(()=>{ load(); loadMe(); },[]);
 
   function update(k,v){ setForm(prev=>({...prev,[k]:v})); }
   function resetForm(){ setForm({ name: '', description: '', price: 0, delivery_time: '', require_shipping_address: false, is_default: false, is_always_selected: false, is_active: true, sort_order: 0 }); setEditingId(null); }
@@ -65,21 +77,21 @@ export default function AdminShippingOptions(){
           <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">{editingId ? 'Edit' : 'Add New'} Shipping Option</h2>
-              {editingId && <button className="text-sm text-gray-600 underline" onClick={resetForm}>Cancel Edit</button>}
+              {editingId && canEdit && <button className="text-sm text-gray-600 underline" onClick={resetForm}>Cancel Edit</button>}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Name" required value={form.name} onChange={v=>update('name',v)} />
-              <Input label="Price" required type="number" step="0.01" value={form.price} onChange={v=>update('price', Number(v))} />
-              <Input label="Delivery Time" value={form.delivery_time} onChange={v=>update('delivery_time',v)} />
-              <Input label="Sort Order" type="number" value={form.sort_order} onChange={v=>update('sort_order', Number(v))} />
-              <Textarea label="Description" className="md:col-span-2" value={form.description} onChange={v=>update('description',v)} />
-              <Checkbox label="Require Shipping Address" checked={form.require_shipping_address} onChange={v=>update('require_shipping_address', v)} />
-              <Checkbox label="Set as Default" checked={form.is_default} onChange={v=>update('is_default', v)} />
-              <Checkbox label="Always Selected" checked={form.is_always_selected} onChange={v=>update('is_always_selected', v)} />
-              <Checkbox label="Active" checked={form.is_active} onChange={v=>update('is_active', v)} />
+              <Input label="Name" required value={form.name} onChange={v=>update('name',v)} disabled={!canEdit} />
+              <Input label="Price" required type="number" step="0.01" value={form.price} onChange={v=>update('price', Number(v))} disabled={!canEdit} />
+              <Input label="Delivery Time" value={form.delivery_time} onChange={v=>update('delivery_time',v)} disabled={!canEdit} />
+              <Input label="Sort Order" type="number" value={form.sort_order} onChange={v=>update('sort_order', Number(v))} disabled={!canEdit} />
+              <Textarea label="Description" className="md:col-span-2" value={form.description} onChange={v=>update('description',v)} disabled={!canEdit} />
+              <Checkbox label="Require Shipping Address" checked={form.require_shipping_address} onChange={v=>update('require_shipping_address', v)} disabled={!canEdit} />
+              <Checkbox label="Set as Default" checked={form.is_default} onChange={v=>update('is_default', v)} disabled={!canEdit} />
+              <Checkbox label="Always Selected" checked={form.is_always_selected} onChange={v=>update('is_always_selected', v)} disabled={!canEdit} />
+              <Checkbox label="Active" checked={form.is_active} onChange={v=>update('is_active', v)} disabled={!canEdit} />
             </div>
             <div className="mt-4 flex justify-end">
-              <button className="rounded-lg bg-cyan-600 px-5 py-2 text-sm font-medium text-white hover:bg-cyan-700" onClick={save}>{editingId ? 'Save Changes' : 'Add Shipping Option'}</button>
+              {canEdit && <button className="rounded-lg bg-cyan-600 px-5 py-2 text-sm font-medium text-white hover:bg-cyan-700" onClick={save}>{editingId ? 'Save Changes' : 'Add Shipping Option'}</button>}
             </div>
           </section>
 
@@ -104,8 +116,8 @@ export default function AdminShippingOptions(){
                     <div className="md:col-span-1 text-sm">{o.is_always_selected ? '✓' : ''}</div>
                     <div className="md:col-span-1 text-sm">{o.is_active ? '✓' : ''}</div>
                     <div className="md:col-span-2 flex justify-end gap-2">
-                      <button className="text-sm text-cyan-700 hover:underline" onClick={()=>onEdit(o)}>Edit</button>
-                      {!o.is_always_selected && (
+                      {canEdit && <button className="text-sm text-cyan-700 hover:underline" onClick={()=>onEdit(o)}>Edit</button>}
+                      {canEdit && !o.is_always_selected && (
                         <button className="text-sm text-red-600 hover:underline" onClick={()=>del(o.id)}>Delete</button>
                       )}
                     </div>
@@ -120,24 +132,24 @@ export default function AdminShippingOptions(){
   );
 }
 
-function Input({ label, required, type='text', className='', step, value, onChange }){
+function Input({ label, required, type='text', className='', step, value, onChange, disabled }){
   return (
     <label className={classNames('block', className)}>
       <span className="text-sm text-gray-700">{label}{required && ' *'}</span>
-      <input type={type} step={step} value={value} onChange={e=>onChange(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+      <input type={type} step={step} value={value} onChange={e=>onChange(e.target.value)} disabled={disabled} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" />
     </label>
   );
 }
-function Textarea({ label, className='', value, onChange }){
+function Textarea({ label, className='', value, onChange, disabled }){
   return (
     <label className={classNames('block', className)}>
       <span className="text-sm text-gray-700">{label}</span>
-      <textarea value={value} onChange={e=>onChange(e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" rows={3} />
+      <textarea value={value} onChange={e=>onChange(e.target.value)} disabled={disabled} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500" rows={3} />
     </label>
   );
 }
-function Checkbox({ label, checked, onChange }){
+function Checkbox({ label, checked, onChange, disabled }){
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" className="h-4 w-4" checked={checked} onChange={e=>onChange(e.target.checked)} />{label}</label>
+    <label className="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" className="h-4 w-4" checked={checked} onChange={e=>onChange(e.target.checked)} disabled={disabled} />{label}</label>
   );
 }
