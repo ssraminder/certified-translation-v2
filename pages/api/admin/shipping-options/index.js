@@ -1,8 +1,8 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
-import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { withAdmin, withPermission } from '../../../../lib/apiAdmin';
 
 async function handler(req, res) {
-  const supabase = getSupabaseServerClient();
+  const supabase = req.supabase;
 
   if (req.method === 'GET') {
     const { data, error } = await supabase
@@ -26,7 +26,7 @@ async function handler(req, res) {
 
       const { data, error } = await supabase
         .from('shipping_options')
-        .insert([{ 
+        .insert([{
           name: body.name,
           description: body.description || null,
           price: Number(body.price) || 0,
@@ -50,4 +50,10 @@ async function handler(req, res) {
   return res.status(405).json({ error: 'Method Not Allowed' });
 }
 
-export default withApiBreadcrumbs(handler);
+const guarded = withAdmin(async (req, res) => {
+  if (req.method === 'GET') return handler(req, res);
+  if (req.method === 'POST') return withPermission('settings', 'edit')(handler)(req, res);
+  return handler(req, res);
+});
+
+export default withApiBreadcrumbs(withPermission('settings', 'view')(guarded));

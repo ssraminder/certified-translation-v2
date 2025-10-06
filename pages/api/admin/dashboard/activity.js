@@ -1,28 +1,8 @@
-import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { withPermission } from '../../../../lib/apiAdmin';
 
-function parseCookies(cookieHeader){
-  const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
-  for (const p of parts){ const [k, ...v] = p.trim().split('='); out[k] = decodeURIComponent(v.join('=')); }
-  return out;
-}
-
-export default async function handler(req, res){
+async function handler(req, res){
   try{
-    const cookies = parseCookies(req.headers.cookie || '');
-    const token = cookies['admin_session_token'];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-    const supabase = getSupabaseServerClient();
-    const nowIso = new Date().toISOString();
-
-    const { data: session } = await supabase
-      .from('admin_sessions')
-      .select('*')
-      .eq('session_token', token)
-      .gt('expires_at', nowIso)
-      .maybeSingle();
-
-    if (!session) return res.status(401).json({ error: 'Unauthorized' });
+    const supabase = req.supabase;
 
     const { data: activities } = await supabase
       .from('admin_activity_log')
@@ -55,3 +35,5 @@ export default async function handler(req, res){
     return res.status(500).json({ error: 'Unexpected error' });
   }
 }
+
+export default withPermission('logs', 'view')(handler);

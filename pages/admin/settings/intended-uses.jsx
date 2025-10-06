@@ -1,6 +1,6 @@
 import AdminLayout from '../../../components/admin/AdminLayout';
-import { getServerSideAdmin } from '../../../lib/withAdminPage';
-export const getServerSideProps = getServerSideAdmin;
+import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
+export const getServerSideProps = getServerSideAdminWithPermission('settings','view');
 export default function Page({ initialAdmin }){
   return (
     <AdminLayout title="Intended Uses" initialAdmin={initialAdmin}>
