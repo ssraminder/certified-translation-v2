@@ -78,7 +78,7 @@ async function handler(req, res){
       completion_percentage: 50,
       name: full_name,
       email: normEmail,
-      phone: phone || null,
+      phone: phone ? (toE164(phone) || null) : null,
       ordering_type: ordering_type || null,
       company_name: ordering_type === 'business' ? (company_name || null) : null,
       designation: ordering_type === 'business' ? (designation || null) : null,
