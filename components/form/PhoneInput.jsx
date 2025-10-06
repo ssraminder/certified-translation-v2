@@ -15,19 +15,22 @@ export default function PhoneInput({ label='Phone', valueE164='', onChangeE164, 
   const [display, setDisplay] = useState('');
   const [e164, setE164] = useState(valueE164 || '');
   const [touched, setTouched] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const countries = useMemo(()=> Array.from(new Set([...PRIORITY_COUNTRIES, ...ALL_COUNTRIES])), []);
 
   useEffect(()=>{
-    // Initialize from provided valueE164
+    // Sync from external value when provided. Avoid clearing while the user is typing.
     if (valueE164) {
       setE164(valueE164);
       setDisplay(formatForDisplay(valueE164, country));
     } else {
       setE164('');
-      setDisplay('');
+      if (!focused) {
+        setDisplay('');
+      }
     }
-  }, [valueE164]);
+  }, [valueE164, country, focused]);
 
   function handleInput(val){
     let v = val.replace(/[^\d+\-()\s]/g,'');
