@@ -1,5 +1,6 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { toE164 } from '../../../../lib/formatters/phone';
 
 function parseCookies(cookieHeader){
   const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
@@ -63,7 +64,7 @@ async function handler(req, res){
         state_province: String(body.state_province || '').trim(),
         postal_code: String(body.postal_code || '').trim(),
         country: String(body.country || '').trim(),
-        phone: body.phone ? String(body.phone).trim() : null,
+        phone: body.phone ? (toE164(String(body.phone).trim(), body.country) || null) : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
