@@ -1,5 +1,7 @@
 import RoleBadge from './RoleBadge';
 
+import RoleBadge from './RoleBadge';
+
 export default function AdminHeader({ admin, onToggleSidebar, collapsed }){
   async function logout(){
     try{
