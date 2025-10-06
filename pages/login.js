@@ -66,7 +66,7 @@ export default function Login(){
   const verifyCode = async (code) => {
     try {
       setError('');
-      const resp = await fetch('/api/auth/otp/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
+      const resp = await fetch('/api/auth/otp/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code, user_type: userType }) });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || 'Invalid or expired code');
       window.location.href = data.redirect || '/dashboard';

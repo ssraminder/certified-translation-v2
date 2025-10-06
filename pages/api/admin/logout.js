@@ -17,7 +17,7 @@ async function handler(req, res){
       await supabase.from('admin_sessions').delete().eq('session_token', token);
     }
     const isProd = process.env.NODE_ENV === 'production';
-    const cookie = `admin_session_token=; Max-Age=0; Path=/admin; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
+    const cookie = `admin_session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
     res.setHeader('Set-Cookie', cookie);
     return res.status(200).json({ success: true });
   } catch (err) {

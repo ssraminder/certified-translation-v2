@@ -32,7 +32,7 @@ export async function requireAdmin(req, res, next) {
 
     if (!admin || admin.is_active === false || (admin.status && admin.status !== 'active')) {
       await supabase.from('admin_sessions').delete().eq('id', session.id);
-      res.setHeader('Set-Cookie', `admin_session_token=; Max-Age=0; Path=/admin; HttpOnly; SameSite=Lax${process.env.NODE_ENV==='production'?'; Secure':''}`);
+      res.setHeader('Set-Cookie', `admin_session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV==='production'?'; Secure':''}`);
       res.redirect('/login');
       return;
     }
