@@ -20,19 +20,22 @@ export default function AdminLayout({ children, title, initialAdmin, pendingCoun
   function closeSidebar(){ setSidebarOpen(false); }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AdminHeader admin={initialAdmin} onToggleSidebar={toggleSidebar} collapsed={collapsed} />
-      <div className="relative">
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={closeSidebar} />
-        )}
-        <div className={`z-40 transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-          <AdminSidebar collapsed={collapsed} pendingCounts={pendingCounts} onClose={closeSidebar} admin={initialAdmin} />
-        </div>
-      </div>
+    <div className="app-shell flex flex-row min-h-screen h-full overflow-hidden bg-slate-50">
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={closeSidebar} />
+      )}
 
-      <main className={`pt-6 md:pl-16 lg:pl-60`}>
-        <div className="mx-auto max-w-7xl px-4">
+      <AdminSidebar
+        collapsed={collapsed}
+        pendingCounts={pendingCounts}
+        onClose={closeSidebar}
+        admin={initialAdmin}
+        sidebarOpen={sidebarOpen}
+      />
+
+      <main className="app-main ml-0 md:ml-16 lg:ml-60 flex-1 flex flex-col min-h-screen overflow-auto">
+        <AdminHeader admin={initialAdmin} onToggleSidebar={toggleSidebar} collapsed={collapsed} />
+        <div className="px-4 pt-6">
           {title && <h1 className="mb-4 text-2xl font-semibold text-gray-900">{title}</h1>}
           {children}
         </div>
