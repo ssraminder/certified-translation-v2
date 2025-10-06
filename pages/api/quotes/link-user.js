@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { getSupabaseServerClient, hasServiceRoleKey } from '../../../lib/supabaseServer';
 import { sendWelcomeEmail, sendQuoteSavedEmail } from '../../../lib/email';
 import { withApiBreadcrumbs } from '../../../lib/sentry';
+import { toE164 } from '../../../lib/formatters/phone';
 
 function normalizeEmail(email){
   return String(email || '').trim().toLowerCase().slice(0, 255);
