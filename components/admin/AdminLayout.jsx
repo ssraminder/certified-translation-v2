@@ -34,7 +34,7 @@ export default function AdminLayout({ children, title, initialAdmin, pendingCoun
       </div>
 
       {/* Main content */}
-      <main className={`pt-6 lg:pl-${collapsed ? '16' : '60'} `}>
+      <main className={`pt-6 ${collapsed ? 'lg:pl-16' : 'lg:pl-60'}`}>
         <div className="mx-auto max-w-7xl px-4">
           {title && <h1 className="mb-4 text-2xl font-semibold text-gray-900">{title}</h1>}
           {children}
