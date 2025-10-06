@@ -6,7 +6,7 @@ async function handler(req, res){
 
     const { data: activities } = await supabase
       .from('admin_activity_log')
-      .select('id, admin_user_id, action, target, created_at')
+      .select('id, admin_user_id, action_type, target_type, target_id, created_at')
       .order('created_at', { ascending: false })
       .limit(10);
 
