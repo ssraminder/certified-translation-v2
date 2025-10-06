@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { getErrorMessage } from '../../lib/errorMessage';
+import PhoneInput from '../../components/form/PhoneInput';
+import CountrySelect from '../../components/form/CountrySelect';
+import RegionSelect from '../../components/form/RegionSelect';
+import { formatPostal, labelForPostal } from '../../lib/formatters/postal';
+import { isValid as isPhoneValid } from '../../lib/formatters/phone';
 
 const GST_RATE = 0.05;
 
@@ -9,7 +14,6 @@ function classNames(...v) { return v.filter(Boolean).join(' '); }
 function round2(n){ const x = Number(n); return Math.round((Number.isFinite(x)?x:0)*100)/100; }
 function formatCurrency(v){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD'}).format(round2(v)); }
 function emailOk(v){ return /.+@.+\..+/.test(String(v||'')); }
-function phoneOk(v){ return /[\d\-\+()\s]{7,}/.test(String(v||'')); }
 
 export default function Step4() {
   const router = useRouter();
@@ -177,7 +181,7 @@ export default function Step4() {
         throw new Error('Please select at least one delivery method');
       }
       if (!emailOk(billing.email)) throw new Error('Please enter a valid email');
-      if (!phoneOk(billing.phone)) throw new Error('Please enter a valid phone');
+      if (!isPhoneValid(billing.phone, billing.country)) throw new Error('Please enter a valid phone');
       const requiredBilling = ['full_name','address_line1','city','province_state','postal_code','country'];
       for (const k of requiredBilling) if (!String(billing[k]||'').trim()) throw new Error('Please complete all required billing fields');
 
@@ -291,14 +295,26 @@ export default function Step4() {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Full Name" required value={billing.full_name} onChange={v=>updateField(setBilling,'full_name',v)} />
               <Input label="Email" required type="email" value={billing.email} onChange={v=>updateField(setBilling,'email',v)} />
-              <Input label="Phone" required value={billing.phone} onChange={v=>updateField(setBilling,'phone',v)} />
+              <div>
+                <label className="block">
+                  <span className="text-sm text-gray-700">Phone *</span>
+                  <PhoneInput valueE164={billing.phone} onChangeE164={v=>updateField(setBilling,'phone',v||'')} defaultCountry={billing.country} />
+                </label>
+              </div>
               <div />
               <Input label="Address Line 1" required className="md:col-span-2" value={billing.address_line1} onChange={v=>updateField(setBilling,'address_line1',v)} />
               <Input label="Address Line 2" className="md:col-span-2" value={billing.address_line2} onChange={v=>updateField(setBilling,'address_line2',v)} />
               <Input label="City" required value={billing.city} onChange={v=>updateField(setBilling,'city',v)} />
-              <Input label="Province/State" required value={billing.province_state} onChange={v=>updateField(setBilling,'province_state',v)} />
-              <Input label="Postal Code" required value={billing.postal_code} onChange={v=>updateField(setBilling,'postal_code',v)} />
-              <Input label="Country" required value={billing.country} onChange={v=>updateField(setBilling,'country',v)} />
+              <div>
+                <RegionSelect required country={billing.country} value={billing.province_state} onChange={v=>updateField(setBilling,'province_state',v)} />
+              </div>
+              <label className="block">
+                <span className="text-sm text-gray-700">{labelForPostal(billing.country)} *</span>
+                <input value={billing.postal_code} onChange={e=>updateField(setBilling,'postal_code', formatPostal(billing.country, e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+              </label>
+              <div>
+                <CountrySelect required value={billing.country} onChange={v=>updateField(setBilling,'country',v)} />
+              </div>
             </div>
           </section>
 
@@ -330,13 +346,25 @@ export default function Step4() {
                   )}
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input label="Full Name" required value={shipping.full_name} onChange={v=>updateField(setShipping,'full_name',v)} />
-                    <Input label="Phone" required value={shipping.phone} onChange={v=>updateField(setShipping,'phone',v)} />
+                    <div>
+                      <label className="block">
+                        <span className="text-sm text-gray-700">Phone *</span>
+                        <PhoneInput valueE164={shipping.phone} onChangeE164={v=>updateField(setShipping,'phone',v||'')} defaultCountry={shipping.country} />
+                      </label>
+                    </div>
                     <Input label="Address Line 1" required className="md:col-span-2" value={shipping.address_line1} onChange={v=>updateField(setShipping,'address_line1',v)} />
                     <Input label="Address Line 2" className="md:col-span-2" value={shipping.address_line2} onChange={v=>updateField(setShipping,'address_line2',v)} />
                     <Input label="City" required value={shipping.city} onChange={v=>updateField(setShipping,'city',v)} />
-                    <Input label="Province/State" required value={shipping.province_state} onChange={v=>updateField(setShipping,'province_state',v)} />
-                    <Input label="Postal Code" required value={shipping.postal_code} onChange={v=>updateField(setShipping,'postal_code',v)} />
-                    <Input label="Country" required value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
+                    <div>
+                      <RegionSelect required country={shipping.country} value={shipping.province_state} onChange={v=>updateField(setShipping,'province_state',v)} />
+                    </div>
+                    <label className="block">
+                      <span className="text-sm text-gray-700">{labelForPostal(shipping.country)} *</span>
+                      <input value={shipping.postal_code} onChange={e=>updateField(setShipping,'postal_code', formatPostal(shipping.country, e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                    </label>
+                    <div>
+                      <CountrySelect required value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
+                    </div>
                   </div>
                 </>
               )}

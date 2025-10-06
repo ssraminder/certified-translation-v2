@@ -1,5 +1,6 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { toE164 } from '../../../../lib/formatters/phone';
 
 function parseCookies(cookieHeader){
   const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
@@ -45,6 +46,7 @@ async function handler(req, res){
       const update = {};
       const fields = ['full_name','company_name','address_line_1','address_line_2','city','state_province','postal_code','country','phone','is_default'];
       for (const f of fields) if (f in body) update[f] = sanitize(body[f]);
+      if ('phone' in update) update.phone = update.phone ? (toE164(update.phone, update.country || existing.country) || null) : null;
       update.updated_at = new Date().toISOString();
 
       if (update.is_default === true) {

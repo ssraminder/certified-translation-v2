@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
+import PhoneInput from '../../components/form/PhoneInput';
 import { useAuth } from '../../middleware/auth';
 import StatCard from '../../components/dashboard/StatCard';
 import Tabs from '../../components/dashboard/Tabs';
@@ -9,6 +10,7 @@ import AddressFormModal from '../../components/dashboard/AddressFormModal';
 export default function ProfilePage(){
   const { user, loading } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [phoneE164, setPhoneE164] = useState('');
   const [stats, setStats] = useState({ quotes: 0, orders: 0 });
   const [addresses, setAddresses] = useState({ billing: [], shipping: [] });
   const [activeTab, setActiveTab] = useState('personal');
@@ -32,6 +34,7 @@ export default function ProfilePage(){
       const res = await fetch('/api/dashboard/profile');
       const data = await res.json();
       setProfile(data.user);
+      setPhoneE164(data.user?.phone || '');
       setStats(data.stats || { quotes: 0, orders: 0 });
       setAddresses(data.addresses || { billing: [], shipping: [] });
     } catch (e) {
@@ -49,7 +52,7 @@ export default function ProfilePage(){
       const body = {
         first_name: e.target.first_name.value.trim(),
         last_name: e.target.last_name.value.trim(),
-        phone: e.target.phone.value.trim() || null,
+        phone: phoneE164 || null,
         company_name: profile.account_type === 'business' ? (e.target.company_name.value.trim() || null) : null,
         business_license: profile.account_type === 'business' ? (e.target.business_license.value.trim() || null) : null,
         language_preference: e.target.language_preference.value || 'en',
@@ -165,8 +168,7 @@ export default function ProfilePage(){
               <p className="text-xs text-gray-500 mt-1">Email cannot be changed. Contact support if needed.</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Phone</label>
-              <input name="phone" defaultValue={profile.phone || ''} placeholder="+1 (555) 000-0000" className="mt-1 w-full border rounded-lg px-3 py-2" />
+              <PhoneInput valueE164={phoneE164} onChangeE164={setPhoneE164} />
             </div>
             {profile.account_type === 'business' && (
               <>

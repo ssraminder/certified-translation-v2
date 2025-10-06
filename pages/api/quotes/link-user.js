@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { getSupabaseServerClient, hasServiceRoleKey } from '../../../lib/supabaseServer';
 import { sendWelcomeEmail, sendQuoteSavedEmail } from '../../../lib/email';
 import { withApiBreadcrumbs } from '../../../lib/sentry';
+import { toE164 } from '../../../lib/formatters/phone';
 
 function normalizeEmail(email){
   return String(email || '').trim().toLowerCase().slice(0, 255);
@@ -47,7 +48,7 @@ async function handler(req, res){
       const { error: updUserErr } = await supabase.from('users').update({
         first_name: first_name || existingUser.first_name,
         last_name: last_name || existingUser.last_name,
-        phone: phone || null,
+        phone: phone ? (toE164(phone) || null) : null,
         company_name: company_name || null
       }).eq('id', userId);
       if (updUserErr) throw updUserErr;
@@ -58,7 +59,7 @@ async function handler(req, res){
           email: normEmail,
           first_name,
           last_name,
-          phone: phone || null,
+          phone: phone ? (toE164(phone) || null) : null,
           company_name: company_name || null,
           account_type: accountType,
           account_creation_source: 'quote_flow',
@@ -78,7 +79,7 @@ async function handler(req, res){
       completion_percentage: 50,
       name: full_name,
       email: normEmail,
-      phone: phone || null,
+      phone: phone ? (toE164(phone) || null) : null,
       ordering_type: ordering_type || null,
       company_name: ordering_type === 'business' ? (company_name || null) : null,
       designation: ordering_type === 'business' ? (designation || null) : null,

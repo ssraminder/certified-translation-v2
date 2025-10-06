@@ -3,6 +3,7 @@ import DashboardLayout from '../../../components/DashboardLayout';
 import { useAuth } from '../../../middleware/auth';
 import StatusBadge from '../../../components/dashboard/StatusBadge';
 import Link from 'next/link';
+import { formatForDisplay as formatPhone } from '../../../lib/formatters/phone';
 
 function formatDate(d){ try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return ''; } }
 function formatDateTime(d){ try { return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } }
@@ -161,7 +162,7 @@ export default function OrderDetailPage(){
               <TimelineItem icon="📝" label="Order Created" date={o.created_at} />
               {o.paid_at ? <TimelineItem icon="💳" label="Payment Received" date={o.paid_at} /> : <TimelineItem icon="💳" label="Payment Received" />}
               {o.started_at ? <TimelineItem icon="⏳" label="Work Started" date={o.started_at} /> : <TimelineItem icon="⏳" label="Work Started" />}
-              {o.completed_at ? <TimelineItem icon="✓" label="Completed" date={o.completed_at} /> : <TimelineItem icon="✓" label="Completed" />}
+              {o.completed_at ? <TimelineItem icon="✓" label="Completed" date={o.completed_at} /> : <TimelineItem icon="��" label="Completed" />}
               {o.delivered_at ? <TimelineItem icon="📦" label="Delivered" date={o.delivered_at} /> : <TimelineItem icon="📦" label="Delivered" />}
             </div>
           </div>
@@ -197,7 +198,7 @@ function formatAddress(a){
       {a.address_line2 ? <div>{a.address_line2}</div> : null}
       <div>{a.city}, {a.province_state || a.state_province} {a.postal_code}</div>
       <div>{a.country}</div>
-      {a.phone ? <div className="text-gray-600 mt-1">{a.phone}</div> : null}
+      {a.phone ? <div className="text-gray-600 mt-1">{formatPhone(a.phone, a.country)}</div> : null}
     </div>
   );
 }
