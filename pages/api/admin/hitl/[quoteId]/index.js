@@ -23,6 +23,20 @@ async function handler(req, res){
 
   const results = Array.isArray(quote.quote_results) && quote.quote_results.length ? quote.quote_results[0] : null;
 
+  // Build document URLs: prefer permanent file_url; else create a fresh signed URL if storage_path exists; else fallback to stored signed_url
+  const BUCKET = 'orders';
+  const documents = await Promise.all((files || []).map(async (f) => {
+    let url = f.file_url || null;
+    if (!url && f.storage_path) {
+      try {
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+        if (signed?.signedUrl) url = signed.signedUrl;
+      } catch {}
+    }
+    if (!url && f.signed_url) url = f.signed_url;
+    return { id: f.id, filename: f.filename, content_type: f.content_type, bytes: f.bytes, url };
+  }));
+
   const response = {
     id: quote.quote_id,
     quote_number: quote.quote_number || quote.quote_id,
@@ -47,7 +61,7 @@ async function handler(req, res){
         hitl_completed_at: quote.hitl_completed_at,
       }
     },
-    documents: (files||[]).map(f => ({ id: f.id, filename: f.filename, content_type: f.content_type, bytes: f.bytes, url: f.file_url || f.signed_url || null })),
+    documents,
     line_items: (subOrders||[]).map(it => ({
       id: it.id,
       filename: it.filename,
