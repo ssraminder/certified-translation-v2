@@ -2,43 +2,47 @@ import { withApiBreadcrumbs } from '../../../../../lib/sentry';
 import { withPermission } from '../../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 
+function getBaseUrl(req){
+  const hostHeader = req.headers.host;
+  if (!hostHeader) return null;
+  const forwardedProto = req.headers['x-forwarded-proto'];
+  const proto = Array.isArray(forwardedProto)
+    ? forwardedProto[0]
+    : (typeof forwardedProto === 'string' && forwardedProto.length > 0)
+      ? forwardedProto.split(',')[0].trim()
+      : (hostHeader.startsWith('localhost') || hostHeader.startsWith('127.')) ? 'http' : 'https';
+  return `${proto}://${hostHeader}`;
+}
+
 async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { quoteId } = req.query;
   const supabase = getSupabaseServerClient();
 
-  const webhookUrl = process.env.N8N_ANALYZE_QUOTE_URL;
-  if (!webhookUrl) return res.status(400).json({ error: 'N8N_ANALYZE_QUOTE_URL is not configured' });
+  // Use the same webhook and payload format as Step 1
+  const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+  if (!webhookUrl) return res.status(400).json({ error: 'NEXT_PUBLIC_N8N_WEBHOOK_URL is not configured' });
 
-  const { data: files } = await supabase
-    .from('quote_files')
-    .select('filename, file_url, signed_url')
-    .eq('quote_id', quoteId);
+  const baseUrl = getBaseUrl(req);
+  const callbackUrl = baseUrl ? `${baseUrl}/api/n8n/callback` : null;
+  const callbackSecret = process.env.N8N_WEBHOOK_SECRET || null;
 
-  const filePayload = (files||[]).map(f => ({ filename: f.filename || 'document.pdf', url: f.file_url || f.signed_url })).filter(f => !!f.url);
-  if (filePayload.length === 0) return res.status(400).json({ error: 'No files with accessible URLs found for this quote' });
+  const body = { quote_id: quoteId };
+  if (callbackUrl) body.callback_url = callbackUrl;
+  if (callbackSecret) body.callback_secret = callbackSecret;
 
-  const body = { quote_id: quoteId, files: filePayload };
-  const headers = { 'Content-Type': 'application/json' };
-  const sharedSecret = process.env.N8N_WEBHOOK_SECRET;
-  if (sharedSecret) headers['x-webhook-secret'] = sharedSecret;
-
-  let n8nResponse;
   try {
-    const fetchRes = await fetch(webhookUrl, { method: 'POST', headers, body: JSON.stringify(body) });
-    const text = await fetchRes.text();
-    try { n8nResponse = JSON.parse(text); } catch { n8nResponse = { success: fetchRes.ok, raw: text }; }
+    await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   } catch (e) {
     return res.status(502).json({ error: 'Failed to reach N8N webhook', detail: e.message });
   }
 
-  // Persist result
-  const success = !!n8nResponse?.success;
-  const updates = { n8n_status: success ? 'ready' : 'error', n8n_analysis_result: n8nResponse?.analysis || n8nResponse || null, hitl_required: true, hitl_requested_at: new Date().toISOString() };
+  // Mark request registered; actual analysis saved by n8n -> callback
+  const updates = { n8n_status: 'requested', hitl_required: true, hitl_requested_at: new Date().toISOString() };
   const { error: updErr } = await supabase.from('quote_submissions').update(updates).eq('quote_id', quoteId);
   if (updErr) return res.status(500).json({ error: updErr.message });
 
-  return res.status(200).json({ success: true, analysis: n8nResponse?.analysis || n8nResponse || null });
+  return res.status(202).json({ success: true });
 }
 
 export default withApiBreadcrumbs(withPermission('hitl_quotes','edit')(handler));
