@@ -1,9 +1,9 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
-import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { withPermission } from '../../../../lib/apiAdmin';
 
 async function handler(req, res) {
   const { id } = req.query;
-  const supabase = getSupabaseServerClient();
+  const supabase = req.supabase;
 
   if (req.method === 'PUT') {
     try {
@@ -43,4 +43,4 @@ async function handler(req, res) {
   return res.status(405).json({ error: 'Method Not Allowed' });
 }
 
-export default withApiBreadcrumbs(handler);
+export default withApiBreadcrumbs(withPermission('settings', 'edit')(handler));
