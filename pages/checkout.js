@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import styles from '../styles/checkout.module.css';
+import { formatForDisplay as formatPhone } from '../lib/formatters/phone';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -79,7 +80,7 @@ function AddressDisplay({ address }) {
     <div className={styles.addressDisplay}>
       <div>{address.full_name}</div>
       {address.email && <div>{address.email}</div>}
-      <div>{address.phone}</div>
+      <div>{formatPhone(address.phone, address.country)}</div>
       <div>{address.address_line1}</div>
       {address.address_line2 && <div>{address.address_line2}</div>}
       <div>{address.city}, {address.province_state} {address.postal_code}</div>
