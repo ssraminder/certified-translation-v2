@@ -1,5 +1,6 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { toE164 } from '../../../../lib/formatters/phone';
 
 function parseCookies(cookieHeader){
   const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
@@ -76,7 +77,7 @@ async function handler(req, res){
         last_name,
         updated_at: new Date().toISOString(),
       };
-      if (typeof body.phone === 'string') update.phone = body.phone.trim() || null;
+      if (typeof body.phone === 'string') update.phone = toE164(body.phone) || null;
       if (typeof body.company_name === 'string') update.company_name = body.company_name.trim() || null;
       if (typeof body.business_license === 'string') update.business_license = body.business_license.trim() || null;
       update.language_preference = language_preference;
