@@ -58,7 +58,7 @@ export default function PhoneInput({ label='Phone', valueE164='', onChangeE164, 
             <option key={c} value={c}>{flagEmoji(c)} {c}</option>
           ))}
         </select>
-        <input disabled={disabled} value={display} onBlur={()=>setTouched(true)} onChange={e=>handleInput(e.target.value)} placeholder={country==='Canada'||country==='United States' ? '000-000-0000' : 'Enter phone'} className="flex-1 rounded-r-md border border-l-0 border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+        <input disabled={disabled} value={display} onFocus={()=>setFocused(true)} onBlur={()=>{ setFocused(false); setTouched(true); }} onChange={e=>handleInput(e.target.value)} placeholder={country==='Canada'||country==='United States' ? '000-000-0000' : 'Enter phone'} className="flex-1 rounded-r-md border border-l-0 border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
       </div>
       {(invalid || error) && (
         <div className="text-xs text-red-600 mt-1">{error || 'Please enter a valid phone number'}</div>
