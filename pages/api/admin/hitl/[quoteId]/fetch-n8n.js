@@ -7,8 +7,8 @@ async function handler(req, res){
   const { quoteId } = req.query;
   const supabase = getSupabaseServerClient();
 
-  const webhookUrl = process.env.N8N_ANALYZE_QUOTE_URL;
-  if (!webhookUrl) return res.status(400).json({ error: 'N8N_ANALYZE_QUOTE_URL is not configured' });
+  const webhookUrl = process.env.N8N_ANALYZE_QUOTE_URL || process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+  if (!webhookUrl) return res.status(400).json({ error: 'N8N_ANALYZE_QUOTE_URL or NEXT_PUBLIC_N8N_WEBHOOK_URL is not configured' });
 
   const { data: files } = await supabase
     .from('quote_files')
