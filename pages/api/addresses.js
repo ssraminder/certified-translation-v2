@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '../../lib/supabaseServer';
 import { withApiBreadcrumbs } from '../../lib/sentry';
+import { toE164, isValid as isPhoneValid } from '../../lib/formatters/phone';
 
 function sanitizeString(v) {
   return typeof v === 'string' ? v.trim() : '';
@@ -17,8 +18,7 @@ function validateAddress(addr, { requireEmail = false } = {}) {
     if (!emailOk) errors.email = 'Invalid email';
   }
   if (addr.phone) {
-    const phoneOk = /[\d\-\+()\s]{7,}/.test(addr.phone);
-    if (!phoneOk) errors.phone = 'Invalid phone';
+    if (!isPhoneValid(addr.phone, addr.country)) errors.phone = 'Invalid phone';
   }
   return errors;
 }
@@ -38,11 +38,14 @@ async function handler(req, res) {
     const billingErrors = validateAddress(billing, { requireEmail: true });
     if (Object.keys(billingErrors).length) return res.status(400).json({ error: 'Invalid billing address', details: billingErrors });
 
+    // Normalize phones to E.164
+    const normalizedBilling = { ...billing, phone: billing.phone ? (toE164(billing.phone, billing.country) || null) : null };
+
     // Save billing (replace existing for quote/type)
     await supabase.from('addresses').delete().eq('quote_id', quoteId).eq('type', 'billing');
     const { data: billingData, error: billingErr } = await supabase
       .from('addresses')
-      .insert([{ ...billing, type: 'billing', quote_id: quoteId }])
+      .insert([{ ...normalizedBilling, type: 'billing', quote_id: quoteId }])
       .select('id')
       .single();
     if (billingErr) throw billingErr;
@@ -51,10 +54,11 @@ async function handler(req, res) {
     if (shipping && Object.keys(shipping).length) {
       const shippingErrors = validateAddress(shipping);
       if (Object.keys(shippingErrors).length) return res.status(400).json({ error: 'Invalid shipping address', details: shippingErrors });
+      const normalizedShipping = { ...shipping, phone: shipping.phone ? (toE164(shipping.phone, shipping.country) || null) : null };
       await supabase.from('addresses').delete().eq('quote_id', quoteId).eq('type', 'shipping');
       const { data: shippingData, error: shipErr } = await supabase
         .from('addresses')
-        .insert([{ ...shipping, type: 'shipping', quote_id: quoteId }])
+        .insert([{ ...normalizedShipping, type: 'shipping', quote_id: quoteId }])
         .select('id')
         .single();
       if (shipErr) throw shipErr;
