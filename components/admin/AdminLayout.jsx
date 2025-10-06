@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminHeader from './AdminHeader';
 import AdminSidebar from './AdminSidebar';
-import { useEffect, useState } from 'react';
 
 export default function AdminLayout({ children, title, initialAdmin, pendingCounts }){
   const [sidebarOpen, setSidebarOpen] = useState(false);
