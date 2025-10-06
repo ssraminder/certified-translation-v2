@@ -47,7 +47,7 @@ async function handler(req, res){
       const { error: updUserErr } = await supabase.from('users').update({
         first_name: first_name || existingUser.first_name,
         last_name: last_name || existingUser.last_name,
-        phone: phone || null,
+        phone: phone ? (toE164(phone) || null) : null,
         company_name: company_name || null
       }).eq('id', userId);
       if (updUserErr) throw updUserErr;
