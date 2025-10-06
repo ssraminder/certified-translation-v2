@@ -28,7 +28,7 @@ function Chevron({ open }){
   );
 }
 
-export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose, admin }){
+export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose, admin, sidebarOpen }){
   const router = useRouter();
   const path = router.asPath || router.pathname || '';
   const isActive = (href) => path === href || path.startsWith(href + '/');
@@ -37,9 +37,8 @@ export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose, 
   const role = admin?.role || null;
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-40 bg-slate-900 transition-all lg:static lg:translate-x-0 ${collapsed ? 'w-16' : 'w-60'} ${collapsed ? '' : ''}`}>
-      <div className="h-16" />
-      <nav className="px-2">
+    <aside className={`app-sidebar fixed inset-y-0 left-0 z-40 bg-slate-900 transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 ${collapsed ? 'w-16' : 'w-60'} h-screen overflow-y-auto`}>
+      <nav className="px-2 py-3">
         <SectionLabel collapsed={collapsed}>General</SectionLabel>
         <NavItem href="/admin/dashboard" label="Dashboard" collapsed={collapsed} active={isActive('/admin/dashboard')} badge={null} icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M3 12l9-9 9 9v8a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-8z"/></svg>
