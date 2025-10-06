@@ -14,10 +14,11 @@ async function handler(req, res){
     .maybeSingle();
   if (!quote) return res.status(404).json({ error: 'Quote not found' });
 
-  const [{ data: files }, { data: activity }, { data: assignedAdmin }] = await Promise.all([
+  const [{ data: files }, { data: activity }, { data: assignedAdmin }, { data: subOrders }] = await Promise.all([
     supabase.from('quote_files').select('*').eq('quote_id', quoteId),
     supabase.from('quote_activity_log').select('*').eq('quote_id', quoteId).order('created_at', { ascending: false }).limit(50),
     quote.hitl_assigned_to_admin_id ? supabase.from('admin_users').select('id, first_name, last_name, email').eq('id', quote.hitl_assigned_to_admin_id).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from('quote_sub_orders').select('id, filename, doc_type, billable_pages, unit_rate, unit_rate_override, override_reason, certification_amount, certification_type_name, line_total, total_pages, source_language, target_language').eq('quote_id', quoteId).order('id')
   ]);
 
   const results = Array.isArray(quote.quote_results) && quote.quote_results.length ? quote.quote_results[0] : null;
@@ -42,6 +43,21 @@ async function handler(req, res){
       }
     },
     documents: (files||[]).map(f => ({ id: f.id, filename: f.filename, content_type: f.content_type, bytes: f.bytes, url: f.file_url || f.signed_url || null })),
+    line_items: (subOrders||[]).map(it => ({
+      id: it.id,
+      filename: it.filename,
+      doc_type: it.doc_type,
+      billable_pages: it.billable_pages,
+      unit_rate: it.unit_rate,
+      unit_rate_override: it.unit_rate_override,
+      override_reason: it.override_reason,
+      certification_amount: it.certification_amount,
+      certification_type_name: it.certification_type_name,
+      line_total: it.line_total,
+      total_pages: it.total_pages,
+      source_language: it.source_language,
+      target_language: it.target_language,
+    })),
     n8n: {
       status: quote.n8n_status || null,
       analysis: quote.n8n_analysis_result || null,
