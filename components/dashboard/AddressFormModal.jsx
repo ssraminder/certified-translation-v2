@@ -76,7 +76,7 @@ export default function AddressFormModal({ isOpen, onClose, initial, addressType
             <input name="address_line_2" value={form.address_line_2 || ''} onChange={handleChange} className="mt-1 w-full border rounded-lg px-3 py-2" />
           </div>
           <div>
-            <CountrySelect required value={form.country} onChange={v=>setForm(f=>({ ...f, country: v }))} />
+            <CountrySelect required autoDetect value={form.country} onChange={v=>setForm(f=>({ ...f, country: v }))} />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
