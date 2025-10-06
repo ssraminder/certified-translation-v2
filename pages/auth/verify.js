@@ -8,6 +8,12 @@ function setSessionCookie(res, token) {
   res.setHeader('Set-Cookie', cookie);
 }
 
+function setAdminSessionCookie(res, token) {
+  const isProd = process.env.NODE_ENV === 'production';
+  const cookie = `admin_session_token=${token}; Max-Age=${30 * 24 * 60 * 60}; Path=/admin; HttpOnly; SameSite=Lax${isProd ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
 export default function VerifyPage({ error }) {
   if (error) {
     return (
@@ -91,16 +97,28 @@ export async function getServerSideProps({ req, res, query }) {
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    await supabase.from('user_sessions').insert([
-      {
-        user_id: user.id,
-        user_type: userType,
-        session_token: sessionToken,
-        expires_at: expiresAt,
-        ip: ip || null,
-        user_agent: userAgent || null,
-      },
-    ]);
+    if (userType === 'admin') {
+      await supabase.from('admin_sessions').insert([
+        {
+          admin_user_id: user.id,
+          session_token: sessionToken,
+          expires_at: expiresAt,
+          ip_address: ip || null,
+          user_agent: userAgent || null,
+        },
+      ]);
+    } else {
+      await supabase.from('user_sessions').insert([
+        {
+          user_id: user.id,
+          user_type: userType,
+          session_token: sessionToken,
+          expires_at: expiresAt,
+          ip: ip || null,
+          user_agent: userAgent || null,
+        },
+      ]);
+    }
 
     if (userType === 'admin') {
       await supabase
@@ -114,12 +132,16 @@ export async function getServerSideProps({ req, res, query }) {
         .eq('id', user.id);
     }
 
-    setSessionCookie(res, sessionToken);
+    if (userType === 'admin') {
+      setAdminSessionCookie(res, sessionToken);
+    } else {
+      setSessionCookie(res, sessionToken);
+    }
 
     const redirectUrl = link.metadata && link.metadata.redirect_url
       ? link.metadata.redirect_url
       : userType === 'admin'
-      ? '/admin/dashboard'
+      ? '/admin'
       : '/dashboard';
 
     return {

@@ -12,6 +12,12 @@ function setSessionCookie(res, token){
   res.setHeader('Set-Cookie', cookie);
 }
 
+function setAdminSessionCookie(res, token){
+  const isProd = process.env.NODE_ENV === 'production';
+  const cookie = `admin_session_token=${token}; Max-Age=${30*24*60*60}; Path=/admin; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
 async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
@@ -67,11 +73,15 @@ async function handler(req, res){
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
     const userAgent = req.headers['user-agent'] || '';
 
-    await supabase.from('user_sessions').insert([{ user_id: user.id, user_type: type, session_token: sessionToken, expires_at: expiresAt, ip: ip || null, user_agent: userAgent || null }]);
+    if (type === 'admin') {
+      await supabase.from('admin_sessions').insert([{ admin_user_id: user.id, session_token: sessionToken, expires_at: expiresAt, ip_address: ip || null, user_agent: userAgent || null }]);
+      setAdminSessionCookie(res, sessionToken);
+    } else {
+      await supabase.from('user_sessions').insert([{ user_id: user.id, user_type: type, session_token: sessionToken, expires_at: expiresAt, ip: ip || null, user_agent: userAgent || null }]);
+      setSessionCookie(res, sessionToken);
+    }
 
-    setSessionCookie(res, sessionToken);
-
-    return res.status(200).json({ success: true, user: { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, user_type: type, role: user.role || null }, session_token: sessionToken, redirect: type === 'admin' ? '/admin/dashboard' : '/dashboard' });
+    return res.status(200).json({ success: true, user: { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, user_type: type, role: user.role || null }, session_token: sessionToken, redirect: type === 'admin' ? '/admin' : '/dashboard' });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
   }
