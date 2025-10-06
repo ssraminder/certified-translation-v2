@@ -14,7 +14,7 @@ export default function AddressCard({ address, onEdit, onDelete, onMakeDefault, 
           {address.address_line_2 ? <p className="text-sm text-gray-700">{address.address_line_2}</p> : null}
           <p className="text-sm text-gray-700">{address.city}, {address.state_province} {address.postal_code}</p>
           <p className="text-sm text-gray-700">{address.country}</p>
-          {address.phone ? <p className="text-sm text-gray-600 mt-1">{address.phone}</p> : null}
+          {address.phone ? <p className="text-sm text-gray-600 mt-1">{require('../../lib/formatters/phone').formatForDisplay(address.phone, address.country)}</p> : null}
         </div>
         <div className="flex gap-2">
           {!address.is_default ? (
