@@ -9,7 +9,7 @@ export default function AdminHeader({ admin, onToggleSidebar, collapsed }){
     }
   }
   return (
-    <header className="sticky top-0 z-30 h-16 border-b bg-white shadow-sm">
+    <header className="app-header sticky top-0 z-30 h-16 border-b bg-white shadow-sm">
       <div className="mx-auto flex h-full items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <button className="p-2 -ml-2 rounded-md hover:bg-gray-100 lg:hidden" aria-label="Open sidebar" onClick={onToggleSidebar}>
