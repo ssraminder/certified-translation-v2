@@ -296,10 +296,7 @@ export default function Step4() {
               <Input label="Full Name" required value={billing.full_name} onChange={v=>updateField(setBilling,'full_name',v)} />
               <Input label="Email" required type="email" value={billing.email} onChange={v=>updateField(setBilling,'email',v)} />
               <div>
-                <label className="block">
-                  <span className="text-sm text-gray-700">Phone *</span>
-                  <PhoneInput valueE164={billing.phone} onChangeE164={v=>updateField(setBilling,'phone',v||'')} defaultCountry={billing.country} />
-                </label>
+                <PhoneInput required valueE164={billing.phone} onChangeE164={v=>updateField(setBilling,'phone',v||'')} defaultCountry={billing.country} />
               </div>
               <div />
               <Input label="Address Line 1" required className="md:col-span-2" value={billing.address_line1} onChange={v=>updateField(setBilling,'address_line1',v)} />
@@ -313,7 +310,7 @@ export default function Step4() {
                 <input value={billing.postal_code} onChange={e=>updateField(setBilling,'postal_code', formatPostal(billing.country, e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
               </label>
               <div>
-                <CountrySelect required value={billing.country} onChange={v=>updateField(setBilling,'country',v)} />
+                <CountrySelect required autoDetect value={billing.country} onChange={v=>updateField(setBilling,'country',v)} />
               </div>
             </div>
           </section>
@@ -347,10 +344,7 @@ export default function Step4() {
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input label="Full Name" required value={shipping.full_name} onChange={v=>updateField(setShipping,'full_name',v)} />
                     <div>
-                      <label className="block">
-                        <span className="text-sm text-gray-700">Phone *</span>
-                        <PhoneInput valueE164={shipping.phone} onChangeE164={v=>updateField(setShipping,'phone',v||'')} defaultCountry={shipping.country} />
-                      </label>
+                      <PhoneInput required valueE164={shipping.phone} onChangeE164={v=>updateField(setShipping,'phone',v||'')} defaultCountry={shipping.country} />
                     </div>
                     <Input label="Address Line 1" required className="md:col-span-2" value={shipping.address_line1} onChange={v=>updateField(setShipping,'address_line1',v)} />
                     <Input label="Address Line 2" className="md:col-span-2" value={shipping.address_line2} onChange={v=>updateField(setShipping,'address_line2',v)} />
@@ -363,7 +357,7 @@ export default function Step4() {
                       <input value={shipping.postal_code} onChange={e=>updateField(setShipping,'postal_code', formatPostal(shipping.country, e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
                     </label>
                     <div>
-                      <CountrySelect required value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
+                      <CountrySelect required autoDetect value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
                     </div>
                   </div>
                 </>

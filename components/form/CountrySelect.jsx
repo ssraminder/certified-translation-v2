@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { PRIORITY_COUNTRIES } from '../../lib/formatters/phone';
 
 const ALL_COUNTRIES = [
@@ -6,42 +6,47 @@ const ALL_COUNTRIES = [
 ];
 
 export default function CountrySelect({ label = 'Country', value, onChange, required=false, autoDetect=false }){
-  const [search, setSearch] = useState('');
-  const countries = useMemo(()=>{
-    const base = Array.from(new Set([...PRIORITY_COUNTRIES, ...ALL_COUNTRIES]));
-    if (!search.trim()) return base;
-    const q = search.trim().toLowerCase();
-    return base.filter(c => c.toLowerCase().includes(q));
-  }, [search]);
+  const countries = useMemo(() => Array.from(new Set([...PRIORITY_COUNTRIES, ...ALL_COUNTRIES])), []);
 
-  useEffect(()=>{
-    if (!autoDetect || value) return;
-    try {
-      const nav = typeof navigator !== 'undefined' ? navigator : null;
-      const lang = nav?.language || nav?.languages?.[0] || '';
-      const m = String(lang).toUpperCase().match(/-([A-Z]{2})$/);
-      if (m){
-        const cc = m[1];
-        const map = { CA: 'Canada', US: 'United States', GB: 'United Kingdom', AU: 'Australia', IN: 'India', MX: 'Mexico', FR: 'France', DE: 'Germany' };
-        const detected = map[cc];
-        if (detected && countries.includes(detected)) onChange && onChange(detected);
+  useEffect(() => {
+    let cancelled = false;
+    async function detectAndSet(){
+      if (value) return; // don't override if already selected
+      let detected = null;
+      if (autoDetect) {
+        try {
+          const resp = await fetch('https://ipapi.co/json/');
+          if (resp.ok) {
+            const j = await resp.json();
+            if (j && typeof j.country_name === 'string') detected = j.country_name;
+          }
+        } catch {}
+        if (!detected) {
+          try {
+            const nav = typeof navigator !== 'undefined' ? navigator : null;
+            const lang = nav?.language || nav?.languages?.[0] || '';
+            const m = String(lang).toUpperCase().match(/-([A-Z]{2})$/);
+            const map = { CA: 'Canada', US: 'United States', GB: 'United Kingdom', AU: 'Australia', IN: 'India', MX: 'Mexico', FR: 'France', DE: 'Germany' };
+            const cc = m ? m[1] : null;
+            detected = cc ? map[cc] : null;
+          } catch {}
+        }
       }
-    } catch {}
-    if (!value && onChange) onChange('Canada');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      const final = countries.includes(detected || '') ? detected : 'Canada';
+      if (!cancelled && !value && onChange) onChange(final);
+    }
+    detectAndSet();
+    return () => { cancelled = true; };
+  }, [autoDetect, value, onChange, countries]);
 
   return (
     <label className="block">
       <span className="text-sm text-gray-700">{label}{required && ' *'}</span>
-      <div className="mt-1 flex items-stretch gap-2">
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search country" className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm" />
-        <select className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm" value={value||''} onChange={e=>onChange && onChange(e.target.value)}>
-          {countries.map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
+      <select className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" value={value || ''} onChange={e=>onChange && onChange(e.target.value)}>
+        {countries.map(c => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
     </label>
   );
 }
