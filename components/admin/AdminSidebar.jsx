@@ -31,16 +31,7 @@ export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose }
   const path = router.asPath || router.pathname || '';
   const isActive = (href) => path === href || path.startsWith(href + '/');
 
-  const [openSettings, setOpenSettings] = (typeof window !== 'undefined') ? window.__adminSidebarState || [false, ()=>{}] : [false, ()=>{}];
-  // Simple in-memory persisted state per session
-  if (typeof window !== 'undefined' && !window.__adminSidebarState) {
-    const initial = false;
-    let current = initial;
-    window.__adminSidebarState = [
-      current,
-      (v) => { current = typeof v === 'function' ? v(current) : v; window.__adminSidebarState = [current, window.__adminSidebarState[1]]; }
-    ];
-  }
+  const [openSettings, setOpenSettings] = React.useState(false);
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-40 bg-slate-900 transition-all lg:static lg:translate-x-0 ${collapsed ? 'w-16' : 'w-60'} ${collapsed ? '' : ''}`}>
