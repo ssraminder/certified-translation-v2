@@ -26,8 +26,8 @@ async function handler(req, res){
       activities: (activities || []).map(a => ({
         id: a.id,
         admin_name: nameMap[a.admin_user_id] || 'Admin',
-        action: a.action,
-        target: a.target,
+        action: a.action_type,
+        target: [a.target_type, a.target_id].filter(Boolean).join(' / '),
         timestamp: a.created_at,
       }))
     });
