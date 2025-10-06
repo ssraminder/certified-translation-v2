@@ -5,7 +5,7 @@ const COUNTRY_META = [
   { name: 'Canada', code: 'CA', dial: '+1', flag: '🇨🇦' },
   { name: 'United States', code: 'US', dial: '+1', flag: '🇺🇸' },
   { name: 'United Kingdom', code: 'GB', dial: '+44', flag: '🇬🇧' },
-  { name: 'Australia', code: 'AU', dial: '+61', flag: '🇦🇺' },
+  { name: 'Australia', code: 'AU', dial: '+61', flag: '��🇺' },
   { name: 'India', code: 'IN', dial: '+91', flag: '🇮🇳' },
   { name: 'Mexico', code: 'MX', dial: '+52', flag: '🇲🇽' },
   { name: 'France', code: 'FR', dial: '+33', flag: '🇫🇷' },
@@ -120,7 +120,7 @@ export default function PhoneInput({ label='Phone', valueE164='', onChangeE164, 
   return (
     <label className="block">
       <span className="text-sm text-gray-700">{label}{required && ' *'}</span>
-      <div className={`mt-1 flex h-12 items-center rounded-lg border ${isInvalid ? 'border-red-500' : (focused ? 'border-cyan-400' : 'border-gray-300')} bg-white overflow-hidden ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} onFocus={()=>setFocused(true)} onBlur={()=>{ setFocused(false); setTouched(true); }}>
+      <div className={`mt-1 flex h-12 items-center rounded-lg border ${isInvalid ? 'border-red-500' : (focused ? 'border-cyan-400 shadow-[0_0_0_3px_rgba(0,184,212,0.1)]' : 'border-gray-300')} bg-white overflow-hidden ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} onFocus={()=>setFocused(true)} onBlur={()=>{ setFocused(false); setTouched(true); }}>
         <div className={`relative flex items-center w-[120px] h-full px-3 pr-2 border-r ${disabled ? 'border-gray-300 bg-gray-50' : 'border-gray-300 bg-white'} select-none`} ref={menuRef}>
           <button type="button" disabled={disabled} className="w-full text-left flex items-center justify-between" onClick={()=>setOpen(o=>!o)}>
             <span className="mr-2">{selectedMeta?.flag}</span>
