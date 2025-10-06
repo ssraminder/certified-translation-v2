@@ -46,9 +46,26 @@ async function handler(req, res){
       .maybeSingle();
 
     if (!otp) {
+      // Log failed admin login attempt if possible
+      if (type === 'admin') {
+        const { data: maybeAdmin } = await supabase.from('admin_users').select('id').ilike('email', norm).maybeSingle();
+        if (maybeAdmin) {
+          const { logActivity } = await import('../../../../lib/activityLogger');
+          const ipAddr = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+          await logActivity({ adminUserId: maybeAdmin.id, actionType: 'login_failed', targetType: 'auth', targetId: null, details: { reason: 'invalid_or_expired_code' }, ipAddress: ipAddr });
+        }
+      }
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
     if ((otp.attempts || 0) >= (otp.max_attempts || 3)) {
+      if (type === 'admin') {
+        const { data: maybeAdmin } = await supabase.from('admin_users').select('id').ilike('email', norm).maybeSingle();
+        if (maybeAdmin) {
+          const { logActivity } = await import('../../../../lib/activityLogger');
+          const ipAddr = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+          await logActivity({ adminUserId: maybeAdmin.id, actionType: 'login_failed', targetType: 'auth', targetId: null, details: { reason: 'too_many_attempts' }, ipAddress: ipAddr });
+        }
+      }
       return res.status(429).json({ error: 'Too many failed attempts' });
     }
 
@@ -76,6 +93,8 @@ async function handler(req, res){
     if (type === 'admin') {
       await supabase.from('admin_sessions').insert([{ admin_user_id: user.id, session_token: sessionToken, expires_at: expiresAt, ip_address: ip || null, user_agent: userAgent || null }]);
       setAdminSessionCookie(res, sessionToken);
+      const { logActivity } = await import('../../../../lib/activityLogger');
+      await logActivity({ adminUserId: user.id, actionType: 'login', targetType: 'auth', targetId: null, details: null, ipAddress: ip });
     } else {
       await supabase.from('user_sessions').insert([{ user_id: user.id, user_type: type, session_token: sessionToken, expires_at: expiresAt, ip: ip || null, user_agent: userAgent || null }]);
       setSessionCookie(res, sessionToken);
