@@ -13,12 +13,22 @@ async function handler(req, res){
     const supabase = getSupabaseServerClient();
     const cookies = parseCookies(req.headers.cookie || '');
     const token = cookies['admin_session_token'];
+    let adminId = null;
     if (token) {
+      const { data: sess } = await supabase.from('admin_sessions').select('id, admin_user_id, ip_address').eq('session_token', token).maybeSingle();
+      if (sess) adminId = sess.admin_user_id;
       await supabase.from('admin_sessions').delete().eq('session_token', token);
     }
     const isProd = process.env.NODE_ENV === 'production';
     const cookie = `admin_session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
     res.setHeader('Set-Cookie', cookie);
+
+    if (adminId) {
+      const { logActivity } = await import('../../../lib/activityLogger');
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+      await logActivity({ adminUserId: adminId, actionType: 'logout', targetType: 'auth', targetId: null, details: null, ipAddress: ip });
+    }
+
     return res.status(200).json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
