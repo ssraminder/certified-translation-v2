@@ -72,6 +72,16 @@ export default function LogsPage({ initialAdmin }){
 
   useEffect(()=>{ load(1); }, [query]);
 
+  useEffect(()=>{
+    (async ()=>{
+      try{
+        const res = await fetch('/api/admin/admins?limit=100&status=all');
+        const json = await res.json();
+        setAdmins(json.admins || []);
+      } catch {}
+    })();
+  }, []);
+
   function onExport(){
     const u = `/api/admin/logs/export?${query}`;
     window.location.href = u;
@@ -86,6 +96,15 @@ export default function LogsPage({ initialAdmin }){
             <option value="today">Today</option>
             <option value="last7">Last 7 Days</option>
             <option value="last30">Last 30 Days</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600">Admin</label>
+          <select className="mt-1 rounded border px-2 py-1 text-sm" value={filters.admin_id} onChange={e=>setFilters(f=>({ ...f, admin_id: e.target.value }))}>
+            <option value="">All Admins</option>
+            {admins.map(a => (
+              <option key={a.id} value={a.id}>{a.full_name} ({a.role})</option>
+            ))}
           </select>
         </div>
         <div>
