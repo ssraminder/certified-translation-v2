@@ -29,7 +29,25 @@ async function handler(req, res){
   const callbackUrl = baseUrl ? `${baseUrl}/api/n8n/callback` : null;
   const callbackSecret = process.env.N8N_WEBHOOK_SECRET || null;
 
-  const body = { quote_id: quoteId };
+  // Build files payload with fresh URLs (prefer public file_url; else generate new signed URL)
+  const { data: files } = await supabase
+    .from('quote_files')
+    .select('filename, file_url, signed_url, storage_path')
+    .eq('quote_id', quoteId);
+
+  const filePayload = [];
+  if (Array.isArray(files)){
+    for (const f of files){
+      let url = f.file_url || null;
+      if (!url && f.storage_path){
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+        if (signed?.signedUrl) url = signed.signedUrl;
+      }
+      if (url) filePayload.push({ filename: f.filename || 'document.pdf', url });
+    }
+  }
+
+  const body = { quote_id: quoteId, files: filePayload };
   if (callbackUrl) body.callback_url = callbackUrl;
   if (callbackSecret) body.callback_secret = callbackSecret;
 
@@ -44,7 +62,7 @@ async function handler(req, res){
   const { error: updErr } = await supabase.from('quote_submissions').update(updates).eq('quote_id', quoteId);
   if (updErr) return res.status(500).json({ error: updErr.message });
 
-  return res.status(202).json({ success: true });
+  return res.status(202).json({ success: true, files: filePayload.length });
 }
 
 export default withApiBreadcrumbs(withPermission('hitl_quotes','edit')(handler));
