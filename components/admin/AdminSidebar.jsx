@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { canViewHITLQuotes, canViewQuotes, canViewOrders, canViewUsers, canViewSettings, canViewSystemSettings, canViewAnalytics, canManageAdmins } from '../../lib/permissions';
+import { canViewHITLQuotes, canViewQuotes, canViewOrders, canViewUsers, canViewSettings, canViewSystemSettings, canViewAnalytics, canManageAdmins, canViewLogs } from '../../lib/permissions';
 
 function NavItem({ href, icon, label, active, collapsed, badge }){
   return (
