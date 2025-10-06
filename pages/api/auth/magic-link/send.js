@@ -60,6 +60,11 @@ async function handler(req, res){
 
     await sendMagicLinkEmail({ email: norm, first_name, token });
 
+    if (type === 'admin' && userId) {
+      const { logActivity } = await import('../../../../lib/activityLogger');
+      await logActivity({ adminUserId: userId, actionType: 'magic_link_requested', targetType: 'auth', targetId: null, details: null, ipAddress: ip });
+    }
+
     return res.status(200).json({ success: true, message: 'Magic link sent to your email' });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
