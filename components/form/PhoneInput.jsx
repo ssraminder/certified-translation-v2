@@ -9,9 +9,9 @@ export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE1
 
   // Parse incoming E.164 value (e.g., +14039666211) into digits
   useEffect(() => {
-    if (!valueE164) { setDigits(''); return; }
+    if (!valueE164) return; // don't clear while typing
     const m = String(valueE164).match(/^\+1(\d{10})$/);
-    if (m) setDigits(m[1]); else setDigits('');
+    if (m) setDigits(m[1]);
   }, [valueE164]);
 
   function toE164Local(d) { return d.length === 10 ? `+1${d}` : ''; }
