@@ -58,7 +58,7 @@ async function handler(req, res){
           email: normEmail,
           first_name,
           last_name,
-          phone: phone || null,
+          phone: phone ? (toE164(phone) || null) : null,
           company_name: company_name || null,
           account_type: accountType,
           account_creation_source: 'quote_flow',
