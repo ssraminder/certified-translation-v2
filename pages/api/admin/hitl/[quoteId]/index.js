@@ -29,10 +29,15 @@ async function handler(req, res){
     customer: { name: quote.name, email: quote.email, phone: quote.phone, company: quote.company_name, country: quote.country_of_issue },
     details: {
       submitted_at: quote.created_at,
+      job_id: quote.job_id,
       source_language: quote.source_lang,
+      source_code: quote.source_code || null,
       target_language: quote.target_lang,
+      target_code: quote.target_code || null,
+      intended_use_id: quote.intended_use_id || null,
       intended_use: quote.intended_use,
       certification_type: quote.cert_type_name,
+      certification_amount: quote.cert_type_amount || null,
       country: quote.country_of_issue,
       timeline: {
         submitted_at: quote.created_at,
