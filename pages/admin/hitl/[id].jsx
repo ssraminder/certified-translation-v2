@@ -32,7 +32,17 @@ export default function Page({ initialAdmin }){
     return { translation: round2(translation), certification: round2(certification), subtotal, tax, total };
   }
 
-  const totals = useMemo(()=>computeTotals(lineItems), [lineItems]);
+  const totals = useMemo(()=>{
+    if (lineItems.length>0) return computeTotals(lineItems);
+    const p = quote?.quote_results || quote?.quote_results === 0 ? quote?.quote_results : null;
+    const rj = quote?.quote_results?.results_json?.pricing || null;
+    const subtotal = Number(p?.subtotal ?? rj?.subtotal ?? 0);
+    const tax = Number(p?.tax ?? rj?.tax ?? 0);
+    const total = Number(p?.total ?? rj?.total ?? subtotal + tax);
+    const translation = Number(rj?.translation ?? 0);
+    const certification = Number(rj?.certification ?? 0);
+    return { translation, certification, subtotal, tax, total };
+  }, [lineItems, quote]);
 
   async function load(){
     setLoading(true); setError('');
@@ -157,12 +167,13 @@ export default function Page({ initialAdmin }){
               <button disabled={locked} onClick={addDocumentUrl} className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">Add</button>
             </div>
           </div>
-          <div className="mt-4 text-sm text-gray-700">
+          <div className="mt-4 text-sm text-gray-700 space-y-0.5">
             <div>Quote #: {quote?.quote_number}</div>
-            <div>Source: {quote?.details?.source_language}</div>
-            <div>Target: {quote?.details?.target_language}</div>
+            <div>Job ID: {quote?.details?.job_id || '—'}</div>
+            <div>Source: {quote?.details?.source_language} {quote?.details?.source_code ? `(${quote.details.source_code})` : ''}</div>
+            <div>Target: {quote?.details?.target_language} {quote?.details?.target_code ? `(${quote.details.target_code})` : ''}</div>
             <div>Intended Use: {quote?.details?.intended_use}</div>
-            <div>Certification: {quote?.details?.certification_type}</div>
+            <div>Certification: {quote?.details?.certification_type} {quote?.details?.certification_amount ? `- $${Number(quote.details.certification_amount).toFixed(2)}` : ''}</div>
             <div>Country: {quote?.details?.country}</div>
           </div>
         </div>
