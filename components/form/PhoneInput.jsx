@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PRIORITY_COUNTRIES, toE164, isValid, getCallingCode } from '../../lib/formatters/phone';
+import { PRIORITY_COUNTRIES, toE164, isValid } from '../../lib/formatters/phone';
 
 const COUNTRY_META = [
   { name: 'Canada', code: 'CA', dial: '+1', flag: '🇨🇦' },
   { name: 'United States', code: 'US', dial: '+1', flag: '🇺🇸' },
   { name: 'United Kingdom', code: 'GB', dial: '+44', flag: '🇬🇧' },
-  { name: 'Australia', code: 'AU', dial: '+61', flag: '��🇺' },
+  { name: 'Australia', code: 'AU', dial: '+61', flag: '🇦🇺' },
   { name: 'India', code: 'IN', dial: '+91', flag: '🇮🇳' },
   { name: 'Mexico', code: 'MX', dial: '+52', flag: '🇲🇽' },
   { name: 'France', code: 'FR', dial: '+33', flag: '🇫🇷' },
@@ -57,6 +57,7 @@ export default function PhoneInput({ label='Phone', valueE164='', onChangeE164, 
   const maxLen = isNA ? 10 : 15;
   const minLen = isNA ? 10 : 6;
 
+  // Close the country dropdown when clicking outside
   useEffect(()=>{
     function onDocClick(e){
       if (!menuRef.current) return;
@@ -66,22 +67,23 @@ export default function PhoneInput({ label='Phone', valueE164='', onChangeE164, 
     return ()=> document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
+  // When an external E.164 value is provided, parse and prefill state
   useEffect(()=>{
     if (!valueE164) {
       setDigits('');
       return;
     }
     try {
-      const m = String(valueE164).trim().match(/^\+(\d{1,3})(\d{1,14})$/);
+      const m = String(valueE164).trim().match(/^(\+\d{1,3})(\d{1,14})$/);
       if (!m) { setDigits(''); return; }
-      const code = `+${m[1]}`;
+      const code = m[1];
       const nat = m[2];
       const matchByCode = options.filter(o=>o.dial===code);
       if (matchByCode.length){
         const prefer = matchByCode.find(o=>o.name===defaultCountry) || matchByCode[0];
         setCountry(prefer.name);
       }
-      const natDigits = isNA || code === '+1' ? nat.slice(-10) : nat;
+      const natDigits = (code === '+1') ? nat.slice(-10) : nat;
       setDigits(natDigits);
     } catch {
       setDigits('');
@@ -89,8 +91,8 @@ export default function PhoneInput({ label='Phone', valueE164='', onChangeE164, 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valueE164]);
 
+  // On country change: clear input and notify parent
   useEffect(()=>{
-    // On country change: clear input and notify
     setDigits('');
     onChangeE164 && onChangeE164('');
   // eslint-disable-next-line react-hooks/exhaustive-deps
