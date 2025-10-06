@@ -35,7 +35,7 @@ async function handler(req, res){
     if (admin.is_active === false || (admin.status && admin.status !== 'active')) {
       // Invalidate session if admin not active
       await supabase.from('admin_sessions').delete().eq('id', session.id);
-      res.setHeader('Set-Cookie', `admin_session_token=; Max-Age=0; Path=/admin; HttpOnly; SameSite=Lax${process.env.NODE_ENV==='production'?'; Secure':''}`);
+      res.setHeader('Set-Cookie', `admin_session_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV==='production'?'; Secure':''}`);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
