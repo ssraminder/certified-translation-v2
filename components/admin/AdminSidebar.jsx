@@ -32,7 +32,7 @@ export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose }
   const path = router.asPath || router.pathname || '';
   const isActive = (href) => path === href || path.startsWith(href + '/');
 
-  const [openSettings, setOpenSettings] = React.useState(false);
+  const [openSettings, setOpenSettings] = useState(false);
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-40 bg-slate-900 transition-all lg:static lg:translate-x-0 ${collapsed ? 'w-16' : 'w-60'} ${collapsed ? '' : ''}`}>
