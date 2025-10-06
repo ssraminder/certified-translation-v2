@@ -35,6 +35,7 @@ export default function LogsPage({ initialAdmin }){
   const [filters, setFilters] = useState({ admin_id:'', action_type:'', target_type:'', target_id:'', ip_address:'', range:'last30', start_date:'', end_date:'' });
   const [data, setData] = useState({ logs: [], total: 0, page: 1, total_pages: 1 });
   const [loading, setLoading] = useState(false);
+  const [admins, setAdmins] = useState([]);
 
   function computeRange(r){
     const now = new Date();
