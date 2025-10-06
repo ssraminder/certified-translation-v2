@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import PhoneInput from '../../components/form/PhoneInput';
 import { supabase } from '../../lib/supabaseClient';
 
 function getQueryParams() {
@@ -297,8 +298,7 @@ export default function Step2() {
               {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <input suppressHydrationWarning disabled={locked('phone')} className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-100" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} />
+              <PhoneInput label="Phone Number" valueE164={formData.phone} onChangeE164={v=>setFormData(f=>({ ...f, phone: v || '' }))} disabled={locked('phone')} required />
               {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
             </div>
             <div>
