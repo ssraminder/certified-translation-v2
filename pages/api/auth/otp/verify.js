@@ -14,7 +14,7 @@ function setSessionCookie(res, token){
 
 function setAdminSessionCookie(res, token){
   const isProd = process.env.NODE_ENV === 'production';
-  const cookie = `admin_session_token=${token}; Max-Age=${30*24*60*60}; Path=/admin; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
+  const cookie = `admin_session_token=${token}; Max-Age=${30*24*60*60}; Path=/; HttpOnly; SameSite=Lax${isProd?'; Secure':''}`;
   res.setHeader('Set-Cookie', cookie);
 }
 
