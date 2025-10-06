@@ -2,6 +2,8 @@ import { withApiBreadcrumbs } from '../../../../../lib/sentry';
 import { withPermission } from '../../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 
+const BUCKET = 'orders';
+
 function getBaseUrl(req){
   const hostHeader = req.headers.host;
   if (!hostHeader) return null;
