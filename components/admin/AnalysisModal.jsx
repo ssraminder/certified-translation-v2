@@ -171,7 +171,11 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
           )}
 
           {mode === 'preview' && (
-            <div className="rounded border p-3 text-sm text-gray-700">Waiting for analysis results… Items will appear here automatically.</div>
+            items.length === 0 ? (
+              <div className="rounded border p-3 text-sm text-gray-700">Waiting for analysis results… Items will appear here automatically.</div>
+            ) : (
+              <div className="rounded border p-3 text-sm text-gray-700">{items.length} item(s) ready. Click Edit Analysis to review and adjust before using.</div>
+            )
           )}
         </div>
       </div>
