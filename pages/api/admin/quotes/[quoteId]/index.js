@@ -13,8 +13,11 @@ async function handler(req, res){
     .maybeSingle();
   if (!q) return res.status(404).json({ error: 'Quote not found' });
 
+  const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id');
+  const scopedItemsQuery = q?.active_run_id ? itemsQuery.eq('run_id', q.active_run_id) : itemsQuery;
+
   const [ { data: items }, { data: adjustments }, { data: files }, { data: certs } ] = await Promise.all([
-    supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id'),
+    scopedItemsQuery,
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_files').select('*').eq('quote_id', quoteId),
     supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order')
