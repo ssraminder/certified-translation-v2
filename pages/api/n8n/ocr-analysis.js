@@ -48,7 +48,8 @@ async function handler(req, res) {
     else rows = [body];
   }
 
-  rows = rows.map(normalizeRow).filter(Boolean);
+  const topLevelRunId = (body && typeof body === 'object') ? (body.run_id || body.runId || null) : null;
+  rows = rows.map(normalizeRow).filter(Boolean).map(r => ({ ...r, run_id: r.run_id || topLevelRunId || null }));
 
   if (rows.length === 0) {
     return res.status(400).json({ error: 'No rows provided' });
@@ -64,8 +65,8 @@ async function handler(req, res) {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from('ocr_analysis')
-      .upsert(rows, { onConflict: 'quote_id,filename,page_number', ignoreDuplicates: false, defaultToNull: false })
-      .select('quote_id, filename, page_number');
+      .upsert(rows, { onConflict: 'quote_id,filename,page_number,run_id', ignoreDuplicates: false, defaultToNull: false })
+      .select('quote_id, filename, page_number, run_id');
 
     if (error) {
       return res.status(500).json({ error: error.message || 'Upsert failed' });
