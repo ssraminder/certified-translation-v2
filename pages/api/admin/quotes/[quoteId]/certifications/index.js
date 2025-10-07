@@ -54,8 +54,10 @@ async function handler(req, res){
     applies_to_filename: applies_to_filename || null
   };
 
+  console.log('API certifications.insert payload', insert);
   const { data: row, error } = await supabase.from('quote_certifications').insert([insert]).select('*').maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
+  console.log('API certifications.insert row', row);
 
   const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
   await logAdminActivity({ action: 'quote_certification_added', actor_id: req.admin?.id || null, target_id: quoteId, details: { cert_id: row?.id, cert_type_name: typeName } });
