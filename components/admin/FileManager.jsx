@@ -77,11 +77,12 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
           if (!cancelled){ setAnalysisError('Analysis failed'); setIsAnalyzing(false); }
           return;
         }
-        const { data: analysisRows, error: analysisError2 } = await supabase
+        let analysisCheck = supabase
           .from('ocr_analysis')
           .select('quote_id, run_id')
-          .eq('quote_id', quoteId)
-          .modify(q => { if (currentRunId) q.eq('run_id', currentRunId); })
+          .eq('quote_id', quoteId);
+        if (currentRunId) analysisCheck = analysisCheck.eq('run_id', currentRunId);
+        const { data: analysisRows, error: analysisError2 } = await analysisCheck
           .limit(1);
         if (analysisError2) throw analysisError2;
         if ((analysisRows||[]).length > 0){
