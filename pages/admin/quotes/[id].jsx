@@ -122,9 +122,20 @@ export default function Page({ initialAdmin }){
                 return (
                   <div key={it.id} className="rounded border p-3">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
-                        <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+                      <div className="flex items-start gap-2">
+                        {it.source === 'auto' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">&lt;Auto&gt;</span>
+                        )}
+                        {it.source === 'edited' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">&lt;Edited&gt;</span>
+                        )}
+                        {it.source === 'manual' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">&lt;Manual&gt;</span>
+                        )}
+                        <div>
+                          <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
+                          <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600">{Number(it.billable_pages||0)} billable page(s)</div>
