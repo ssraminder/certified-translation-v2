@@ -17,6 +17,8 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
 
   useEffect(() => { if (!open){ setItems([]); setSummary({ lineItems:0, totalPages:0, estimatedCost:0 }); setError(''); setEditComment(''); setDiscardComment(''); setMode('preview'); } }, [open]);
 
+  useEffect(() => { if (!open) return; (async ()=>{ try { if (supabase){ const { data } = await supabase.from('cert_types').select('name, amount'); const opts = (data||[]).map(d => ({ name: d.name, amount: Number(d.amount||0) })).filter(o=>o.name); setCertTypes(opts); } } catch {} })(); }, [open]);
+
   useEffect(() => {
     if (!open || !quoteId) return;
     let cancelled = false;
