@@ -60,6 +60,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   }, [open, quoteId, runId]);
 
   function updateItem(idx, patch){ setItems(list => list.map((it,i) => i===idx ? { ...it, ...patch } : it)); }
+  function setCert(idx, name){ const t = certTypes.find(c => c.name === name); updateItem(idx, { certification_type_name: name || '', certification_amount: t ? Number(t.amount||0) : 0 }); }
 
   async function useAnalysis(){
     try {
