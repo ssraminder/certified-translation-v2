@@ -24,7 +24,7 @@ const { getSupabaseServerClient } = require('../../lib/supabaseServer');
 describe('POST /api/n8n/callback', () => {
   const secret = 'test-secret';
   const oldEnv = { ...process.env };
-  beforeEach(() => { jest.resetModules(); process.env.N8N_WEBHOOK_SECRET = secret; });
+  beforeEach(() => { process.env.N8N_WEBHOOK_SECRET = secret; });
   afterAll(() => { process.env = oldEnv; });
 
   it('rejects requests without valid webhook secret', async () => {
