@@ -50,7 +50,8 @@ async function handler(req, res){
   }
 
   const src = String(req.body?.source || 'auto').toLowerCase();
-  const source = (src === 'edited') ? 'edited' : 'auto';
+  const isEdited = (src === 'edited');
+  const source = 'n8n';
 
   // Ensure editable
   const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
@@ -93,7 +94,7 @@ async function handler(req, res){
         billable_pages: pages,
         unit_rate: unitRate,
         unit_rate_override: null,
-        override_reason: null,
+        override_reason: 'edited',
         source_language: null,
         target_language: null,
         certification_amount: certAmt,
@@ -141,7 +142,7 @@ async function handler(req, res){
         billable_pages: pages,
         unit_rate: unitRate,
         unit_rate_override: null,
-        override_reason: null,
+        override_reason: isEdited ? 'edited' : null,
         source_language: null,
         target_language: null,
         certification_amount: 0,
