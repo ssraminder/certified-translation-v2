@@ -11,6 +11,7 @@ async function handler(req, res){
   const supabase = getSupabaseServerClient();
   const { quoteId } = req.query;
   const src = String(req.body?.source || 'auto').toLowerCase();
+  const providedRunId = req.body?.run_id || req.body?.runId || null;
   const source = (src === 'edited') ? 'edited' : 'auto';
 
   // Ensure editable
@@ -19,11 +20,34 @@ async function handler(req, res){
     return res.status(400).json({ error: 'Quote is locked' });
   }
 
-  // Load analysis rows
-  const { data: rows, error: rowsErr } = await supabase
+  // Determine run_id to use
+  let runId = providedRunId;
+  if (!runId) {
+    // Prefer active run, else latest by created_at
+    const { data: activeRow } = await supabase
+      .from('quote_submissions')
+      .select('active_run_id')
+      .eq('quote_id', quoteId)
+      .maybeSingle();
+    runId = activeRow?.active_run_id || null;
+    if (!runId) {
+      const { data: latestRun } = await supabase
+        .from('analysis_runs')
+        .select('id')
+        .eq('quote_id', quoteId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      runId = Array.isArray(latestRun) && latestRun[0]?.id ? latestRun[0].id : null;
+    }
+  }
+
+  // Load analysis rows (scoped by run when available)
+  let query = supabase
     .from('ocr_analysis')
-    .select('filename, page_number')
+    .select('filename, page_number, run_id')
     .eq('quote_id', quoteId);
+  if (runId) query = query.eq('run_id', runId);
+  const { data: rows, error: rowsErr } = await query;
   if (rowsErr) return res.status(500).json({ error: rowsErr.message });
   if (!rows || rows.length === 0) return res.status(400).json({ error: 'No analysis rows' });
 
@@ -62,7 +86,8 @@ async function handler(req, res){
       target_language: null,
       certification_amount: 0,
       line_total: pages * unitRate,
-      source
+      source,
+      run_id: runId || null
     });
   }
 
