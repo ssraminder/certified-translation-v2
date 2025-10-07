@@ -3,7 +3,6 @@ import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import FileManager from '../../../components/admin/FileManager';
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
-import CertificationsManager from '../../../components/admin/CertificationsManager';
 import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
 import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
 import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal';
@@ -130,13 +129,13 @@ export default function Page({ initialAdmin }){
                     <div className="flex items-center justify-between">
                       <div className="flex items-start gap-2">
                         {it.source === 'auto' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">&lt;Auto&gt;</span>
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">AI Analysis</span>
                         )}
                         {it.source === 'edited' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">&lt;Edited&gt;</span>
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">edited</span>
                         )}
                         {it.source === 'manual' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">&lt;Manual&gt;</span>
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">Manual</span>
                         )}
                         <div>
                           <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
@@ -174,10 +173,14 @@ export default function Page({ initialAdmin }){
                 );
               })}
               {lineItems.length === 0 && <div className="text-sm text-gray-500">No line items</div>}
+              {canEdit && (
+                <div className="pt-2 border-t mt-2 flex justify-end">
+                  <button className="rounded bg-blue-600 text-white px-3 py-1 text-sm" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>Confirm and Update Summary</button>
+                </div>
+              )}
             </div>
           </div>
 
-          <CertificationsManager quoteId={quote.id} initialCertifications={certifications} files={files} canEdit={canEdit} onChange={(c)=>{ if (c?.totals) setTotals(c.totals); }} />
 
           <div className="rounded border bg-white">
             <div className="border-b px-4 py-2 font-semibold">Adjustments</div>
