@@ -13,9 +13,39 @@ async function handler(req, res){
   const providedRunId = req.method === 'GET' ? (req.query.run_id || req.query.runId || null) : (req.body?.run_id || req.body?.runId || null);
 
   if (req.method === 'GET'){
+    // Determine effective run id: provided -> active_run_id -> latest analysis_runs -> latest quote_sub_orders
+    let effectiveRunId = providedRunId || null;
+    if (!effectiveRunId){
+      const { data: activeRow } = await supabase
+        .from('quote_submissions')
+        .select('active_run_id')
+        .eq('quote_id', quoteId)
+        .maybeSingle();
+      effectiveRunId = activeRow?.active_run_id || null;
+    }
+    if (!effectiveRunId){
+      const { data: latestRun } = await supabase
+        .from('analysis_runs')
+        .select('id')
+        .eq('quote_id', quoteId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      effectiveRunId = Array.isArray(latestRun) && latestRun[0]?.id ? latestRun[0].id : null;
+    }
+    if (!effectiveRunId){
+      const { data: latestQso } = await supabase
+        .from('quote_sub_orders')
+        .select('run_id')
+        .eq('quote_id', quoteId)
+        .not('run_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      effectiveRunId = Array.isArray(latestQso) && latestQso[0]?.run_id ? latestQso[0].run_id : null;
+    }
+
     // Prefer pre-computed analysis items (quote_sub_orders) for this run
     let qso = supabase.from('quote_sub_orders').select('filename, doc_type, billable_pages, unit_rate, certification_amount, certification_type_name, total_pages, run_id').eq('quote_id', quoteId);
-    if (providedRunId) qso = qso.eq('run_id', providedRunId);
+    if (effectiveRunId) qso = qso.eq('run_id', effectiveRunId);
     const { data: existing, error: existErr } = await qso;
     if (existErr) return res.status(500).json({ error: existErr.message });
     if (Array.isArray(existing) && existing.length){
@@ -28,7 +58,7 @@ async function handler(req, res){
       .from('ocr_analysis')
       .select('filename, page_number, run_id')
       .eq('quote_id', quoteId);
-    if (providedRunId) query = query.eq('run_id', providedRunId);
+    if (effectiveRunId) query = query.eq('run_id', effectiveRunId);
     const { data: rows, error: rowsErr } = await query;
     if (rowsErr) return res.status(500).json({ error: rowsErr.message });
 
