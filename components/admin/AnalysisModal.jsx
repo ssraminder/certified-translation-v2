@@ -43,10 +43,9 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
     // Try realtime; fallback to polling
     try {
       if (supabase) {
-        const channel = supabase.channel('ocr_analysis_preview')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'ocr_analysis', filter: `quote_id=eq.${quoteId}` }, () => {
-            fetchPreview();
-          })
+        const channel = supabase.channel('analysis_preview')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'ocr_analysis', filter: `quote_id=eq.${quoteId}` }, fetchPreview)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_sub_orders', filter: `quote_id=eq.${quoteId}` }, fetchPreview)
           .subscribe();
         channelRef.current = channel;
       }
