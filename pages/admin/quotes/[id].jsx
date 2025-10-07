@@ -102,39 +102,44 @@ export default function Page({ initialAdmin }){
           <div className="rounded border bg-white">
             <div className="border-b px-4 py-2 font-semibold">Documents & Line Items</div>
             <div className="p-4 space-y-3">
-              {lineItems.map(it => (
-                <div key={it.id} className="rounded border p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
-                      <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+              {lineItems.map(it => {
+                const effectiveRate = ((it.unit_rate_override ?? it.unit_rate) ?? 0);
+                const computedLineTotal = (Number(effectiveRate) * Number(it.billable_pages || 0)) + Number(it.certification_amount || 0);
+                const displayTotal = Number(it.line_total ?? computedLineTotal);
+                return (
+                  <div key={it.id} className="rounded border p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
+                        <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600">{Number(it.billable_pages||0)} billable page(s)</div>
+                        <div className="font-semibold">${displayTotal.toFixed(2)}</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm text-gray-600">{Number(it.billable_pages||0)} billable page(s)</div>
-                      <div className="font-semibold">${Number(it.line_total || ((it.unit_rate_override??it.unit_rate||0) * (it.billable_pages||0) + (it.certification_amount||0))).toFixed(2)}</div>
-                    </div>
+                    {canEdit && (
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                        <Field label="Billable Pages">
+                          <input type="number" step="0.1" defaultValue={it.billable_pages} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { billable_pages: e.target.value })} />
+                        </Field>
+                        <Field label="Unit Rate ($)">
+                          <input type="number" step="0.01" defaultValue={it.unit_rate} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { unit_rate: e.target.value })} />
+                        </Field>
+                        <Field label="Override Rate ($)">
+                          <input type="number" step="0.01" defaultValue={it.unit_rate_override || ''} placeholder="optional" className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { unit_rate_override: e.target.value || null })} />
+                        </Field>
+                        <Field label="Override Reason">
+                          <input type="text" defaultValue={it.override_reason || ''} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { override_reason: e.target.value || null })} />
+                        </Field>
+                        <Field label="Certification Amount ($)">
+                          <input type="number" step="0.01" defaultValue={it.certification_amount || 0} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { certification_amount: e.target.value })} />
+                        </Field>
+                      </div>
+                    )}
                   </div>
-                  {canEdit && (
-                    <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                      <Field label="Billable Pages">
-                        <input type="number" step="0.1" defaultValue={it.billable_pages} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { billable_pages: e.target.value })} />
-                      </Field>
-                      <Field label="Unit Rate ($)">
-                        <input type="number" step="0.01" defaultValue={it.unit_rate} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { unit_rate: e.target.value })} />
-                      </Field>
-                      <Field label="Override Rate ($)">
-                        <input type="number" step="0.01" defaultValue={it.unit_rate_override || ''} placeholder="optional" className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { unit_rate_override: e.target.value || null })} />
-                      </Field>
-                      <Field label="Override Reason">
-                        <input type="text" defaultValue={it.override_reason || ''} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { override_reason: e.target.value || null })} />
-                      </Field>
-                      <Field label="Certification Amount ($)">
-                        <input type="number" step="0.01" defaultValue={it.certification_amount || 0} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { certification_amount: e.target.value })} />
-                      </Field>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {lineItems.length === 0 && <div className="text-sm text-gray-500">No line items</div>}
             </div>
           </div>
