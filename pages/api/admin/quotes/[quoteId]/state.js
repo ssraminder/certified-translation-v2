@@ -1,5 +1,5 @@
-import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
-import { logAdminActivity } from '../../../../lib/activityLog';
+import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
+import { logAdminActivity } from '../../../../../lib/activityLog';
 
 const ALLOWED = new Set(['draft','pending','hitl_required','under_review','ready','sent','accepted','expired','converted','abandoned','open','archived']);
 
@@ -56,5 +56,5 @@ async function handler(req, res){
   return res.status(200).json({ success: true, quote: { quote_state: updated?.quote_state, can_edit: !['sent','accepted','converted'].includes(String(updated?.quote_state||'').toLowerCase()) } });
 }
 
-import { withPermission } from '../../../../lib/apiAdmin';
+import { withPermission } from '../../../../../lib/apiAdmin';
 export default withPermission('quotes','edit')(handler);
