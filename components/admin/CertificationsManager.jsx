@@ -44,9 +44,23 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
         applies_to_file_id: selectedFile,
         applies_to_filename: files.find(f=> (f.file_id||f.id)===selectedFile)?.filename || null
       };
+      console.log('CertificationsManager.save payload', payload);
       const resp = await fetch(`/api/admin/quotes/${quoteId}/certifications`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
-      if (json?.success){ setCerts(list => [...list, json.certification]); onChange && onChange({ totals: json.totals }); setOpen(false); setSelectedFile(''); setSelectedType(''); setDefaultRate(0); setOverrideRate(''); }
+      console.log('CertificationsManager.save response', { ok: resp.ok, status: resp.status, json });
+      if (json?.success){
+        setCerts(list => [...list, json.certification]);
+        onChange && onChange({ totals: json.totals });
+        setOpen(false);
+        setSelectedFile('');
+        setSelectedType('');
+        setDefaultRate(0);
+        setOverrideRate('');
+      } else {
+        console.warn('Certification add failed', json);
+      }
+    } catch (e) {
+      console.error('Certification save error', e);
     } finally { setLoading(false); }
   }
 
