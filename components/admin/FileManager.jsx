@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { supabase } from '../../lib/supabaseClient';
+
 export default function FileManager({ quoteId, initialFiles, canEdit = true, onChange }){
   const [files, setFiles] = useState(initialFiles || []);
   const [selected, setSelected] = useState([]);
@@ -15,6 +17,48 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   const inputRef = useRef(null);
 
   useEffect(()=>{ setFiles(initialFiles || []); }, [initialFiles]);
+
+  useEffect(()=>{
+    if (!isAnalyzing || !quoteId) return;
+    let cancelled = false;
+    let intervalId = null;
+
+    const check = async () => {
+      try {
+        const { data: submissionRows, error: submissionError } = await supabase
+          .from('quote_submissions')
+          .select('status')
+          .eq('quote_id', quoteId)
+          .limit(1);
+        if (submissionError) throw submissionError;
+        const submissionStatus = submissionRows?.[0]?.status || null;
+        if (submissionStatus === 'analysis_complete'){
+          if (!cancelled){ setAnalysisResults({ ready: true }); setIsAnalyzing(false); }
+          return;
+        }
+        if (submissionStatus === 'analysis_failed'){
+          if (!cancelled){ setAnalysisError('Analysis failed'); setIsAnalyzing(false); }
+          return;
+        }
+        const { data: analysisRows, error: analysisError2 } = await supabase
+          .from('ocr_analysis')
+          .select('quote_id')
+          .eq('quote_id', quoteId)
+          .limit(1);
+        if (analysisError2) throw analysisError2;
+        if ((analysisRows||[]).length > 0){
+          if (!cancelled){ setAnalysisResults({ ready: true }); setIsAnalyzing(false); }
+        }
+      } catch (e) {
+        if (!cancelled){ setAnalysisError(e?.message || 'Polling error'); setIsAnalyzing(false); }
+      }
+    };
+
+    intervalId = setInterval(check, 5000);
+    check();
+
+    return () => { cancelled = true; if (intervalId) clearInterval(intervalId); };
+  }, [isAnalyzing, quoteId]);
 
   function toggle(id){ setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]); }
 
@@ -68,7 +112,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
       setAnalysisError(e?.message || 'Unexpected error');
     } finally {
       setLoading(false);
-      setIsAnalyzing(false);
+      // Keep spinner controlled by polling; do not force-finish here
     }
   }
 
