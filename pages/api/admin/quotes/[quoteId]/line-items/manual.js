@@ -2,7 +2,7 @@ import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../lib/quoteTotals';
 import { logAdminActivity } from '../../../../../lib/activityLog';
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'POST'){
     res.setHeader('Allow','POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -48,3 +48,6 @@ export default async function handler(req, res){
   await logAdminActivity({ action: 'quote_line_item_created', actor_id: req.admin?.id || null, target_id: quoteId, details: { line_item_id: row?.id || null, source: 'manual' } });
   return res.status(200).json({ success: true, line_item: row, totals });
 }
+
+import { withPermission } from '../../../../../lib/apiAdmin';
+export default withPermission('quotes','edit')(handler);
