@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
+import FileManager from '../../../components/admin/FileManager';
+import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
+import CertificationsManager from '../../../components/admin/CertificationsManager';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -27,6 +30,9 @@ export default function Page({ initialAdmin }){
   const [lineItems, setLineItems] = useState([]);
   const [adjustments, setAdjustments] = useState([]);
   const [totals, setTotals] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [certifications, setCertifications] = useState([]);
+  const [showManual, setShowManual] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +40,7 @@ export default function Page({ initialAdmin }){
     fetch(`/api/admin/quotes/${id}`)
       .then(r => r.json())
       .then(json => {
-        setQuote(json.quote); setLineItems(json.line_items||[]); setAdjustments(json.adjustments||[]); setTotals(json.totals||null);
+        setQuote(json.quote); setLineItems(json.line_items||[]); setAdjustments(json.adjustments||[]); setTotals(json.totals||null); setFiles(json.documents||[]); setCertifications(json.certifications||[]);
       })
       .finally(()=> setLoading(false));
   }, []);
@@ -99,8 +105,13 @@ export default function Page({ initialAdmin }){
             </div>
           </div>
 
+          <FileManager quoteId={quote.id} initialFiles={files} canEdit={canEdit} onChange={(c)=>{ if (c?.totals) setTotals(c.totals); fetch(`/api/admin/quotes/${quote.id}`).then(r=>r.json()).then(j=>{ setFiles(j.documents||[]); setLineItems(j.line_items||[]); setCertifications(j.certifications||[]); setTotals(j.totals||null); }); }} />
+
           <div className="rounded border bg-white">
-            <div className="border-b px-4 py-2 font-semibold">Documents & Line Items</div>
+            <div className="flex items-center justify-between border-b px-4 py-2 font-semibold">
+              <div>Line Items</div>
+              {canEdit && <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowManual(true)}>+ Add Manual Line Item</button>}
+            </div>
             <div className="p-4 space-y-3">
               {lineItems.map(it => {
                 const effectiveRate = ((it.unit_rate_override ?? it.unit_rate) ?? 0);
@@ -143,6 +154,8 @@ export default function Page({ initialAdmin }){
               {lineItems.length === 0 && <div className="text-sm text-gray-500">No line items</div>}
             </div>
           </div>
+
+          <CertificationsManager quoteId={quote.id} initialCertifications={certifications} files={files} canEdit={canEdit} onChange={(c)=>{ if (c?.totals) setTotals(c.totals); }} />
 
           <div className="rounded border bg-white">
             <div className="border-b px-4 py-2 font-semibold">Adjustments</div>
@@ -199,6 +212,7 @@ export default function Page({ initialAdmin }){
           </div>
         </div>
       </div>
+      <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={files} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
     </AdminLayout>
   );
 }

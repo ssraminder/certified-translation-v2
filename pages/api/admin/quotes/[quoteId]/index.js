@@ -13,10 +13,11 @@ async function handler(req, res){
     .maybeSingle();
   if (!q) return res.status(404).json({ error: 'Quote not found' });
 
-  const [ { data: items }, { data: adjustments }, { data: files } ] = await Promise.all([
+  const [ { data: items }, { data: adjustments }, { data: files }, { data: certs } ] = await Promise.all([
     supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id'),
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
-    supabase.from('quote_files').select('*').eq('quote_id', quoteId)
+    supabase.from('quote_files').select('*').eq('quote_id', quoteId),
+    supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order')
   ]);
 
   const BUCKET = 'orders';
@@ -26,7 +27,16 @@ async function handler(req, res){
       try { const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600); if (signed?.signedUrl) url = signed.signedUrl; } catch {}
     }
     if (!url && f.signed_url) url = f.signed_url;
-    return { id: f.id, filename: f.filename, file_url: url, doc_type: f.doc_type || null };
+    return {
+      id: f.id,
+      file_id: f.file_id,
+      filename: f.filename,
+      file_url: url,
+      doc_type: f.doc_type || null,
+      file_purpose: f.file_purpose || 'translate',
+      analyzed: !!f.analyzed,
+      analysis_requested_at: f.analysis_requested_at || null
+    };
   }));
 
   const results = Array.isArray(q.quote_results) && q.quote_results.length ? q.quote_results[0] : null;
@@ -52,7 +62,7 @@ async function handler(req, res){
 
   const totals = results ? {
     translation_subtotal: results?.results_json?.pricing?.translation ?? null,
-    certification_subtotal: results?.results_json?.pricing?.certification ?? null,
+    certification_subtotal: (results?.results_json?.pricing?.certifications ?? results?.results_json?.pricing?.certification) ?? null,
     adjustments_total: ((results?.results_json?.pricing?.additional_items || 0) + (results?.results_json?.pricing?.discounts_or_surcharges || 0)) ?? 0,
     subtotal: results.subtotal,
     tax: results.tax,
@@ -77,6 +87,7 @@ async function handler(req, res){
     ocr_analysis: q.n8n_analysis_result || null,
     adjustments: adjustments || [],
     documents,
+    certifications: certs || [],
     totals
   });
 }
