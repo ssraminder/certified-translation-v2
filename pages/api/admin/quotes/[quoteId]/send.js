@@ -1,6 +1,6 @@
-import { withPermission } from '../../../../../../lib/apiAdmin';
-import { getSupabaseServerClient } from '../../../../../../lib/supabaseServer';
-import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../../lib/quoteTotals';
+import { withPermission } from '../../../../../lib/apiAdmin';
+import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
+import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../lib/quoteTotals';
 
 async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -21,7 +21,7 @@ async function handler(req, res){
   if (error) return res.status(500).json({ error: error.message });
 
   try {
-    const { sendHitlQuoteReadyEmail } = await import('../../../../../../lib/email');
+    const { sendHitlQuoteReadyEmail } = await import('../../../../../lib/email');
     await sendHitlQuoteReadyEmail({ email: quote?.email, first_name: quote?.name, quote_number: quote?.quote_number || quoteId, pricing: totals, message: message || '' });
   } catch {}
 
