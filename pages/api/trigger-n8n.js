@@ -80,8 +80,15 @@ async function handler(req, res) {
         return { file_id: f.file_id, filename: f.filename, file_url: url, expires_at: expiresAt };
       }));
 
-      if (runId) payload.run_id = runId;
-      if ((signedFiles||[]).length) payload.files = signedFiles;
+      if (runId) {
+        payload.run_id = runId;
+        payload.run_type = (runRow && runRow.run_type) || runInsert.run_type || 'auto';
+        payload.version = (runRow && runRow.version != null) ? runRow.version : nextVersion;
+        payload.status = (runRow && runRow.status) || 'requested';
+        payload.is_active = Boolean((runRow && runRow.is_active) ?? false);
+        payload.discarded = Boolean((runRow && runRow.discarded) ?? false);
+      }
+      if ((signedFiles || []).length) payload.files = signedFiles;
       payload.batch_mode = payload.batch_mode || 'single';
       payload.replace_existing = Boolean(payload.replace_existing);
     }
