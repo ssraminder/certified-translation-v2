@@ -62,11 +62,18 @@ export default function Page({ initialAdmin }){
   }
 
   async function addAdjustment(payload){
-    console.log('Admin Quote addAdjustment payload', payload);
-    const resp = await fetch(`/api/admin/quotes/${quote.id}/adjustments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    const json = await resp.json();
-    console.log('Admin Quote addAdjustment response', { ok: resp.ok, status: resp.status, json });
-    if (json?.success){ setAdjustments(a => [...a, json.adjustment]); setTotals(json.totals || totals); }
+    try {
+      console.log('Admin Quote addAdjustment payload', payload);
+      const resp = await fetch(`/api/admin/quotes/${quote.id}/adjustments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      let json = null;
+      try { json = await resp.json(); } catch { json = { error: 'Invalid response' }; }
+      console.log('Admin Quote addAdjustment response', { ok: resp.ok, status: resp.status, json });
+      if (!resp.ok || !json?.success){ throw new Error(json?.error || `Request failed (${resp.status})`); }
+      setAdjustments(a => [...a, json.adjustment]); setTotals(json.totals || totals);
+    } catch (e) {
+      console.error('Failed to add adjustment', e);
+      alert(`Failed to add adjustment: ${e.message}`);
+    }
   }
 
   async function deleteAdjustment(id){
