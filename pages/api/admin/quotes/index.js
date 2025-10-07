@@ -1,5 +1,5 @@
-import { withPermission } from '../../../../../lib/apiAdmin';
-import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
+import { withPermission } from '../../../../lib/apiAdmin';
+import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 
 function parseQuery(q){
   const page = Math.max(1, Number(q.page || 1));
