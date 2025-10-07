@@ -107,6 +107,7 @@ async function handler(req, res){
         override_reason: 'edited',
         source_language: null,
         target_language: null,
+        certification_type_name: it.certification_type_name || null,
         certification_amount: certAmt,
         line_total: (pages * unitRate) + certAmt,
         source,
