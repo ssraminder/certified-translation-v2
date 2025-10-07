@@ -57,7 +57,8 @@ async function handler(req, res){
     target_language: it.target_language,
     total_pages: it.total_pages || null,
     per_page_wordcount: it.per_page_wordcount || null,
-    per_page_billable: it.per_page_billable || null
+    per_page_billable: it.per_page_billable || null,
+    source: it.source || null
   }));
 
   const totals = results ? {

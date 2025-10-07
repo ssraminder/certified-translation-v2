@@ -17,7 +17,7 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
 
   useEffect(()=>{
     async function load(){
-      try { const { data } = await supabase.from('cert_types').select('id, name, amount'); setCertTypes((data||[]).map(d=>({ code: toCode(d.name), name: d.name, default_rate: Number(d.amount||0) }))); }
+      try { const { data } = await supabase.from('cert_types').select('id, name, amount'); setCertTypes((data||[]).map(d=>{ const code = toCode(d.name); let rate = Number(d.amount||0); if (code === 'standard' && !(rate > 0)) rate = 35; return { code, name: d.name, default_rate: rate }; })); }
       catch {}
     }
     load();

@@ -36,6 +36,9 @@ async function handler(req, res){
     if (ct){ typeName = ct.name; defaultRate = Number(ct.amount || 0); typeCode = toCode(ct.name); }
   }
 
+  if (typeName && (!defaultRate || defaultRate <= 0)){
+    if (toCode(typeName) === 'standard') defaultRate = 35;
+  }
   if (!typeName || !defaultRate){
     return res.status(400).json({ error: 'Invalid certification type' });
   }

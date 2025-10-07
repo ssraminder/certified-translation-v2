@@ -165,6 +165,9 @@ export default function Page({ initialAdmin }){
                         <Field label="Certification Amount ($)">
                           <input type="number" step="0.01" defaultValue={it.certification_amount || 0} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { certification_amount: e.target.value })} />
                         </Field>
+                        <div className="col-span-2">
+                          <button className="text-red-600 text-xs" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}/line-items/${it.id}`, { method:'DELETE' }); const j = await r.json(); if (j?.success){ setLineItems(list=> list.filter(x=> x.id !== it.id)); if (j.totals) setTotals(j.totals); } }}>Remove</button>
+                        </div>
                       </div>
                     )}
                   </div>
