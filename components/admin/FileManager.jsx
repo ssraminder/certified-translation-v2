@@ -3,6 +3,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import AnalysisModal from './AnalysisModal';
 
+async function parseJsonSafe(resp){
+  const ct = resp.headers.get('content-type') || '';
+  if (ct.includes('application/json')){
+    try { return await resp.json(); } catch { return null; }
+  }
+  try { const text = await resp.text(); return { error: text }; } catch { return null; }
+}
+
 export default function FileManager({ quoteId, initialFiles, canEdit = true, onChange }){
   const [files, setFiles] = useState(initialFiles || []);
   const [selected, setSelected] = useState([]);
@@ -104,7 +112,8 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   async function updatePurpose(id, purpose){
     if (!canEdit) return;
     const resp = await fetch(`/api/admin/quotes/${quoteId}/files/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ file_purpose: purpose }) });
-    const json = await resp.json();
+    const json = await parseJsonSafe(resp);
+    if (!resp.ok) { throw new Error(json?.error || `Request failed (${resp.status})`); }
     if (json?.success){ setFiles(list => list.map(f => (f.id===id || f.file_id===id) ? json.file : f)); onChange && onChange({ files: (files||[]).length }); }
   }
 
@@ -112,7 +121,8 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     if (!canEdit) return;
     if (!confirm('Delete this file and related items?')) return;
     const resp = await fetch(`/api/admin/quotes/${quoteId}/files/${id}`, { method:'DELETE' });
-    const json = await resp.json();
+    const json = await parseJsonSafe(resp);
+    if (!resp.ok) { throw new Error(json?.error || `Request failed (${resp.status})`); }
     if (json?.success){ setFiles(list => list.filter(f => f.id!==id && f.file_id!==id)); setSelected(s=>s.filter(x=>x!==id)); onChange && onChange({ totals: json.totals }); }
   }
 
@@ -124,8 +134,11 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     setLoading(true);
     try {
       const resp = await fetch(`/api/admin/quotes/${quoteId}/files`, { method:'POST', body: form });
-      const json = await resp.json();
+      const json = await parseJsonSafe(resp);
+      if (!resp.ok) { throw new Error(json?.error || `Upload failed (${resp.status})`); }
       if (json?.success){ setFiles(list => [...list, ...(json.uploaded_files||[])]); onChange && onChange({ files: (files||[]).length + (json.uploaded_files?.length||0) }); }
+    } catch (e) {
+      setAnalysisError(e?.message || 'Upload error');
     } finally { setLoading(false); if (inputRef.current) inputRef.current.value = ''; }
   }
 
@@ -139,10 +152,10 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
       const payload = { file_ids: selected.map(id=>{ const f = files.find(x=>x.id===id || x.file_id===id); return f?.file_id || id; }), batch_mode: batchMode, replace_existing: true };
       console.log('FileManager.triggerAnalysis payload', payload);
       const resp = await fetch(`/api/admin/quotes/${quoteId}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const json = await resp.json();
+      const json = await parseJsonSafe(resp);
       console.log('FileManager.triggerAnalysis response', { ok: resp.ok, status: resp.status, json });
       if (!resp.ok || !json?.success){
-        setAnalysisError(json?.error || 'Failed to start analysis');
+        setAnalysisError(json?.error || `Failed to start analysis (${resp.status})`);
       } else {
         setCurrentRunId(json?.run_id || null);
         onChange && onChange({});
@@ -164,8 +177,8 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   async function handleUseResults(){
     try {
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'auto', run_id: currentRunId, mark_active: true }) });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
+      const json = await parseJsonSafe(resp);
+      if (!resp.ok || !json?.success) throw new Error(json?.error || `Failed to create line items (${resp.status})`);
       setResultsAccepted(true);
       onChange && onChange({ totals: json.totals });
     } catch (e) {
@@ -178,8 +191,8 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     try {
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'edit', feedback_text: text }) });
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'edited', run_id: currentRunId, mark_active: true }) });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
+      const json = await parseJsonSafe(resp);
+      if (!resp.ok || !json?.success) throw new Error(json?.error || `Failed to create line items (${resp.status})`);
       setShowEditFeedback(false); setFeedbackText(''); setResultsAccepted(true);
       onChange && onChange({ totals: json.totals });
     } catch (e) {
