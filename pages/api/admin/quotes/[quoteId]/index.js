@@ -27,7 +27,16 @@ async function handler(req, res){
       try { const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600); if (signed?.signedUrl) url = signed.signedUrl; } catch {}
     }
     if (!url && f.signed_url) url = f.signed_url;
-    return { id: f.id, filename: f.filename, file_url: url, doc_type: f.doc_type || null };
+    return {
+      id: f.id,
+      file_id: f.file_id,
+      filename: f.filename,
+      file_url: url,
+      doc_type: f.doc_type || null,
+      file_purpose: f.file_purpose || 'translate',
+      analyzed: !!f.analyzed,
+      analysis_requested_at: f.analysis_requested_at || null
+    };
   }));
 
   const results = Array.isArray(q.quote_results) && q.quote_results.length ? q.quote_results[0] : null;
