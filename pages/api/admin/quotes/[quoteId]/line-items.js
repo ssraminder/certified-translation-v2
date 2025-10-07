@@ -38,10 +38,10 @@ async function handler(req, res){
     .update({ last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
     .eq('quote_id', quoteId);
 
-  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
+  const { data: updated } = await supabase.from('quote_sub_orders').select('*').eq('id', line_item_id).maybeSingle();
+  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId, updated?.run_id || null);
   await logActivity({ adminUserId: req.admin?.id, actionType: 'quote_line_item_updated', targetType: 'quote', targetId: quoteId, details: { line_item_id, updates: patch } });
 
-  const { data: updated } = await supabase.from('quote_sub_orders').select('*').eq('id', line_item_id).maybeSingle();
   return res.status(200).json({ success: true, line_item: updated, totals });
 }
 
