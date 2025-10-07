@@ -49,7 +49,33 @@ async function handler(req, res) {
   }
 
   const topLevelRunId = (body && typeof body === 'object') ? (body.run_id || body.runId || null) : null;
-  rows = rows.map(normalizeRow).filter(Boolean).map(r => ({ ...r, run_id: r.run_id || topLevelRunId || null }));
+  let runId = topLevelRunId;
+
+  // If no run_id was provided, create or reuse a legacy run (version 0)
+  if (!runId) {
+    try {
+      const supabase = getSupabaseServerClient();
+      const { data: existing } = await supabase
+        .from('analysis_runs')
+        .select('id')
+        .eq('quote_id', rows[0]?.quote_id || '')
+        .eq('run_type', 'auto')
+        .eq('version', 0)
+        .limit(1);
+      if (Array.isArray(existing) && existing[0]?.id) {
+        runId = existing[0].id;
+      } else {
+        const { data: created } = await supabase
+          .from('analysis_runs')
+          .insert([{ quote_id: rows[0]?.quote_id || '', run_type: 'auto', version: 0, status: 'requested', is_active: false, discarded: false }])
+          .select('id')
+          .maybeSingle();
+        runId = created?.id || null;
+      }
+    } catch {}
+  }
+
+  rows = rows.map(normalizeRow).filter(Boolean).map(r => ({ ...r, run_id: r.run_id || runId || null }));
 
   if (rows.length === 0) {
     return res.status(400).json({ error: 'No rows provided' });
