@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { supabase } from '../../lib/supabaseClient';
-import AnalysisResultsPreview from './AnalysisResultsPreview';
-import FeedbackModal from './FeedbackModal';
+import AnalysisModal from './AnalysisModal';
 
 export default function FileManager({ quoteId, initialFiles, canEdit = true, onChange }){
   const [files, setFiles] = useState(initialFiles || []);
@@ -12,6 +11,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
   const [analysisResults, setAnalysisResults] = useState(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [resultsAccepted, setResultsAccepted] = useState(false);
   const [currentRunId, setCurrentRunId] = useState(null);
   const [showEditFeedback, setShowEditFeedback] = useState(false);
@@ -129,6 +129,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
       } else {
         setCurrentRunId(json?.run_id || null);
         onChange && onChange({});
+        setShowAnalysisModal(true);
       }
     } catch (e) {
       console.error('FileManager.triggerAnalysis error', e);
@@ -241,28 +242,13 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
             </div>
           )}
 
-          {analysisResults && !resultsAccepted && (
-            <AnalysisResultsPreview
-              results={analysisResults}
-              onUse={handleUseResults}
-              onEdit={handleEditOpen}
-              onDiscard={handleDiscardOpen}
-            />
-          )}
-
-          <FeedbackModal
-            open={showEditFeedback}
-            title="Edit Analysis Results"
-            confirmText="Confirm"
-            onConfirm={handleEditWithFeedback}
-            onCancel={() => { setShowEditFeedback(false); setFeedbackText(''); }}
-          />
-          <FeedbackModal
-            open={showDiscardFeedback}
-            title="Discard Analysis Results"
-            confirmText="Confirm"
-            onConfirm={handleDiscardWithFeedback}
-            onCancel={() => { setShowDiscardFeedback(false); setFeedbackText(''); }}
+          <AnalysisModal
+            open={showAnalysisModal}
+            quoteId={quoteId}
+            runId={currentRunId}
+            onClose={() => setShowAnalysisModal(false)}
+            onApplied={(json) => { setResultsAccepted(true); onChange && onChange({ totals: json.totals }); }}
+            onDiscarded={() => { setAnalysisResults(null); onChange && onChange({}); }}
           />
         </div>
       )}
