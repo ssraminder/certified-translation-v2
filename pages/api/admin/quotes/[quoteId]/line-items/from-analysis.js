@@ -13,8 +13,6 @@ async function handler(req, res){
   const providedRunId = req.method === 'GET' ? (req.query.run_id || req.query.runId || null) : (req.body?.run_id || req.body?.runId || null);
 
   if (req.method === 'GET'){
-    const preview = String(req.query.preview || '').toLowerCase() === '1' || String(req.query.preview || '').toLowerCase() === 'true';
-
     // Determine effective run id: provided -> active_run_id -> latest analysis_runs -> latest quote_sub_orders
     let effectiveRunId = providedRunId || null;
     if (!effectiveRunId){
@@ -45,17 +43,14 @@ async function handler(req, res){
       effectiveRunId = Array.isArray(latestQso) && latestQso[0]?.run_id ? latestQso[0].run_id : null;
     }
 
-    // When previewing, always build from OCR rows (scoped to effective run)
-    if (!preview){
-      // Prefer pre-computed analysis items (quote_sub_orders) for this run
-      let qso = supabase.from('quote_sub_orders').select('filename, doc_type, billable_pages, unit_rate, certification_amount, certification_type_name, total_pages, run_id').eq('quote_id', quoteId);
-      if (effectiveRunId) qso = qso.eq('run_id', effectiveRunId);
-      const { data: existing, error: existErr } = await qso;
-      if (existErr) return res.status(500).json({ error: existErr.message });
-      if (Array.isArray(existing) && existing.length){
-        const items = existing.map(r => ({ filename: r.filename, doc_type: r.doc_type || r.filename, billable_pages: num(r.billable_pages) || 0, unit_rate: num(r.unit_rate) || 65, certification_amount: num(r.certification_amount) || 0, certification_type_name: r.certification_type_name || null, total_pages: num(r.total_pages) || null }));
-        return res.status(200).json({ success: true, items });
-      }
+    // Prefer pre-computed analysis items (quote_sub_orders) for this run
+    let qso = supabase.from('quote_sub_orders').select('filename, doc_type, billable_pages, unit_rate, certification_amount, certification_type_name, total_pages, run_id').eq('quote_id', quoteId);
+    if (effectiveRunId) qso = qso.eq('run_id', effectiveRunId);
+    const { data: existing, error: existErr } = await qso;
+    if (existErr) return res.status(500).json({ error: existErr.message });
+    if (Array.isArray(existing) && existing.length){
+      const items = existing.map(r => ({ filename: r.filename, doc_type: r.doc_type || r.filename, billable_pages: num(r.billable_pages) || 0, unit_rate: num(r.unit_rate) || 65, certification_amount: num(r.certification_amount) || 0, certification_type_name: r.certification_type_name || null, total_pages: num(r.total_pages) || null }));
+      return res.status(200).json({ success: true, items });
     }
 
     // Build from raw ocr_analysis grouping (scoped by run)
