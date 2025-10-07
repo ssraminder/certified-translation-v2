@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { supabase } from '../../lib/supabaseClient';
+import AnalysisResultsPreview from './AnalysisResultsPreview';
+import FeedbackModal from './FeedbackModal';
 
 export default function FileManager({ quoteId, initialFiles, canEdit = true, onChange }){
   const [files, setFiles] = useState(initialFiles || []);
@@ -120,6 +122,14 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     if (!loading) triggerAnalysis();
   }
 
+  function handleUseResults(){
+    setResultsAccepted(true);
+  }
+  function handleEditOpen(){ setShowEditFeedback(true); }
+  function handleDiscardOpen(){ setShowDiscardFeedback(true); }
+  function handleEditWithFeedback(text){ setShowEditFeedback(false); setFeedbackText(''); setResultsAccepted(true); }
+  function handleDiscardWithFeedback(text){ setShowDiscardFeedback(false); setFeedbackText(''); setAnalysisResults(null); }
+
   return (
     <div className="rounded border bg-white p-4 mb-4">
       <h3 className="text-lg font-semibold mb-3">Files & Documents</h3>
@@ -182,6 +192,30 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
               <button onClick={retryAnalysis} className="mt-2 text-sm text-red-800 underline hover:text-red-900">Retry Analysis</button>
             </div>
           )}
+
+          {analysisResults && !resultsAccepted && (
+            <AnalysisResultsPreview
+              results={analysisResults}
+              onUse={handleUseResults}
+              onEdit={handleEditOpen}
+              onDiscard={handleDiscardOpen}
+            />
+          )}
+
+          <FeedbackModal
+            open={showEditFeedback}
+            title="Edit Analysis Results"
+            confirmText="Confirm"
+            onConfirm={handleEditWithFeedback}
+            onCancel={() => { setShowEditFeedback(false); setFeedbackText(''); }}
+          />
+          <FeedbackModal
+            open={showDiscardFeedback}
+            title="Discard Analysis Results"
+            confirmText="Confirm"
+            onConfirm={handleDiscardWithFeedback}
+            onCancel={() => { setShowDiscardFeedback(false); setFeedbackText(''); }}
+          />
         </div>
       )}
     </div>
