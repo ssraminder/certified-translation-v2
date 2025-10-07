@@ -62,7 +62,7 @@ async function handler(req, res){
 
   const totals = results ? {
     translation_subtotal: results?.results_json?.pricing?.translation ?? null,
-    certification_subtotal: results?.results_json?.pricing?.certification ?? null,
+    certification_subtotal: (results?.results_json?.pricing?.certifications ?? results?.results_json?.pricing?.certification) ?? null,
     adjustments_total: ((results?.results_json?.pricing?.additional_items || 0) + (results?.results_json?.pricing?.discounts_or_surcharges || 0)) ?? 0,
     subtotal: results.subtotal,
     tax: results.tax,
@@ -87,6 +87,7 @@ async function handler(req, res){
     ocr_analysis: q.n8n_analysis_result || null,
     adjustments: adjustments || [],
     documents,
+    certifications: certs || [],
     totals
   });
 }
