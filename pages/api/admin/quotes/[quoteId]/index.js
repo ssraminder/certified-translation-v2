@@ -13,10 +13,11 @@ async function handler(req, res){
     .maybeSingle();
   if (!q) return res.status(404).json({ error: 'Quote not found' });
 
-  const [ { data: items }, { data: adjustments }, { data: files } ] = await Promise.all([
+  const [ { data: items }, { data: adjustments }, { data: files }, { data: certs } ] = await Promise.all([
     supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id'),
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
-    supabase.from('quote_files').select('*').eq('quote_id', quoteId)
+    supabase.from('quote_files').select('*').eq('quote_id', quoteId),
+    supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order')
   ]);
 
   const BUCKET = 'orders';
