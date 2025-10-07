@@ -14,6 +14,7 @@ async function handler(req, res){
   if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
 
   const body = req.body || {};
+  console.log('API adjustments.body', body);
   const type = String(body.type || '').toLowerCase();
   const description = body.description || '';
   const is_taxable = body.is_taxable !== undefined ? !!body.is_taxable : true;
@@ -34,6 +35,7 @@ async function handler(req, res){
     return res.status(400).json({ error: 'Invalid type' });
   }
 
+  console.log('API adjustments.insert', insert);
   const { data, error } = await supabase.from('quote_adjustments').insert([insert]).select('*').maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
 
