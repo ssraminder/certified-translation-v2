@@ -4,7 +4,7 @@ import { logAdminActivity } from '../../../../../lib/activityLog';
 
 function toCode(name){ return String(name||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'POST'){
     res.setHeader('Allow','POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -61,3 +61,6 @@ export default async function handler(req, res){
   await logAdminActivity({ action: 'quote_certification_added', actor_id: req.admin?.id || null, target_id: quoteId, details: { cert_id: row?.id, cert_type_name: typeName } });
   return res.status(200).json({ success: true, certification: row, totals });
 }
+
+import { withPermission } from '../../../../../lib/apiAdmin';
+export default withPermission('quotes','edit')(handler);
