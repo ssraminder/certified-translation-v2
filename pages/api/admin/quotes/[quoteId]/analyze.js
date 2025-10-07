@@ -18,7 +18,7 @@ function getBaseUrl(req) {
   return `${proto}://${hostHeader}`;
 }
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'POST'){
     res.setHeader('Allow','POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -75,3 +75,6 @@ export default async function handler(req, res){
   await logAdminActivity({ action: 'quote_analysis_triggered', actor_id: req.admin?.id || null, target_id: quoteId, details: { files_count: (files||[]).length, batch_mode: mode } });
   return res.status(200).json({ success: true, analysis_triggered: true, files_count: (files||[]).length, n8n_webhook_id: null });
 }
+
+import { withPermission } from '../../../../lib/apiAdmin';
+export default withPermission('quotes','edit')(handler);
