@@ -27,6 +27,9 @@ export default function Page({ initialAdmin }){
   const [lineItems, setLineItems] = useState([]);
   const [adjustments, setAdjustments] = useState([]);
   const [totals, setTotals] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [certifications, setCertifications] = useState([]);
+  const [showManual, setShowManual] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
