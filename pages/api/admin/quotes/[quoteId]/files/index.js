@@ -1,5 +1,5 @@
-import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
-import { logAdminActivity } from '../../../../../lib/activityLog';
+import { getSupabaseServerClient } from '../../../../../../../lib/supabaseServer';
+import { logAdminActivity } from '../../../../../../../lib/activityLog';
 import formidable from 'formidable';
 import fs from 'fs/promises';
 import crypto from 'crypto';
@@ -99,5 +99,5 @@ async function handler(req, res){
   return res.status(200).json({ success: true, uploaded_files: uploaded });
 }
 
-import { withPermission } from '../../../../../lib/apiAdmin';
+import { withPermission } from '../../../../../../../lib/apiAdmin';
 export default withPermission('quotes','edit')(handler);
