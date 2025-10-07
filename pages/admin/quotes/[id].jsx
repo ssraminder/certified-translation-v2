@@ -37,7 +37,7 @@ export default function Page({ initialAdmin }){
     fetch(`/api/admin/quotes/${id}`)
       .then(r => r.json())
       .then(json => {
-        setQuote(json.quote); setLineItems(json.line_items||[]); setAdjustments(json.adjustments||[]); setTotals(json.totals||null);
+        setQuote(json.quote); setLineItems(json.line_items||[]); setAdjustments(json.adjustments||[]); setTotals(json.totals||null); setFiles(json.documents||[]); setCertifications(json.certifications||[]);
       })
       .finally(()=> setLoading(false));
   }, []);
