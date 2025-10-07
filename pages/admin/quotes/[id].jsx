@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
-import FileManager from '../../../components/admin/FileManager';
+// Analysis FileManager disabled in Phase 1
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
 import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
@@ -119,7 +119,7 @@ export default function Page({ initialAdmin }){
             </div>
           </div>
 
-          <FileManager quoteId={quote.id} initialFiles={files} canEdit={canEdit} onChange={(c)=>{ if (c?.totals) setTotals(c.totals); fetch(`/api/admin/quotes/${quote.id}`).then(r=>r.json()).then(j=>{ setFiles(j.documents||[]); setLineItems(j.line_items||[]); setCertifications(j.certifications||[]); setTotals(j.totals||null); }); }} />
+          <div className="rounded border bg-yellow-50 p-4">File uploads and automated analysis are disabled in Phase 1. Use Manual Line Items below.</div>
 
           <div className="rounded border bg-white">
             <div className="flex items-center justify-between border-b px-4 py-2 font-semibold">
@@ -244,7 +244,7 @@ export default function Page({ initialAdmin }){
           </div>
         </div>
       </div>
-      <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={files} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
+      <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={[]} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
       <AdditionalItemModal
         open={showAddItem}
         onClose={()=> setShowAddItem(false)}

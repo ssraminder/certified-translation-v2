@@ -16,7 +16,7 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
     try {
       const payload = {
         file_id: fileId || null,
-        filename: files.find(f=> (f.file_id||f.id)===fileId)?.filename || null,
+        filename: (files||[]).find(f=> (f.file_id||f.id)===fileId)?.filename || null,
         billable_pages: Number(billablePages),
         unit_rate: Number(unitRate),
         doc_type: docType || undefined,
@@ -30,20 +30,23 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
   }
 
   if (!open) return null;
+  const hasFiles = Array.isArray(files) && files.length > 0;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="w-full max-w-lg rounded bg-white p-4">
         <div className="mb-3 text-lg font-semibold">Add Manual Line Item</div>
         <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Select File</label>
-            <select value={fileId} onChange={e=> setFileId(e.target.value)} className="w-full rounded border px-2 py-2" required>
-              <option value="">-- Choose a file --</option>
-              {(files||[]).map(f => (
-                <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
-              ))}
-            </select>
-          </div>
+          {hasFiles && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Select File (optional)</label>
+              <select value={fileId} onChange={e=> setFileId(e.target.value)} className="w-full rounded border px-2 py-2">
+                <option value="">-- None --</option>
+                {(files||[]).map(f => (
+                  <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Billable Pages</label>
@@ -55,7 +58,7 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Document Type</label>
+            <label className="block text-sm font-medium mb-1">Document Name</label>
             <input type="text" value={docType} onChange={e=> setDocType(e.target.value)} className="w-full rounded border px-2 py-2" placeholder="e.g., Birth Certificate" />
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -13,7 +13,6 @@ async function handler(req, res){
 
   const { file_id, filename, billable_pages, unit_rate, doc_type, source_language, target_language } = req.body || {};
 
-  // Ensure quote is editable
   const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
   if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())){
     return res.status(400).json({ error: 'Quote is locked' });
@@ -21,7 +20,6 @@ async function handler(req, res){
 
   const pages = Number(billable_pages);
   const rate = Number(unit_rate);
-  if (!(file_id || filename)) return res.status(400).json({ error: 'file_id or filename required' });
   if (!pages || pages <= 0) return res.status(400).json({ error: 'billable_pages required' });
   if (!rate || rate <= 0) return res.status(400).json({ error: 'unit_rate required' });
 
@@ -29,7 +27,7 @@ async function handler(req, res){
     quote_id: quoteId,
     file_id: file_id || null,
     filename: filename || null,
-    doc_type: doc_type || filename || 'Document',
+    doc_type: (doc_type || filename || 'Document'),
     billable_pages: pages,
     unit_rate: rate,
     unit_rate_override: null,
