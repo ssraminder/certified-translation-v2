@@ -14,12 +14,12 @@ async function handler(req, res){
 
   if (req.method === 'GET'){
     // Prefer pre-computed analysis items (quote_sub_orders) for this run
-    let qso = supabase.from('quote_sub_orders').select('filename, doc_type, billable_pages, unit_rate, certification_amount, total_pages, run_id').eq('quote_id', quoteId);
+    let qso = supabase.from('quote_sub_orders').select('filename, doc_type, billable_pages, unit_rate, certification_amount, certification_type_name, total_pages, run_id').eq('quote_id', quoteId);
     if (providedRunId) qso = qso.eq('run_id', providedRunId);
     const { data: existing, error: existErr } = await qso;
     if (existErr) return res.status(500).json({ error: existErr.message });
     if (Array.isArray(existing) && existing.length){
-      const items = existing.map(r => ({ filename: r.filename, doc_type: r.doc_type || r.filename, billable_pages: num(r.billable_pages) || 0, unit_rate: num(r.unit_rate) || 65, certification_amount: num(r.certification_amount) || 0, total_pages: num(r.total_pages) || null }));
+      const items = existing.map(r => ({ filename: r.filename, doc_type: r.doc_type || r.filename, billable_pages: num(r.billable_pages) || 0, unit_rate: num(r.unit_rate) || 65, certification_amount: num(r.certification_amount) || 0, certification_type_name: r.certification_type_name || null, total_pages: num(r.total_pages) || null }));
       return res.status(200).json({ success: true, items });
     }
 
@@ -50,7 +50,7 @@ async function handler(req, res){
       if (rates.length){ unitRate = Math.round((rates.reduce((a,b)=>a+b,0)/rates.length) * 100) / 100; }
     }
 
-    const items = Array.from(map.values()).map(v => ({ filename: v.filename, doc_type: v.filename, billable_pages: v.pages.size || 1, unit_rate: unitRate, certification_amount: 0, total_pages: v.pages.size || 1 }));
+    const items = Array.from(map.values()).map(v => ({ filename: v.filename, doc_type: v.filename, billable_pages: v.pages.size || 1, unit_rate: unitRate, certification_amount: 0, certification_type_name: null, total_pages: v.pages.size || 1 }));
     return res.status(200).json({ success: true, items });
   }
 
