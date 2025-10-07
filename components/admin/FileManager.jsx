@@ -25,6 +25,23 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     let cancelled = false;
     let intervalId = null;
 
+    const computeSummary = async () => {
+      const { data: rows } = await supabase
+        .from('ocr_analysis')
+        .select('filename, page_number')
+        .eq('quote_id', quoteId);
+      const files = new Map();
+      let pages = 0;
+      for (const r of (rows||[])){
+        if (r.page_number != null) pages += 1;
+        const key = r.filename || 'Document';
+        files.set(key, true);
+      }
+      const unitRate = 65; // default estimate
+      const estimatedCost = pages * unitRate;
+      return { lineItems: files.size, totalPages: pages, estimatedCost };
+    };
+
     const check = async () => {
       try {
         const { data: submissionRows, error: submissionError } = await supabase
@@ -35,7 +52,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
         if (submissionError) throw submissionError;
         const submissionStatus = submissionRows?.[0]?.status || null;
         if (submissionStatus === 'analysis_complete'){
-          if (!cancelled){ setAnalysisResults({ ready: true }); setIsAnalyzing(false); }
+          if (!cancelled){ const summary = await computeSummary(); setAnalysisResults(summary); setIsAnalyzing(false); }
           return;
         }
         if (submissionStatus === 'analysis_failed'){
@@ -49,7 +66,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
           .limit(1);
         if (analysisError2) throw analysisError2;
         if ((analysisRows||[]).length > 0){
-          if (!cancelled){ setAnalysisResults({ ready: true }); setIsAnalyzing(false); }
+          if (!cancelled){ const summary = await computeSummary(); setAnalysisResults(summary); setIsAnalyzing(false); }
         }
       } catch (e) {
         if (!cancelled){ setAnalysisError(e?.message || 'Polling error'); setIsAnalyzing(false); }
@@ -122,13 +139,40 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     if (!loading) triggerAnalysis();
   }
 
-  function handleUseResults(){
-    setResultsAccepted(true);
+  async function handleUseResults(){
+    try {
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'auto' }) });
+      const json = await resp.json();
+      if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
+      setResultsAccepted(true);
+      onChange && onChange({ totals: json.totals });
+    } catch (e) {
+      setAnalysisError(e.message);
+    }
   }
   function handleEditOpen(){ setShowEditFeedback(true); }
   function handleDiscardOpen(){ setShowDiscardFeedback(true); }
-  function handleEditWithFeedback(text){ setShowEditFeedback(false); setFeedbackText(''); setResultsAccepted(true); }
-  function handleDiscardWithFeedback(text){ setShowDiscardFeedback(false); setFeedbackText(''); setAnalysisResults(null); }
+  async function handleEditWithFeedback(text){
+    try {
+      await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'edit', feedback_text: text }) });
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'edited' }) });
+      const json = await resp.json();
+      if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
+      setShowEditFeedback(false); setFeedbackText(''); setResultsAccepted(true);
+      onChange && onChange({ totals: json.totals });
+    } catch (e) {
+      setAnalysisError(e.message);
+    }
+  }
+  async function handleDiscardWithFeedback(text){
+    try {
+      await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'discard', feedback_text: text }) });
+      await fetch(`/api/admin/quotes/${quoteId}/analysis-results`, { method:'DELETE' });
+      setShowDiscardFeedback(false); setFeedbackText(''); setAnalysisResults(null);
+    } catch (e) {
+      setAnalysisError(e.message);
+    }
+  }
 
   return (
     <div className="rounded border bg-white p-4 mb-4">
