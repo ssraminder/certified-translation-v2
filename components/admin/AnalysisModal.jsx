@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
 function num(v){ const n = Number(v); return Number.isFinite(n) ? n : 0; }
+async function parseJsonSafe(resp){
+  const ct = resp.headers.get('content-type') || '';
+  if (ct.includes('application/json')){
+    try { return await resp.json(); } catch { return null; }
+  }
+  try { const text = await resp.text(); return { error: text }; } catch { return null; }
+}
 
 export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied, onDiscarded }){
   const [loading, setLoading] = useState(false);
@@ -30,8 +37,8 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
         if (runId) qs.set('run_id', String(runId));
         qs.set('preview','1');
         const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis?${qs.toString()}`);
-        const json = await resp.json();
-        if (!resp.ok) throw new Error(json?.error || 'Failed to load preview');
+        const json = await parseJsonSafe(resp);
+        if (!resp.ok) throw new Error(json?.error || `Failed to load preview (${resp.status})`);
         if (cancelled || mode === 'edit') return;
         const rows = Array.isArray(json?.items) ? json.items : [];
         setItems(rows);
@@ -80,8 +87,8 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
     try {
       setLoading(true); setError('');
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'auto', run_id: runId, mark_active: true }) });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
+      const json = await parseJsonSafe(resp);
+      if (!resp.ok || !json?.success) throw new Error(json?.error || `Failed to create line items (${resp.status})`);
       onApplied && onApplied(json);
       onClose && onClose();
     } catch(e){ setError(e.message); } finally { setLoading(false); }
@@ -94,8 +101,8 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'edit', feedback_text: editComment }) });
       const payload = { source:'edited', run_id: runId, mark_active: true, items: items.map(it => ({ filename: it.filename, doc_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_type_name: it.certification_type_name || null, certification_amount: num(it.certification_amount||0) })) };
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
+      const json = await parseJsonSafe(resp);
+      if (!resp.ok || !json?.success) throw new Error(json?.error || `Failed to create line items (${resp.status})`);
       onApplied && onApplied(json);
       onClose && onClose();
     } catch(e){ setError(e.message); } finally { setLoading(false); }
