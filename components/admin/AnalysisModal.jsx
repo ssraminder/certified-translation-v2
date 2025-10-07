@@ -7,7 +7,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
-  const [summary, setSummary] = useState({ lineItems: 0, totalPages: 0, estimatedCost: 0 });
+  const [summary, setSummary] = useState({ lineItems: 0, totalPages: 0, billablePages: 0, estimatedCost: 0 });
   const [editComment, setEditComment] = useState('');
   const [discardComment, setDiscardComment] = useState('');
   const [mode, setMode] = useState('preview'); // preview | edit
