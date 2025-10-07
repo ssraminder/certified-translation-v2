@@ -26,7 +26,8 @@
     "pdf-lib": "^1.17.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "stripe": "^19.1.0"
+    "stripe": "^19.1.0",
+    "swr": "^2.2.5"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.8",
