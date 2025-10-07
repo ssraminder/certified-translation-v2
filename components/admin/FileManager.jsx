@@ -27,6 +27,21 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     let intervalId = null;
 
     const computeSummary = async () => {
+      // Prefer line items for the same run (preserves fractional pages like 1.7)
+      let qso = supabase
+        .from('quote_sub_orders')
+        .select('filename, billable_pages, total_pages, unit_rate, certification_amount, run_id')
+        .eq('quote_id', quoteId);
+      if (currentRunId) qso = qso.eq('run_id', currentRunId);
+      const { data: items } = await qso;
+      if (Array.isArray(items) && items.length){
+        const lineItems = items.length;
+        const totalPages = items.reduce((a,b)=> a + Number(b.total_pages ?? b.billable_pages ?? 0), 0);
+        const estimatedCost = items.reduce((a,b)=> a + (Number(b.billable_pages||0) * Number(b.unit_rate||0)) + Number(b.certification_amount||0), 0);
+        return { lineItems, totalPages, estimatedCost };
+      }
+
+      // Fallback to raw OCR rows for this run only
       let query = supabase
         .from('ocr_analysis')
         .select('filename, page_number, run_id')
@@ -40,7 +55,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
         const key = r.filename || 'Document';
         files.set(key, true);
       }
-      const unitRate = 65; // default estimate
+      const unitRate = 65;
       const estimatedCost = pages * unitRate;
       return { lineItems: files.size, totalPages: pages, estimatedCost };
     };
@@ -62,10 +77,12 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
           if (!cancelled){ setAnalysisError('Analysis failed'); setIsAnalyzing(false); }
           return;
         }
-        const { data: analysisRows, error: analysisError2 } = await supabase
+        let analysisCheck = supabase
           .from('ocr_analysis')
-          .select('quote_id')
-          .eq('quote_id', quoteId)
+          .select('quote_id, run_id')
+          .eq('quote_id', quoteId);
+        if (currentRunId) analysisCheck = analysisCheck.eq('run_id', currentRunId);
+        const { data: analysisRows, error: analysisError2 } = await analysisCheck
           .limit(1);
         if (analysisError2) throw analysisError2;
         if ((analysisRows||[]).length > 0){
