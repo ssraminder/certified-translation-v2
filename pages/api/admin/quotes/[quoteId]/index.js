@@ -1,5 +1,5 @@
-import { withPermission } from '../../../../../../lib/apiAdmin';
-import { getSupabaseServerClient } from '../../../../../../lib/supabaseServer';
+import { withPermission } from '../../../../../lib/apiAdmin';
+import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 
 async function handler(req, res){
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
