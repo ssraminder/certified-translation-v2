@@ -17,6 +17,8 @@ function getBaseUrl(req) {
   return `${proto}://${hostHeader}`;
 }
 
+import { getSupabaseServerClient } from '../../lib/supabaseServer';
+
 async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -35,6 +37,55 @@ async function handler(req, res) {
   try {
     const originalPayload = typeof req.body === 'object' && req.body !== null ? req.body : {};
     const payload = { ...originalPayload };
+
+    // If a quote_id is present, create a fresh analysis run and generate fresh signed URLs for its files
+    const quoteId = payload.quote_id || payload.quoteId || null;
+    if (quoteId) {
+      const supabase = getSupabaseServerClient();
+
+      // Create a new analysis run version for this quote
+      const { data: lastRun } = await supabase
+        .from('analysis_runs')
+        .select('version')
+        .eq('quote_id', quoteId)
+        .order('version', { ascending: false })
+        .limit(1);
+      const nextVersion = (Array.isArray(lastRun) && lastRun[0]?.version ? Number(lastRun[0].version) : 0) + 1;
+      const runInsert = {
+        quote_id: quoteId,
+        run_type: 'auto',
+        version: nextVersion,
+        status: 'requested',
+        is_active: false,
+        discarded: false
+      };
+      const { data: runRow } = await supabase.from('analysis_runs').insert([runInsert]).select('*').maybeSingle();
+      const runId = runRow?.id || null;
+
+      // Generate fresh signed URLs for each file associated with this quote
+      const BUCKET = 'orders';
+      const { data: files } = await supabase
+        .from('quote_files')
+        .select('file_id, filename, file_url, signed_url, storage_path')
+        .eq('quote_id', quoteId);
+      const signedFiles = await Promise.all((files || []).map(async (f) => {
+        let url = null; let expiresAt = null;
+        try {
+          if (f.storage_path) {
+            const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+            if (signed?.signedUrl) { url = signed.signedUrl; expiresAt = new Date(Date.now()+3600*1000).toISOString(); }
+          }
+        } catch {}
+        if (!url) url = f.file_url || f.signed_url || null;
+        return { file_id: f.file_id, filename: f.filename, file_url: url, expires_at: expiresAt };
+      }));
+
+      if (runId) payload.run_id = runId;
+      if ((signedFiles||[]).length) payload.files = signedFiles;
+      payload.batch_mode = payload.batch_mode || 'single';
+      payload.replace_existing = Boolean(payload.replace_existing);
+    }
+
     if (callbackUrl) payload.callback_url = callbackUrl;
     if (callbackSecret) payload.callback_secret = callbackSecret;
 
