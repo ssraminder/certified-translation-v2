@@ -45,11 +45,6 @@ export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose, 
         } />
 
         {(canViewHITLQuotes(role) || canViewQuotes(role)) && <SectionLabel collapsed={collapsed}>Quotes</SectionLabel>}
-        {canViewHITLQuotes(role) && (
-          <NavItem href="/admin/hitl" label="HITL Queue" collapsed={collapsed} active={isActive('/admin/hitl')} badge={pendingCounts.hitl} icon={
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M12 22a1 1 0 01-1-1v-2.126A8.003 8.003 0 014 11V6a4 4 0 118 0v5a8.003 8.003 0 017 7.874V21a1 1 0 01-1 1H12zM8 4a2 2 0 00-2 2v5a6 6 0 0012 0V6a2 2 0 10-4 0v5a2 2 0 11-4 0V6a2 2 0 00-2-2z"/></svg>
-          } />
-        )}
         {canViewQuotes(role) && (
           <NavItem href="/admin/quotes" label="All Quotes" collapsed={collapsed} active={isActive('/admin/quotes')} badge={null} icon={
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M6 4h12a2 2 0 012 2v14l-4-3H6a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>
