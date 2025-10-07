@@ -78,7 +78,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       if (!editComment.trim()) { setError('Please add comments for LLM learning.'); return; }
       setLoading(true); setError('');
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'edit', feedback_text: editComment }) });
-      const payload = { source:'edited', run_id: runId, mark_active: true, items: items.map(it => ({ filename: it.filename, doc_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_amount: num(it.certification_amount||0) })) };
+      const payload = { source:'edited', run_id: runId, mark_active: true, items: items.map(it => ({ filename: it.filename, doc_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_type_name: it.certification_type_name || null, certification_amount: num(it.certification_amount||0) })) };
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
       if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
