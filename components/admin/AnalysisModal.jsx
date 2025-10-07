@@ -7,14 +7,17 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
-  const [summary, setSummary] = useState({ lineItems: 0, totalPages: 0, estimatedCost: 0 });
+  const [summary, setSummary] = useState({ lineItems: 0, totalPages: 0, billablePages: 0, estimatedCost: 0 });
   const [editComment, setEditComment] = useState('');
   const [discardComment, setDiscardComment] = useState('');
   const [mode, setMode] = useState('preview'); // preview | edit
+  const [certTypes, setCertTypes] = useState([]);
   const pollRef = useRef(null);
   const channelRef = useRef(null);
 
   useEffect(() => { if (!open){ setItems([]); setSummary({ lineItems:0, totalPages:0, estimatedCost:0 }); setError(''); setEditComment(''); setDiscardComment(''); setMode('preview'); } }, [open]);
+
+  useEffect(() => { if (!open) return; (async ()=>{ try { if (supabase){ const { data } = await supabase.from('cert_types').select('name, amount'); const opts = (data||[]).map(d => ({ name: d.name, amount: Number(d.amount||0) })).filter(o=>o.name); setCertTypes(opts); } } catch {} })(); }, [open]);
 
   useEffect(() => {
     if (!open || !quoteId) return;
@@ -31,9 +34,10 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
         if (cancelled) return;
         const rows = Array.isArray(json?.items) ? json.items : [];
         setItems(rows);
-        const totalPages = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
-        const unitRate = rows.length ? num(rows[0]?.unit_rate) : 65;
-        setSummary({ lineItems: rows.length, totalPages, estimatedCost: totalPages * unitRate });
+        const billable = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
+        const pages = rows.reduce((a,b)=> a + (num(b.total_pages||0) || num(b.billable_pages)), 0);
+        const estimate = rows.reduce((a,b)=> a + (num(b.billable_pages) * num(b.unit_rate)) + num(b.certification_amount||0), 0);
+        setSummary({ lineItems: rows.length, totalPages: pages, billablePages: billable, estimatedCost: estimate });
       } catch(e){ if (!cancelled) setError(e.message); }
     }
 
@@ -42,10 +46,9 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
     // Try realtime; fallback to polling
     try {
       if (supabase) {
-        const channel = supabase.channel('ocr_analysis_preview')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'ocr_analysis', filter: `quote_id=eq.${quoteId}` }, () => {
-            fetchPreview();
-          })
+        const channel = supabase.channel('analysis_preview')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'ocr_analysis', filter: `quote_id=eq.${quoteId}` }, fetchPreview)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_sub_orders', filter: `quote_id=eq.${quoteId}` }, fetchPreview)
           .subscribe();
         channelRef.current = channel;
       }
@@ -57,6 +60,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   }, [open, quoteId, runId]);
 
   function updateItem(idx, patch){ setItems(list => list.map((it,i) => i===idx ? { ...it, ...patch } : it)); }
+  function setCert(idx, name){ const t = certTypes.find(c => c.name === name); updateItem(idx, { certification_type_name: name || '', certification_amount: t ? Number(t.amount||0) : 0 }); }
 
   async function useAnalysis(){
     try {
@@ -74,7 +78,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       if (!editComment.trim()) { setError('Please add comments for LLM learning.'); return; }
       setLoading(true); setError('');
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'edit', feedback_text: editComment }) });
-      const payload = { source:'edited', run_id: runId, mark_active: true, items: items.map(it => ({ filename: it.filename, doc_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_amount: num(it.certification_amount||0) })) };
+      const payload = { source:'edited', run_id: runId, mark_active: true, items: items.map(it => ({ filename: it.filename, doc_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_type_name: it.certification_type_name || null, certification_amount: num(it.certification_amount||0) })) };
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
       if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
@@ -108,9 +112,10 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
         <div className="p-4">
           {error && <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800">{error}</div>}
 
-          <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
+          <div className="mb-3 grid grid-cols-4 gap-3 text-sm">
             <div className="rounded border p-3"><div className="text-gray-600">Documents</div><div className="text-lg font-semibold">{summary.lineItems}</div></div>
             <div className="rounded border p-3"><div className="text-gray-600">Total Pages</div><div className="text-lg font-semibold">{summary.totalPages}</div></div>
+            <div className="rounded border p-3"><div className="text-gray-600">Billable Pages</div><div className="text-lg font-semibold">{summary.billablePages}</div></div>
             <div className="rounded border p-3"><div className="text-gray-600">Estimate</div><div className="text-lg font-semibold">${summary.estimatedCost.toFixed(2)}</div></div>
           </div>
 
@@ -132,19 +137,31 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
                         <th className="px-2 py-1">Doc Type</th>
                         <th className="px-2 py-1">Billable Pages</th>
                         <th className="px-2 py-1">Unit Rate ($)</th>
-                        <th className="px-2 py-1">Certification ($)</th>
+                        <th className="px-2 py-1">Certification</th>
+                        <th className="px-2 py-1">Cert Amount ($)</th>
+                        <th className="px-2 py-1">Line Total ($)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((it, idx) => (
-                        <tr key={it.filename+idx} className="border-t">
-                          <td className="px-2 py-1">{it.filename}</td>
-                          <td className="px-2 py-1"><input type="text" value={it.doc_type||''} onChange={e=> updateItem(idx, { doc_type: e.target.value })} className="w-full rounded border px-2 py-1" /></td>
-                          <td className="px-2 py-1"><input type="number" step="0.1" min="0.1" value={it.billable_pages||0} onChange={e=> updateItem(idx, { billable_pages: e.target.value })} className="w-24 rounded border px-2 py-1" /></td>
-                          <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.unit_rate||65} onChange={e=> updateItem(idx, { unit_rate: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
-                          <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.certification_amount||0} onChange={e=> updateItem(idx, { certification_amount: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
-                        </tr>
-                      ))}
+                      {items.map((it, idx) => {
+                        const lineTotal = (num(it.billable_pages) * num(it.unit_rate)) + num(it.certification_amount||0);
+                        return (
+                          <tr key={it.filename+idx} className="border-t">
+                            <td className="px-2 py-1">{it.filename}</td>
+                            <td className="px-2 py-1"><input type="text" value={it.doc_type||''} onChange={e=> updateItem(idx, { doc_type: e.target.value })} className="w-full rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1"><input type="number" step="0.1" min="0.1" value={it.billable_pages||0} onChange={e=> updateItem(idx, { billable_pages: e.target.value })} className="w-24 rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.unit_rate||65} onChange={e=> updateItem(idx, { unit_rate: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1">
+                              <select value={it.certification_type_name||''} onChange={e=> setCert(idx, e.target.value)} className="w-full rounded border px-2 py-1">
+                                <option value="">None</option>
+                                {certTypes.map(ct => (<option key={ct.name} value={ct.name}>{ct.name}</option>))}
+                              </select>
+                            </td>
+                            <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.certification_amount||0} onChange={e=> updateItem(idx, { certification_amount: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1">{lineTotal.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -170,7 +187,11 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
           )}
 
           {mode === 'preview' && (
-            <div className="rounded border p-3 text-sm text-gray-700">Waiting for analysis results… Items will appear here automatically.</div>
+            items.length === 0 ? (
+              <div className="rounded border p-3 text-sm text-gray-700">Waiting for analysis results… Items will appear here automatically.</div>
+            ) : (
+              <div className="rounded border p-3 text-sm text-gray-700">{items.length} item(s) ready. Click Edit Analysis to review and adjust before using.</div>
+            )
           )}
         </div>
       </div>

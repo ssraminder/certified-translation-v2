@@ -128,11 +128,11 @@ export default function Page({ initialAdmin }){
                   <div key={it.id} className="rounded border p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-start gap-2">
-                        {it.source === 'auto' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">AI Analysis</span>
-                        )}
-                        {it.source === 'edited' && (
+                        {it.source === 'n8n' && it.override_reason === 'edited' && (
                           <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">edited</span>
+                        )}
+                        {it.source === 'n8n' && it.override_reason !== 'edited' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">AI Analysis</span>
                         )}
                         {it.source === 'manual' && (
                           <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">Manual</span>
