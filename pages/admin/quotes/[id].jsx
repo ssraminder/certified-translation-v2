@@ -57,8 +57,10 @@ export default function Page({ initialAdmin }){
   }
 
   async function addAdjustment(payload){
+    console.log('Admin Quote addAdjustment payload', payload);
     const resp = await fetch(`/api/admin/quotes/${quote.id}/adjustments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const json = await resp.json();
+    console.log('Admin Quote addAdjustment response', { ok: resp.ok, status: resp.status, json });
     if (json?.success){ setAdjustments(a => [...a, json.adjustment]); setTotals(json.totals || totals); }
   }
 
