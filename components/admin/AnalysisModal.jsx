@@ -137,19 +137,31 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
                         <th className="px-2 py-1">Doc Type</th>
                         <th className="px-2 py-1">Billable Pages</th>
                         <th className="px-2 py-1">Unit Rate ($)</th>
-                        <th className="px-2 py-1">Certification ($)</th>
+                        <th className="px-2 py-1">Certification</th>
+                        <th className="px-2 py-1">Cert Amount ($)</th>
+                        <th className="px-2 py-1">Line Total ($)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((it, idx) => (
-                        <tr key={it.filename+idx} className="border-t">
-                          <td className="px-2 py-1">{it.filename}</td>
-                          <td className="px-2 py-1"><input type="text" value={it.doc_type||''} onChange={e=> updateItem(idx, { doc_type: e.target.value })} className="w-full rounded border px-2 py-1" /></td>
-                          <td className="px-2 py-1"><input type="number" step="0.1" min="0.1" value={it.billable_pages||0} onChange={e=> updateItem(idx, { billable_pages: e.target.value })} className="w-24 rounded border px-2 py-1" /></td>
-                          <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.unit_rate||65} onChange={e=> updateItem(idx, { unit_rate: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
-                          <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.certification_amount||0} onChange={e=> updateItem(idx, { certification_amount: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
-                        </tr>
-                      ))}
+                      {items.map((it, idx) => {
+                        const lineTotal = (num(it.billable_pages) * num(it.unit_rate)) + num(it.certification_amount||0);
+                        return (
+                          <tr key={it.filename+idx} className="border-t">
+                            <td className="px-2 py-1">{it.filename}</td>
+                            <td className="px-2 py-1"><input type="text" value={it.doc_type||''} onChange={e=> updateItem(idx, { doc_type: e.target.value })} className="w-full rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1"><input type="number" step="0.1" min="0.1" value={it.billable_pages||0} onChange={e=> updateItem(idx, { billable_pages: e.target.value })} className="w-24 rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.unit_rate||65} onChange={e=> updateItem(idx, { unit_rate: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1">
+                              <select value={it.certification_type_name||''} onChange={e=> setCert(idx, e.target.value)} className="w-full rounded border px-2 py-1">
+                                <option value="">None</option>
+                                {certTypes.map(ct => (<option key={ct.name} value={ct.name}>{ct.name}</option>))}
+                              </select>
+                            </td>
+                            <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.certification_amount||0} onChange={e=> updateItem(idx, { certification_amount: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
+                            <td className="px-2 py-1">{lineTotal.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
