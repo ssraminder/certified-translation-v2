@@ -1,6 +1,6 @@
-import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
-import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../lib/quoteTotals';
-import { logAdminActivity } from '../../../../../lib/activityLog';
+import { getSupabaseServerClient } from '../../../../../../lib/supabaseServer';
+import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../../lib/quoteTotals';
+import { logAdminActivity } from '../../../../../../lib/activityLog';
 
 function toCode(name){ return String(name||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
 
@@ -62,5 +62,5 @@ async function handler(req, res){
   return res.status(200).json({ success: true, certification: row, totals });
 }
 
-import { withPermission } from '../../../../../lib/apiAdmin';
+import { withPermission } from '../../../../../../lib/apiAdmin';
 export default withPermission('quotes','edit')(handler);
