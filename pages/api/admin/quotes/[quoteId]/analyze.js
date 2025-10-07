@@ -75,6 +75,11 @@ async function handler(req, res){
   const payload = {
     quote_id: quoteId,
     run_id: runId,
+    run_type: runRow?.run_type || runInsert.run_type || 'auto',
+    version: runRow?.version ?? nextVersion,
+    status: runRow?.status || 'requested',
+    is_active: Boolean(runRow?.is_active ?? false),
+    discarded: Boolean(runRow?.discarded ?? false),
     files: signedFiles,
     batch_mode: mode,
     replace_existing: !!replace_existing
