@@ -2,7 +2,7 @@ import { getSupabaseServerClient } from '../../../../../../lib/supabaseServer';
 import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../../lib/quoteTotals';
 import { logAdminActivity } from '../../../../../../lib/activityLog';
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'DELETE'){
     res.setHeader('Allow','DELETE');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -24,3 +24,6 @@ export default async function handler(req, res){
   await logAdminActivity({ action: 'quote_certification_deleted', actor_id: req.admin?.id || null, target_id: quoteId, details: { cert_id: certId } });
   return res.status(200).json({ success: true, totals });
 }
+
+import { withPermission } from '../../../../../../lib/apiAdmin';
+export default withPermission('quotes','edit')(handler);
