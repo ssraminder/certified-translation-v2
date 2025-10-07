@@ -105,8 +105,13 @@ export default function Page({ initialAdmin }){
             </div>
           </div>
 
+          <FileManager quoteId={quote.id} initialFiles={files} canEdit={canEdit} onChange={(c)=>{ if (c?.totals) setTotals(c.totals); fetch(`/api/admin/quotes/${quote.id}`).then(r=>r.json()).then(j=>{ setFiles(j.documents||[]); setLineItems(j.line_items||[]); setCertifications(j.certifications||[]); setTotals(j.totals||null); }); }} />
+
           <div className="rounded border bg-white">
-            <div className="border-b px-4 py-2 font-semibold">Documents & Line Items</div>
+            <div className="flex items-center justify-between border-b px-4 py-2 font-semibold">
+              <div>Line Items</div>
+              {canEdit && <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowManual(true)}>+ Add Manual Line Item</button>}
+            </div>
             <div className="p-4 space-y-3">
               {lineItems.map(it => {
                 const effectiveRate = ((it.unit_rate_override ?? it.unit_rate) ?? 0);
