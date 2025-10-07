@@ -5,6 +5,13 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   const [selected, setSelected] = useState([]);
   const [batchMode, setBatchMode] = useState('single');
   const [loading, setLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [resultsAccepted, setResultsAccepted] = useState(false);
+  const [showEditFeedback, setShowEditFeedback] = useState(false);
+  const [showDiscardFeedback, setShowDiscardFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
   const inputRef = useRef(null);
 
   useEffect(()=>{ setFiles(initialFiles || []); }, [initialFiles]);
@@ -42,6 +49,8 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   async function triggerAnalysis(){
     if (!canEdit) return;
     if (!selected.length) return;
+    setAnalysisError('');
+    setIsAnalyzing(true);
     setLoading(true);
     try {
       const payload = { file_ids: selected.map(id=>{ const f = files.find(x=>x.id===id || x.file_id===id); return f?.file_id || id; }), batch_mode: batchMode, replace_existing: true };
@@ -49,10 +58,22 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
       const resp = await fetch(`/api/admin/quotes/${quoteId}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
       console.log('FileManager.triggerAnalysis response', { ok: resp.ok, status: resp.status, json });
-      if (json?.success){ onChange && onChange({}); }
+      if (!resp.ok || !json?.success){
+        setAnalysisError(json?.error || 'Failed to start analysis');
+      } else {
+        onChange && onChange({});
+      }
     } catch (e) {
       console.error('FileManager.triggerAnalysis error', e);
-    } finally { setLoading(false); }
+      setAnalysisError(e?.message || 'Unexpected error');
+    } finally {
+      setLoading(false);
+      setIsAnalyzing(false);
+    }
+  }
+
+  function retryAnalysis(){
+    if (!loading) triggerAnalysis();
   }
 
   return (
@@ -97,6 +118,26 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
             <label className="inline-flex items-center gap-2"><input type="radio" name="batch_mode" value="batch" checked={batchMode==='batch'} onChange={()=> setBatchMode('batch')} /> Batch</label>
           </div>
           <button disabled={loading} onClick={triggerAnalysis} className="w-full rounded bg-cyan-600 px-3 py-2 text-white disabled:opacity-50">{loading ? 'Processing…' : `▶ Run Analysis (${selected.length} files)`}</button>
+
+          {isAnalyzing && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+              <div className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                <span>Analyzing documents, please wait...</span>
+              </div>
+            </div>
+          )}
+
+          {analysisError && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+              <p className="text-red-800 font-medium">❌ Analysis Failed</p>
+              <p className="text-red-700 text-sm mt-1">{analysisError}</p>
+              <button onClick={retryAnalysis} className="mt-2 text-sm text-red-800 underline hover:text-red-900">Retry Analysis</button>
+            </div>
+          )}
         </div>
       )}
     </div>
