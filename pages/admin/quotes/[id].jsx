@@ -212,6 +212,7 @@ export default function Page({ initialAdmin }){
           </div>
         </div>
       </div>
+      <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={files} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
     </AdminLayout>
   );
 }
