@@ -1,13 +1,66 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { supabase } from '../../lib/supabaseClient';
+import AnalysisResultsPreview from './AnalysisResultsPreview';
+import FeedbackModal from './FeedbackModal';
+
 export default function FileManager({ quoteId, initialFiles, canEdit = true, onChange }){
   const [files, setFiles] = useState(initialFiles || []);
   const [selected, setSelected] = useState([]);
   const [batchMode, setBatchMode] = useState('single');
   const [loading, setLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [resultsAccepted, setResultsAccepted] = useState(false);
+  const [showEditFeedback, setShowEditFeedback] = useState(false);
+  const [showDiscardFeedback, setShowDiscardFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
   const inputRef = useRef(null);
 
   useEffect(()=>{ setFiles(initialFiles || []); }, [initialFiles]);
+
+  useEffect(()=>{
+    if (!isAnalyzing || !quoteId) return;
+    let cancelled = false;
+    let intervalId = null;
+
+    const check = async () => {
+      try {
+        const { data: submissionRows, error: submissionError } = await supabase
+          .from('quote_submissions')
+          .select('status')
+          .eq('quote_id', quoteId)
+          .limit(1);
+        if (submissionError) throw submissionError;
+        const submissionStatus = submissionRows?.[0]?.status || null;
+        if (submissionStatus === 'analysis_complete'){
+          if (!cancelled){ setAnalysisResults({ ready: true }); setIsAnalyzing(false); }
+          return;
+        }
+        if (submissionStatus === 'analysis_failed'){
+          if (!cancelled){ setAnalysisError('Analysis failed'); setIsAnalyzing(false); }
+          return;
+        }
+        const { data: analysisRows, error: analysisError2 } = await supabase
+          .from('ocr_analysis')
+          .select('quote_id')
+          .eq('quote_id', quoteId)
+          .limit(1);
+        if (analysisError2) throw analysisError2;
+        if ((analysisRows||[]).length > 0){
+          if (!cancelled){ setAnalysisResults({ ready: true }); setIsAnalyzing(false); }
+        }
+      } catch (e) {
+        if (!cancelled){ setAnalysisError(e?.message || 'Polling error'); setIsAnalyzing(false); }
+      }
+    };
+
+    intervalId = setInterval(check, 5000);
+    check();
+
+    return () => { cancelled = true; if (intervalId) clearInterval(intervalId); };
+  }, [isAnalyzing, quoteId]);
 
   function toggle(id){ setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]); }
 
@@ -42,13 +95,40 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   async function triggerAnalysis(){
     if (!canEdit) return;
     if (!selected.length) return;
+    setAnalysisError('');
+    setIsAnalyzing(true);
     setLoading(true);
     try {
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ file_ids: selected.map(id=>{ const f = files.find(x=>x.id===id || x.file_id===id); return f?.file_id || id; }), batch_mode: batchMode, replace_existing: true }) });
+      const payload = { file_ids: selected.map(id=>{ const f = files.find(x=>x.id===id || x.file_id===id); return f?.file_id || id; }), batch_mode: batchMode, replace_existing: true };
+      console.log('FileManager.triggerAnalysis payload', payload);
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
-      if (json?.success){ onChange && onChange({}); }
-    } finally { setLoading(false); }
+      console.log('FileManager.triggerAnalysis response', { ok: resp.ok, status: resp.status, json });
+      if (!resp.ok || !json?.success){
+        setAnalysisError(json?.error || 'Failed to start analysis');
+      } else {
+        onChange && onChange({});
+      }
+    } catch (e) {
+      console.error('FileManager.triggerAnalysis error', e);
+      setAnalysisError(e?.message || 'Unexpected error');
+    } finally {
+      setLoading(false);
+      // Keep spinner controlled by polling; do not force-finish here
+    }
   }
+
+  function retryAnalysis(){
+    if (!loading) triggerAnalysis();
+  }
+
+  function handleUseResults(){
+    setResultsAccepted(true);
+  }
+  function handleEditOpen(){ setShowEditFeedback(true); }
+  function handleDiscardOpen(){ setShowDiscardFeedback(true); }
+  function handleEditWithFeedback(text){ setShowEditFeedback(false); setFeedbackText(''); setResultsAccepted(true); }
+  function handleDiscardWithFeedback(text){ setShowDiscardFeedback(false); setFeedbackText(''); setAnalysisResults(null); }
 
   return (
     <div className="rounded border bg-white p-4 mb-4">
@@ -92,6 +172,50 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
             <label className="inline-flex items-center gap-2"><input type="radio" name="batch_mode" value="batch" checked={batchMode==='batch'} onChange={()=> setBatchMode('batch')} /> Batch</label>
           </div>
           <button disabled={loading} onClick={triggerAnalysis} className="w-full rounded bg-cyan-600 px-3 py-2 text-white disabled:opacity-50">{loading ? 'Processing…' : `▶ Run Analysis (${selected.length} files)`}</button>
+
+          {isAnalyzing && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+              <div className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                <span>Analyzing documents, please wait...</span>
+              </div>
+            </div>
+          )}
+
+          {analysisError && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+              <p className="text-red-800 font-medium">❌ Analysis Failed</p>
+              <p className="text-red-700 text-sm mt-1">{analysisError}</p>
+              <button onClick={retryAnalysis} className="mt-2 text-sm text-red-800 underline hover:text-red-900">Retry Analysis</button>
+            </div>
+          )}
+
+          {analysisResults && !resultsAccepted && (
+            <AnalysisResultsPreview
+              results={analysisResults}
+              onUse={handleUseResults}
+              onEdit={handleEditOpen}
+              onDiscard={handleDiscardOpen}
+            />
+          )}
+
+          <FeedbackModal
+            open={showEditFeedback}
+            title="Edit Analysis Results"
+            confirmText="Confirm"
+            onConfirm={handleEditWithFeedback}
+            onCancel={() => { setShowEditFeedback(false); setFeedbackText(''); }}
+          />
+          <FeedbackModal
+            open={showDiscardFeedback}
+            title="Discard Analysis Results"
+            confirmText="Confirm"
+            onConfirm={handleDiscardWithFeedback}
+            onCancel={() => { setShowDiscardFeedback(false); setFeedbackText(''); }}
+          />
         </div>
       )}
     </div>

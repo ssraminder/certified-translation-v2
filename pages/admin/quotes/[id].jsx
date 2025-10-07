@@ -4,6 +4,9 @@ import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import FileManager from '../../../components/admin/FileManager';
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import CertificationsManager from '../../../components/admin/CertificationsManager';
+import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
+import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
+import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -33,6 +36,9 @@ export default function Page({ initialAdmin }){
   const [files, setFiles] = useState([]);
   const [certifications, setCertifications] = useState([]);
   const [showManual, setShowManual] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [showSurcharge, setShowSurcharge] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,8 +63,10 @@ export default function Page({ initialAdmin }){
   }
 
   async function addAdjustment(payload){
+    console.log('Admin Quote addAdjustment payload', payload);
     const resp = await fetch(`/api/admin/quotes/${quote.id}/adjustments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const json = await resp.json();
+    console.log('Admin Quote addAdjustment response', { ok: resp.ok, status: resp.status, json });
     if (json?.success){ setAdjustments(a => [...a, json.adjustment]); setTotals(json.totals || totals); }
   }
 
@@ -120,9 +128,20 @@ export default function Page({ initialAdmin }){
                 return (
                   <div key={it.id} className="rounded border p-3">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
-                        <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+                      <div className="flex items-start gap-2">
+                        {it.source === 'auto' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">&lt;Auto&gt;</span>
+                        )}
+                        {it.source === 'edited' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">&lt;Edited&gt;</span>
+                        )}
+                        {it.source === 'manual' && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">&lt;Manual&gt;</span>
+                        )}
+                        <div>
+                          <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
+                          <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+                        </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-600">{Number(it.billable_pages||0)} billable page(s)</div>
@@ -174,9 +193,9 @@ export default function Page({ initialAdmin }){
               ))}
               {canEdit && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> addAdjustment({ type:'additional_item', description:'Custom item', quantity:1, unit_amount:50, is_taxable:true })}>+ Add Item</button>
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> addAdjustment({ type:'discount', description:'Manual discount', discount_type:'percentage', discount_value:10, is_taxable:false })}>+ Add Discount</button>
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> addAdjustment({ type:'surcharge', description:'Rush surcharge', discount_type:'fixed', discount_value:25, is_taxable:true })}>+ Add Surcharge</button>
+                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowAddItem(true)}>+ Add Item</button>
+                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowDiscount(true)}>+ Add Discount</button>
+                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowSurcharge(true)}>+ Add Surcharge</button>
                 </div>
               )}
             </div>
@@ -213,6 +232,32 @@ export default function Page({ initialAdmin }){
         </div>
       </div>
       <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={files} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
+      <AdditionalItemModal
+        open={showAddItem}
+        onClose={()=> setShowAddItem(false)}
+        onSubmit={async ({ description, amount }) => {
+          setShowAddItem(false);
+          await addAdjustment({ type: 'additional_item', description, quantity: 1, unit_amount: amount, is_taxable: true });
+        }}
+      />
+      <DiscountModal
+        open={showDiscount}
+        onClose={()=> setShowDiscount(false)}
+        subtotal={Number(totals?.subtotal||0)}
+        onSubmit={async ({ description, discount_type, discount_value }) => {
+          setShowDiscount(false);
+          await addAdjustment({ type:'discount', description, discount_type, discount_value, is_taxable:false });
+        }}
+      />
+      <SurchargeModal
+        open={showSurcharge}
+        onClose={()=> setShowSurcharge(false)}
+        subtotal={Number(totals?.subtotal||0)}
+        onSubmit={async ({ description, discount_type, discount_value }) => {
+          setShowSurcharge(false);
+          await addAdjustment({ type:'surcharge', description, discount_type, discount_value, is_taxable:true });
+        }}
+      />
     </AdminLayout>
   );
 }
