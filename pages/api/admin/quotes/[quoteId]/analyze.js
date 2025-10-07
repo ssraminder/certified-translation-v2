@@ -1,5 +1,5 @@
-import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
-import { logAdminActivity } from '../../../../lib/activityLog';
+import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
+import { logAdminActivity } from '../../../../../lib/activityLog';
 
 function getBaseUrl(req) {
   const hostHeader = req.headers.host;
@@ -76,5 +76,5 @@ async function handler(req, res){
   return res.status(200).json({ success: true, analysis_triggered: true, files_count: (files||[]).length, n8n_webhook_id: null });
 }
 
-import { withPermission } from '../../../../lib/apiAdmin';
+import { withPermission } from '../../../../../lib/apiAdmin';
 export default withPermission('quotes','edit')(handler);
