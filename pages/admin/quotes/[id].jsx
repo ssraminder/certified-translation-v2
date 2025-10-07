@@ -155,6 +155,8 @@ export default function Page({ initialAdmin }){
             </div>
           </div>
 
+          <CertificationsManager quoteId={quote.id} initialCertifications={certifications} files={files} canEdit={canEdit} onChange={(c)=>{ if (c?.totals) setTotals(c.totals); }} />
+
           <div className="rounded border bg-white">
             <div className="border-b px-4 py-2 font-semibold">Adjustments</div>
             <div className="p-4 space-y-3">
