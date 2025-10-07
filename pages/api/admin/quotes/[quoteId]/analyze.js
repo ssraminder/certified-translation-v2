@@ -38,8 +38,29 @@ async function handler(req, res){
     .eq('quote_id', quoteId)
     .in('file_id', file_ids);
 
+  // Create a new analysis run version for this quote
+  const { data: lastRun } = await supabase
+    .from('analysis_runs')
+    .select('version')
+    .eq('quote_id', quoteId)
+    .order('version', { ascending: false })
+    .limit(1);
+  const nextVersion = (Array.isArray(lastRun) && lastRun[0]?.version ? Number(lastRun[0].version) : 0) + 1;
+  const runInsert = {
+    quote_id: quoteId,
+    run_type: 'auto',
+    version: nextVersion,
+    status: 'requested',
+    is_active: false,
+    discarded: false
+  };
+  const { data: runRow, error: runErr } = await supabase.from('analysis_runs').insert([runInsert]).select('*').maybeSingle();
+  if (runErr) return res.status(500).json({ error: runErr.message });
+  const runId = runRow?.id || null;
+
   const payload = {
     quote_id: quoteId,
+    run_id: runId,
     files: (files||[]).map(f => ({ file_id: f.file_id, filename: f.filename, file_url: f.file_url })),
     batch_mode: mode,
     replace_existing: !!replace_existing
@@ -72,8 +93,8 @@ async function handler(req, res){
     .eq('quote_id', quoteId)
     .in('file_id', file_ids);
 
-  await logAdminActivity({ action: 'quote_analysis_triggered', actor_id: req.admin?.id || null, target_id: quoteId, details: { files_count: (files||[]).length, batch_mode: mode } });
-  return res.status(200).json({ success: true, analysis_triggered: true, files_count: (files||[]).length, n8n_webhook_id: null });
+  await logAdminActivity({ action: 'quote_analysis_triggered', actor_id: req.admin?.id || null, target_id: quoteId, details: { files_count: (files||[]).length, batch_mode: mode, run_id: runId, version: nextVersion } });
+  return res.status(200).json({ success: true, analysis_triggered: true, files_count: (files||[]).length, run_id: runId });
 }
 
 import { withPermission } from '../../../../../lib/apiAdmin';

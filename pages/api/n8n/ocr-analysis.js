@@ -48,7 +48,34 @@ async function handler(req, res) {
     else rows = [body];
   }
 
-  rows = rows.map(normalizeRow).filter(Boolean);
+  const topLevelRunId = (body && typeof body === 'object') ? (body.run_id || body.runId || null) : null;
+  let runId = topLevelRunId;
+
+  // If no run_id was provided, create or reuse a legacy run (version 0)
+  if (!runId) {
+    try {
+      const supabase = getSupabaseServerClient();
+      const { data: existing } = await supabase
+        .from('analysis_runs')
+        .select('id')
+        .eq('quote_id', rows[0]?.quote_id || '')
+        .eq('run_type', 'auto')
+        .eq('version', 0)
+        .limit(1);
+      if (Array.isArray(existing) && existing[0]?.id) {
+        runId = existing[0].id;
+      } else {
+        const { data: created } = await supabase
+          .from('analysis_runs')
+          .insert([{ quote_id: rows[0]?.quote_id || '', run_type: 'auto', version: 0, status: 'requested', is_active: false, discarded: false }])
+          .select('id')
+          .maybeSingle();
+        runId = created?.id || null;
+      }
+    } catch {}
+  }
+
+  rows = rows.map(normalizeRow).filter(Boolean).map(r => ({ ...r, run_id: r.run_id || runId || null }));
 
   if (rows.length === 0) {
     return res.status(400).json({ error: 'No rows provided' });
@@ -64,8 +91,8 @@ async function handler(req, res) {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from('ocr_analysis')
-      .upsert(rows, { onConflict: 'quote_id,filename,page_number', ignoreDuplicates: false, defaultToNull: false })
-      .select('quote_id, filename, page_number');
+      .upsert(rows, { onConflict: 'quote_id,filename,page_number,run_id', ignoreDuplicates: false, defaultToNull: false })
+      .select('quote_id, filename, page_number, run_id');
 
     if (error) {
       return res.status(500).json({ error: error.message || 'Upsert failed' });

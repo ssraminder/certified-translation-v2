@@ -48,13 +48,22 @@ async function handler(req, res) {
   const supabase = getSupabaseServerClient();
   const status = normaliseStatus(payload.status);
 
+  // Update submission status (legacy/global)
   const { error } = await supabase
     .from('quote_submissions')
     .update({ status })
     .eq('quote_id', quoteId);
-
   if (error) {
     return res.status(500).json({ error: 'Failed to update status' });
+  }
+
+  // Update analysis run status if provided
+  const runId = payload.run_id || payload.runId || null;
+  if (runId) {
+    await supabase
+      .from('analysis_runs')
+      .update({ status })
+      .eq('id', runId);
   }
 
   return res.status(200).json({ ok: true });

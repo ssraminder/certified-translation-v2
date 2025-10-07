@@ -13,6 +13,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   const [analysisError, setAnalysisError] = useState('');
   const [analysisResults, setAnalysisResults] = useState(null);
   const [resultsAccepted, setResultsAccepted] = useState(false);
+  const [currentRunId, setCurrentRunId] = useState(null);
   const [showEditFeedback, setShowEditFeedback] = useState(false);
   const [showDiscardFeedback, setShowDiscardFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -26,10 +27,12 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     let intervalId = null;
 
     const computeSummary = async () => {
-      const { data: rows } = await supabase
+      let query = supabase
         .from('ocr_analysis')
-        .select('filename, page_number')
+        .select('filename, page_number, run_id')
         .eq('quote_id', quoteId);
+      if (currentRunId) query = query.eq('run_id', currentRunId);
+      const { data: rows } = await query;
       const files = new Map();
       let pages = 0;
       for (const r of (rows||[])){
@@ -77,7 +80,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     check();
 
     return () => { cancelled = true; if (intervalId) clearInterval(intervalId); };
-  }, [isAnalyzing, quoteId]);
+  }, [isAnalyzing, quoteId, currentRunId]);
 
   function toggle(id){ setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]); }
 
@@ -124,6 +127,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
       if (!resp.ok || !json?.success){
         setAnalysisError(json?.error || 'Failed to start analysis');
       } else {
+        setCurrentRunId(json?.run_id || null);
         onChange && onChange({});
       }
     } catch (e) {
@@ -141,7 +145,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
 
   async function handleUseResults(){
     try {
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'auto' }) });
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'auto', run_id: currentRunId, mark_active: true }) });
       const json = await resp.json();
       if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
       setResultsAccepted(true);
@@ -155,7 +159,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   async function handleEditWithFeedback(text){
     try {
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'edit', feedback_text: text }) });
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'edited' }) });
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'edited', run_id: currentRunId, mark_active: true }) });
       const json = await resp.json();
       if (!resp.ok || !json?.success) throw new Error(json?.error || 'Failed to create line items');
       setShowEditFeedback(false); setFeedbackText(''); setResultsAccepted(true);
@@ -167,7 +171,7 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
   async function handleDiscardWithFeedback(text){
     try {
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'discard', feedback_text: text }) });
-      await fetch(`/api/admin/quotes/${quoteId}/analysis-results`, { method:'DELETE' });
+      await fetch(`/api/admin/quotes/${quoteId}/analysis-results?run_id=${encodeURIComponent(currentRunId||'')}`, { method:'DELETE' });
       setShowDiscardFeedback(false); setFeedbackText(''); setAnalysisResults(null);
     } catch (e) {
       setAnalysisError(e.message);
