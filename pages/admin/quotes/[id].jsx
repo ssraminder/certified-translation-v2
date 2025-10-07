@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
+import FileManager from '../../../components/admin/FileManager';
+import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
+import CertificationsManager from '../../../components/admin/CertificationsManager';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
