@@ -4,7 +4,7 @@ import { logAdminActivity } from '../../../../../lib/activityLog';
 
 function isNumericId(id){ return /^[0-9]+$/.test(String(id||'')); }
 
-export default async function handler(req, res){
+async function handler(req, res){
   const supabase = getSupabaseServerClient();
   const { quoteId, fileId } = req.query;
 
@@ -69,3 +69,6 @@ export default async function handler(req, res){
   res.setHeader('Allow', 'PUT, DELETE');
   return res.status(405).json({ error: 'Method Not Allowed' });
 }
+
+import { withPermission } from '../../../../../lib/apiAdmin';
+export default withPermission('quotes','edit')(handler);
