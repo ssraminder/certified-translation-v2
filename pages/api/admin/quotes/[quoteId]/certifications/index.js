@@ -31,7 +31,7 @@ async function handler(req, res){
     const { data: ct } = await supabase
       .from('cert_types')
       .select('name, amount')
-      .ilike('name', nameOrCode)
+      .ilike('name', `%${String(nameOrCode).replace(/_/g,' ')}%`)
       .maybeSingle();
     if (ct){ typeName = ct.name; defaultRate = Number(ct.amount || 0); typeCode = toCode(ct.name); }
   }
