@@ -31,9 +31,10 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
         if (cancelled) return;
         const rows = Array.isArray(json?.items) ? json.items : [];
         setItems(rows);
-        const totalPages = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
-        const unitRate = rows.length ? num(rows[0]?.unit_rate) : 65;
-        setSummary({ lineItems: rows.length, totalPages, estimatedCost: totalPages * unitRate });
+        const billable = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
+        const pages = rows.reduce((a,b)=> a + (num(b.total_pages||0) || num(b.billable_pages)), 0);
+        const estimate = rows.reduce((a,b)=> a + (num(b.billable_pages) * num(b.unit_rate)) + num(b.certification_amount||0), 0);
+        setSummary({ lineItems: rows.length, totalPages: pages, billablePages: billable, estimatedCost: estimate });
       } catch(e){ if (!cancelled) setError(e.message); }
     }
 
