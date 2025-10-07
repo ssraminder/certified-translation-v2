@@ -4,6 +4,7 @@ import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import FileManager from '../../../components/admin/FileManager';
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import CertificationsManager from '../../../components/admin/CertificationsManager';
+import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -33,6 +34,7 @@ export default function Page({ initialAdmin }){
   const [files, setFiles] = useState([]);
   const [certifications, setCertifications] = useState([]);
   const [showManual, setShowManual] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -187,7 +189,7 @@ export default function Page({ initialAdmin }){
               ))}
               {canEdit && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> addAdjustment({ type:'additional_item', description:'Custom item', quantity:1, unit_amount:50, is_taxable:true })}>+ Add Item</button>
+                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowAddItem(true)}>+ Add Item</button>
                   <button className="rounded border px-3 py-1 text-sm" onClick={()=> addAdjustment({ type:'discount', description:'Manual discount', discount_type:'percentage', discount_value:10, is_taxable:false })}>+ Add Discount</button>
                   <button className="rounded border px-3 py-1 text-sm" onClick={()=> addAdjustment({ type:'surcharge', description:'Rush surcharge', discount_type:'fixed', discount_value:25, is_taxable:true })}>+ Add Surcharge</button>
                 </div>
@@ -226,6 +228,14 @@ export default function Page({ initialAdmin }){
         </div>
       </div>
       <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={files} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
+      <AdditionalItemModal
+        open={showAddItem}
+        onClose={()=> setShowAddItem(false)}
+        onSubmit={async ({ description, amount }) => {
+          setShowAddItem(false);
+          await addAdjustment({ type: 'additional_item', description, quantity: 1, unit_amount: amount, is_taxable: true });
+        }}
+      />
     </AdminLayout>
   );
 }
