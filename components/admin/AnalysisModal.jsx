@@ -61,6 +61,15 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
 
   function updateItem(idx, patch){ setItems(list => list.map((it,i) => i===idx ? { ...it, ...patch } : it)); }
   function setCert(idx, name){ const t = certTypes.find(c => c.name === name); updateItem(idx, { certification_type_name: name || '', certification_amount: t ? Number(t.amount||0) : 0 }); }
+  function removeItem(idx){ setItems(list => list.filter((_,i)=> i!==idx)); }
+
+  useEffect(() => {
+    const rows = items || [];
+    const billable = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
+    const pages = rows.reduce((a,b)=> a + (num(b.total_pages||0) || num(b.billable_pages)), 0);
+    const estimate = rows.reduce((a,b)=> a + (num(b.billable_pages) * num(b.unit_rate)) + num(b.certification_amount||0), 0);
+    setSummary({ lineItems: rows.length, totalPages: pages, billablePages: billable, estimatedCost: estimate });
+  }, [items]);
 
   async function useAnalysis(){
     try {
@@ -140,6 +149,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
                         <th className="px-2 py-1">Certification</th>
                         <th className="px-2 py-1">Cert Amount ($)</th>
                         <th className="px-2 py-1">Line Total ($)</th>
+                        <th className="px-2 py-1">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -159,6 +169,9 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
                             </td>
                             <td className="px-2 py-1"><input type="number" step="0.01" min="0" value={it.certification_amount||0} onChange={e=> updateItem(idx, { certification_amount: e.target.value })} className="w-28 rounded border px-2 py-1" /></td>
                             <td className="px-2 py-1">{lineTotal.toFixed(2)}</td>
+                            <td className="px-2 py-1">
+                              <button onClick={()=> removeItem(idx)} className="text-red-600 hover:text-red-800">Remove</button>
+                            </td>
                           </tr>
                         );
                       })}
