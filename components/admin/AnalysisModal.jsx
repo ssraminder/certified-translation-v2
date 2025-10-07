@@ -25,13 +25,14 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
 
     async function fetchPreview(){
       try {
+        if (mode === 'edit') return; // don't overwrite local edits
         const qs = new URLSearchParams();
         if (runId) qs.set('run_id', String(runId));
         qs.set('preview','1');
         const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis?${qs.toString()}`);
         const json = await resp.json();
         if (!resp.ok) throw new Error(json?.error || 'Failed to load preview');
-        if (cancelled) return;
+        if (cancelled || mode === 'edit') return;
         const rows = Array.isArray(json?.items) ? json.items : [];
         setItems(rows);
         const billable = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
@@ -41,11 +42,11 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       } catch(e){ if (!cancelled) setError(e.message); }
     }
 
-    fetchPreview();
+    if (mode !== 'edit') fetchPreview();
 
     // Try realtime; fallback to polling
     try {
-      if (supabase) {
+      if (supabase && mode !== 'edit') {
         const channel = supabase.channel('analysis_preview')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'ocr_analysis', filter: `quote_id=eq.${quoteId}` }, fetchPreview)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_sub_orders', filter: `quote_id=eq.${quoteId}` }, fetchPreview)
@@ -54,10 +55,12 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       }
     } catch {}
 
-    pollRef.current = setInterval(fetchPreview, 3000);
+    if (mode !== 'edit') {
+      pollRef.current = setInterval(fetchPreview, 3000);
+    }
 
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); try { channelRef.current && supabase && supabase.removeChannel(channelRef.current); } catch {} };
-  }, [open, quoteId, runId]);
+  }, [open, quoteId, runId, mode]);
 
   function updateItem(idx, patch){ setItems(list => list.map((it,i) => i===idx ? { ...it, ...patch } : it)); }
   function setCert(idx, name){ const t = certTypes.find(c => c.name === name); updateItem(idx, { certification_type_name: name || '', certification_amount: t ? Number(t.amount||0) : 0 }); }
