@@ -17,12 +17,14 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   const [summary, setSummary] = useState({ lineItems: 0, totalPages: 0, billablePages: 0, estimatedCost: 0 });
   const [editComment, setEditComment] = useState('');
   const [discardComment, setDiscardComment] = useState('');
-  const [mode, setMode] = useState('preview'); // preview | edit
+  const [mode, setMode] = useState('preview'); // preview | edit | discard | details
   const [certTypes, setCertTypes] = useState([]);
+  const [status, setStatus] = useState('pending'); // pending | processing | ready | completed | error | discarded
+  const [history, setHistory] = useState([]);
   const pollRef = useRef(null);
   const channelRef = useRef(null);
 
-  useEffect(() => { if (!open){ setItems([]); setSummary({ lineItems:0, totalPages:0, estimatedCost:0 }); setError(''); setEditComment(''); setDiscardComment(''); setMode('preview'); } }, [open]);
+  useEffect(() => { if (!open){ setItems([]); setSummary({ lineItems:0, totalPages:0, billablePages:0, estimatedCost:0 }); setError(''); setEditComment(''); setDiscardComment(''); setMode('preview'); setStatus('pending'); setHistory([]); } }, [open]);
 
   useEffect(() => { if (!open) return; (async ()=>{ try { if (supabase){ const { data } = await supabase.from('cert_types').select('name, amount'); const opts = (data||[]).map(d => ({ name: d.name, amount: Number(d.amount||0) })).filter(o=>o.name); setCertTypes(opts); } } catch {} })(); }, [open]);
 
@@ -30,43 +32,48 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
     if (!open || !quoteId) return;
     let cancelled = false;
 
-    async function fetchPreview(){
+    async function fetchResults(){
       try {
-        if (mode === 'edit') return; // don't overwrite local edits
-        const qs = new URLSearchParams();
-        if (runId) qs.set('run_id', String(runId));
-        qs.set('preview','1');
-        const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis?${qs.toString()}`);
+        if (!runId) return;
+        const resp = await fetch(`/api/analysis-runs/${encodeURIComponent(runId)}`);
         const json = await parseJsonSafe(resp);
-        if (!resp.ok) throw new Error(json?.error || `Failed to load preview (${resp.status})`);
+        if (!resp.ok) throw new Error(json?.error || `Failed to load results (${resp.status})`);
         if (cancelled || mode === 'edit') return;
-        const rows = Array.isArray(json?.items) ? json.items : [];
-        setItems(rows);
-        const billable = rows.reduce((a,b)=> a + num(b.billable_pages), 0);
-        const pages = rows.reduce((a,b)=> a + (num(b.total_pages||0) || num(b.billable_pages)), 0);
-        const estimate = rows.reduce((a,b)=> a + (num(b.billable_pages) * num(b.unit_rate)) + num(b.certification_amount||0), 0);
-        setSummary({ lineItems: rows.length, totalPages: pages, billablePages: billable, estimatedCost: estimate });
+        const docs = Array.isArray(json?.documents) ? json.documents : [];
+        setItems(docs.map(d => ({
+          filename: d.filename,
+          doc_type: d.document_type,
+          total_pages: d.pages,
+          billable_pages: d.billable_pages,
+          unit_rate: 65, // UI-only default; server totals will use real values
+          certification_type_name: null,
+          certification_amount: 0
+        })));
       } catch(e){ if (!cancelled) setError(e.message); }
     }
 
-    if (mode !== 'edit') fetchPreview();
-
-    // Try realtime; fallback to polling
-    try {
-      if (supabase && mode !== 'edit') {
-        const ocrFilter = `quote_id=eq.${quoteId}${runId ? ",run_id=eq."+runId : ''}`;
-        const qsoFilter = `quote_id=eq.${quoteId}${runId ? ",run_id=eq."+runId : ''}`;
-        const channel = supabase.channel('analysis_preview')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'ocr_analysis', filter: ocrFilter }, fetchPreview)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_sub_orders', filter: qsoFilter }, fetchPreview)
-          .subscribe();
-        channelRef.current = channel;
-      }
-    } catch {}
-
-    if (mode !== 'edit') {
-      pollRef.current = setInterval(fetchPreview, 3000);
+    async function fetchStatus(){
+      try {
+        if (!runId) return;
+        const r = await fetch(`/api/analysis-runs/${encodeURIComponent(runId)}/status`);
+        const j = await parseJsonSafe(r);
+        if (cancelled) return;
+        if (r.ok){ setStatus(j?.status || 'pending'); }
+      } catch {}
     }
+
+    async function fetchHistory(){
+      try {
+        const qs = new URLSearchParams({ quote_id: String(quoteId), limit: '10' });
+        const r = await fetch(`/api/analysis-runs/history?${qs.toString()}`);
+        const j = await parseJsonSafe(r);
+        if (r.ok) setHistory(Array.isArray(j?.runs) ? j.runs : []);
+      } catch {}
+    }
+
+    if (mode !== 'edit') { fetchResults(); fetchStatus(); fetchHistory(); }
+
+    pollRef.current = setInterval(() => { if (mode !== 'edit'){ fetchStatus(); if (status === 'ready') fetchResults(); } }, 2000);
 
     return () => { cancelled = true; if (pollRef.current) clearInterval(pollRef.current); try { channelRef.current && supabase && supabase.removeChannel(channelRef.current); } catch {} };
   }, [open, quoteId, runId, mode]);
@@ -86,9 +93,9 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   async function useAnalysis(){
     try {
       setLoading(true); setError('');
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ source: 'auto', run_id: runId, mark_active: true }) });
+      const resp = await fetch(`/api/analysis-runs/${encodeURIComponent(runId)}/use`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ confirmed: true }) });
       const json = await parseJsonSafe(resp);
-      if (!resp.ok || !json?.success) throw new Error(json?.error || `Failed to create line items (${resp.status})`);
+      if (!resp.ok || !json?.ok) throw new Error(json?.error || `Failed to apply analysis (${resp.status})`);
       onApplied && onApplied(json);
       onClose && onClose();
     } catch(e){ setError(e.message); } finally { setLoading(false); }
@@ -99,12 +106,11 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       if (!editComment.trim()) { setError('Please add comments for LLM learning.'); return; }
       setLoading(true); setError('');
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'edit', feedback_text: editComment }) });
-      const payload = { source:'edited', run_id: runId, mark_active: true, items: items.map(it => ({ filename: it.filename, doc_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_type_name: it.certification_type_name || null, certification_amount: num(it.certification_amount||0) })) };
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/from-analysis`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const json = await parseJsonSafe(resp);
-      if (!resp.ok || !json?.success) throw new Error(json?.error || `Failed to create line items (${resp.status})`);
-      onApplied && onApplied(json);
-      onClose && onClose();
+      const patches = items.map((it, idx) => ({ idx, patch: { document_type: it.doc_type, billable_pages: num(it.billable_pages), unit_rate: num(it.unit_rate), certification_type_name: it.certification_type_name || null, certification_amount: num(it.certification_amount||0) } }));
+      for (const p of patches){
+        await fetch(`/api/analysis-runs/${encodeURIComponent(runId)}/documents/${encodeURIComponent(p.idx)}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p.patch) });
+      }
+      setMode('preview'); // stay open for review
     } catch(e){ setError(e.message); } finally { setLoading(false); }
   }
 
@@ -113,8 +119,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
       if (!discardComment.trim()) { setError('Please provide comments to discard.'); return; }
       setLoading(true); setError('');
       await fetch(`/api/admin/quotes/${quoteId}/analysis-feedback`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'discard', feedback_text: discardComment }) });
-      const qs = new URLSearchParams(); if (runId) qs.set('run_id', String(runId));
-      await fetch(`/api/admin/quotes/${quoteId}/analysis-results?${qs.toString()}`, { method:'DELETE' });
+      await fetch(`/api/analysis-runs/${encodeURIComponent(runId)}/discard`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ reason: discardComment }) });
       onDiscarded && onDiscarded();
       onClose && onClose();
     } catch(e){ setError(e.message); } finally { setLoading(false); }
@@ -141,8 +146,9 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
-            <button disabled={loading} onClick={useAnalysis} className="px-4 py-2 rounded bg-green-600 text-white disabled:opacity-50">Use Analysis</button>
+            <button disabled={loading} onClick={()=> setMode('details')} className="px-4 py-2 rounded bg-gray-200 text-gray-800 disabled:opacity-50">View Details</button>
             <button disabled={loading} onClick={()=> setMode('edit')} className="px-4 py-2 rounded bg-orange-600 text-white disabled:opacity-50">Edit Analysis</button>
+            <button disabled={loading} onClick={useAnalysis} className="ml-auto px-4 py-2 rounded bg-green-600 text-white disabled:opacity-50">Use Analysis</button>
             <button disabled={loading} onClick={()=> setMode('discard')} className="px-4 py-2 rounded bg-red-600 text-white disabled:opacity-50">Discard Analysis</button>
           </div>
 
@@ -212,12 +218,61 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
           )}
 
           {mode === 'preview' && (
-            items.length === 0 ? (
-              <div className="rounded border p-3 text-sm text-gray-700">Waiting for analysis results… Items will appear here automatically.</div>
-            ) : (
-              <div className="rounded border p-3 text-sm text-gray-700">{items.length} item(s) ready. Click Edit Analysis to review and adjust before using.</div>
-            )
+            <div className="space-y-3">
+              <div className="rounded border p-3 text-sm text-gray-700">
+                {status === 'pending' || status === 'processing' ? 'Processing…' : (items.length ? `${items.length} item(s) ready.` : 'Waiting for analysis results…')}
+              </div>
+              {items.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-600">
+                        <th className="px-2 py-1">Filename</th>
+                        <th className="px-2 py-1">Doc Type</th>
+                        <th className="px-2 py-1">Pages</th>
+                        <th className="px-2 py-1">Billable</th>
+                        <th className="px-2 py-1">Confidence</th>
+                        <th className="px-2 py-1">Complexity</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((it, idx) => (
+                        <tr key={it.filename+idx} className="border-t">
+                          <td className="px-2 py-1">{it.filename}</td>
+                          <td className="px-2 py-1">{it.doc_type || '-'}</td>
+                          <td className="px-2 py-1">{it.total_pages ?? '-'}</td>
+                          <td className="px-2 py-1">{it.billable_pages ?? '-'}</td>
+                          <td className="px-2 py-1">{typeof it.average_confidence_score === 'number' ? it.average_confidence_score.toFixed(2) : '-'}</td>
+                          <td className="px-2 py-1">{typeof it.complexity_multiplier === 'number' ? it.complexity_multiplier.toFixed(2) : '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           )}
+        </div>
+
+        <div className="px-4 pb-4">
+          <details className="rounded border p-3">
+            <summary className="cursor-pointer text-sm font-medium">Analysis History</summary>
+            <div className="mt-2 space-y-2">
+              {history.map(h => (
+                <div key={h.id} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-xs ${h.status==='ready'?'bg-green-100 text-green-800':h.discarded?'bg-gray-100 text-gray-600':'bg-yellow-100 text-yellow-800'}`}>{h.status}</span>
+                    <span>Run v{h.version}</span>
+                    <span className="text-gray-500">{new Date(h.created_at).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className="px-2 py-1 rounded border" onClick={()=> { /* switch view to that run */ }} disabled={loading}>View</button>
+                    {h.status === 'ready' && <button className="px-2 py-1 rounded border" onClick={()=> runId && useAnalysis()} disabled={loading}>Use</button>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
       </div>
     </div>
