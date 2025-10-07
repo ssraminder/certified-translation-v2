@@ -1,6 +1,6 @@
-import { withPermission } from '../../../../../../lib/apiAdmin';
-import { getSupabaseServerClient } from '../../../../../../lib/supabaseServer';
-import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../../lib/quoteTotals';
+import { withPermission } from '../../../../../lib/apiAdmin';
+import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
+import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../lib/quoteTotals';
 
 async function handler(req, res){
   if (req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed' });
