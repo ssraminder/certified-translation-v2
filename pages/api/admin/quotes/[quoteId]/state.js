@@ -20,7 +20,7 @@ function canTransition(from, to){
   return false;
 }
 
-export default async function handler(req, res){
+async function handler(req, res){
   if (req.method !== 'PUT'){
     res.setHeader('Allow','PUT');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -55,3 +55,6 @@ export default async function handler(req, res){
   await logAdminActivity({ action: 'quote_state_changed', actor_id: req.admin?.id || null, target_id: quoteId, details: { from, to } });
   return res.status(200).json({ success: true, quote: { quote_state: updated?.quote_state, can_edit: !['sent','accepted','converted'].includes(String(updated?.quote_state||'').toLowerCase()) } });
 }
+
+import { withPermission } from '../../../../lib/apiAdmin';
+export default withPermission('quotes','edit')(handler);
