@@ -108,9 +108,10 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
         <div className="p-4">
           {error && <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800">{error}</div>}
 
-          <div className="mb-3 grid grid-cols-3 gap-3 text-sm">
+          <div className="mb-3 grid grid-cols-4 gap-3 text-sm">
             <div className="rounded border p-3"><div className="text-gray-600">Documents</div><div className="text-lg font-semibold">{summary.lineItems}</div></div>
             <div className="rounded border p-3"><div className="text-gray-600">Total Pages</div><div className="text-lg font-semibold">{summary.totalPages}</div></div>
+            <div className="rounded border p-3"><div className="text-gray-600">Billable Pages</div><div className="text-lg font-semibold">{summary.billablePages}</div></div>
             <div className="rounded border p-3"><div className="text-gray-600">Estimate</div><div className="text-lg font-semibold">${summary.estimatedCost.toFixed(2)}</div></div>
           </div>
 
