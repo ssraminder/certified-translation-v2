@@ -44,9 +44,14 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
     if (!selected.length) return;
     setLoading(true);
     try {
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ file_ids: selected.map(id=>{ const f = files.find(x=>x.id===id || x.file_id===id); return f?.file_id || id; }), batch_mode: batchMode, replace_existing: true }) });
+      const payload = { file_ids: selected.map(id=>{ const f = files.find(x=>x.id===id || x.file_id===id); return f?.file_id || id; }), batch_mode: batchMode, replace_existing: true };
+      console.log('FileManager.triggerAnalysis payload', payload);
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
+      console.log('FileManager.triggerAnalysis response', { ok: resp.ok, status: resp.status, json });
       if (json?.success){ onChange && onChange({}); }
+    } catch (e) {
+      console.error('FileManager.triggerAnalysis error', e);
     } finally { setLoading(false); }
   }
 
