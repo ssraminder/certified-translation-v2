@@ -205,7 +205,7 @@ async function handler(req, res){
     await supabase.from('quote_submissions').update({ active_run_id: runId }).eq('quote_id', quoteId);
   }
 
-  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
+  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId, runId);
   await logAdminActivity({ action: 'quote_line_items_from_analysis', actor_id: req.admin?.id || null, target_id: quoteId, details: { count: created?.length || 0, source, run_id: runId || null } });
   return res.status(200).json({ success: true, created: created || [], totals, run_id: runId || null });
 }

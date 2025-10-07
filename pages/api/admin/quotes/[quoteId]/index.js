@@ -13,14 +13,31 @@ async function handler(req, res){
     .maybeSingle();
   if (!q) return res.status(404).json({ error: 'Quote not found' });
 
-  const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id');
-  const scopedItemsQuery = q?.active_run_id ? itemsQuery.eq('run_id', q.active_run_id) : itemsQuery;
+  // Determine effective run id for scoping
+  let effectiveRunId = q?.active_run_id || null;
+  if (!effectiveRunId){
+    try {
+      const { data: latestQso } = await supabase
+        .from('quote_sub_orders')
+        .select('run_id')
+        .eq('quote_id', quoteId)
+        .not('run_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      effectiveRunId = Array.isArray(latestQso) && latestQso[0]?.run_id ? latestQso[0].run_id : null;
+    } catch {}
+  }
 
-  const [ { data: items }, { data: adjustments }, { data: files }, { data: certs } ] = await Promise.all([
+  const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id');
+  const scopedItemsQuery = effectiveRunId ? itemsQuery.eq('run_id', effectiveRunId) : itemsQuery;
+
+  // Fetch items and other collections
+  const [ { data: items }, { data: adjustments }, { data: files }, { data: certs }, { data: resultsRows } ] = await Promise.all([
     scopedItemsQuery,
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_files').select('*').eq('quote_id', quoteId),
-    supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order')
+    supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order'),
+    supabase.from('quote_results').select('*').eq('quote_id', quoteId).order('updated_at', { ascending: false })
   ]);
 
   const BUCKET = 'orders';
@@ -42,7 +59,11 @@ async function handler(req, res){
     };
   }));
 
-  const results = Array.isArray(q.quote_results) && q.quote_results.length ? q.quote_results[0] : null;
+  // Prefer results for the effective run; fallback to most recent
+  let results = null;
+  if (Array.isArray(resultsRows)){
+    results = (effectiveRunId ? resultsRows.find(r => r.run_id === effectiveRunId) : null) || resultsRows[0] || null;
+  }
   const can_edit = !['sent','accepted','converted'].includes(String(q.quote_state||'').toLowerCase());
 
   const line_items = (items||[]).map(it => ({

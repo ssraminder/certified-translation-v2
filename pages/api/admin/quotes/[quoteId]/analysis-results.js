@@ -20,7 +20,7 @@ async function handler(req, res){
     await supabase.from('quote_sub_orders').delete().eq('quote_id', quoteId).eq('run_id', runId);
   }
 
-  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
+  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId, runId);
   await logAdminActivity({ action: 'analysis_results_cleared', actor_id: req.admin?.id || null, target_id: quoteId, details: { run_id: runId || null } });
   return res.status(200).json({ success: true, totals });
 }
