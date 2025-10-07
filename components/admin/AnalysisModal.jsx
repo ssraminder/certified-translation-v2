@@ -11,6 +11,7 @@ export default function AnalysisModal({ open, quoteId, runId, onClose, onApplied
   const [editComment, setEditComment] = useState('');
   const [discardComment, setDiscardComment] = useState('');
   const [mode, setMode] = useState('preview'); // preview | edit
+  const [certTypes, setCertTypes] = useState([]);
   const pollRef = useRef(null);
   const channelRef = useRef(null);
 
