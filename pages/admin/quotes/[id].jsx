@@ -111,6 +111,8 @@ export default function Page({ initialAdmin }){
           admin={initialAdmin}
           onLogout={handleLogout}
           onEdit={handleEdit}
+          onSend={sendToCustomer}
+          totals={totals}
         />
       </div>
 
