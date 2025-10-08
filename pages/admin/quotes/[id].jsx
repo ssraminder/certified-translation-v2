@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
-// Analysis FileManager disabled in Phase 1
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
 import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
@@ -9,24 +8,6 @@ import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal
 import CertificationsManager from '../../../components/admin/CertificationsManager';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
-
-function Field({ label, children }){
-  return (
-    <div>
-      <label className="block text-sm font-medium mb-1">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function SummaryRow({ label, value }){
-  return (
-    <div className="flex items-center justify-between py-1 text-sm">
-      <span className="text-gray-600">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  );
-}
 
 export default function Page({ initialAdmin }){
   const [quote, setQuote] = useState(null);
@@ -64,15 +45,12 @@ export default function Page({ initialAdmin }){
 
   async function addAdjustment(payload){
     try {
-      console.log('Admin Quote addAdjustment payload', payload);
       const resp = await fetch(`/api/admin/quotes/${quote.id}/adjustments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       let json = null;
       try { json = await resp.json(); } catch { json = { error: 'Invalid response' }; }
-      console.log('Admin Quote addAdjustment response', { ok: resp.ok, status: resp.status, json });
       if (!resp.ok || !json?.success){ throw new Error(json?.error || `Request failed (${resp.status})`); }
       setAdjustments(a => [...a, json.adjustment]); setTotals(json.totals || totals);
     } catch (e) {
-      console.error('Failed to add adjustment', e);
       alert(`Failed to add adjustment: ${e.message}`);
     }
   }
@@ -97,99 +75,107 @@ export default function Page({ initialAdmin }){
 
   if (loading) return (
     <AdminLayout title="Quote" initialAdmin={initialAdmin}>
-      <div className="rounded bg-white p-6">Loading...</div>
+      <div className="rounded-xl bg-white p-6">Loading...</div>
     </AdminLayout>
   );
 
   if (!quote) return (
     <AdminLayout title="Quote" initialAdmin={initialAdmin}>
-      <div className="rounded bg-white p-6">Not found</div>
+      <div className="rounded-xl bg-white p-6">Not found</div>
     </AdminLayout>
   );
 
+  const additionalItems = adjustments.filter(a=>a.type==='additional_item');
+  const discounts = adjustments.filter(a=>a.type==='discount');
+  const surcharges = adjustments.filter(a=>a.type==='surcharge');
+
   return (
-    <AdminLayout title={`Quote ${quote.order_id}`} initialAdmin={initialAdmin}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded border bg-white p-4">
-            <div className="mb-2 text-sm text-gray-600">{quote.customer_name} • {quote.customer_email}</div>
-            <div className="flex flex-wrap gap-3 text-sm text-gray-700">
-              <div>Source: <span className="font-medium">{quote.source_language||'—'}</span></div>
-              <div>Target: <span className="font-medium">{quote.target_language||'—'}</span></div>
-              <div>Intended Use: <span className="font-medium">{quote.intended_use||'—'}</span></div>
-            </div>
-          </div>
+    <AdminLayout title={quote.order_id} initialAdmin={initialAdmin}>
+      {/* Quote Header */}
+      <div className="bg-white border-b mb-6 -mx-4 px-4 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-lg">{quote.order_id}</h1>
+          <span className="px-2 py-0.5 text-xs rounded-lg border bg-gray-50">{quote.quote_state || 'draft'}</span>
+        </div>
+        <div className="text-gray-700 mb-2">{quote.customer_name} • {quote.customer_email}</div>
+        <div className="flex items-center gap-2 text-gray-600">
+          <span>Source: {quote.source_language||'—'}</span>
+          <span>→</span>
+          <span>Target: {quote.target_language||'—'}</span>
+        </div>
+        <div className="text-gray-500 text-sm mt-1">Intended Use: {quote.intended_use||'—'}</div>
+      </div>
 
-          <div className="rounded border bg-yellow-50 p-4">File uploads and automated analysis are disabled in Phase 1. Use Manual Line Items below.</div>
+      {/* Alert */}
+      <div className="mb-6 flex items-center gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50">
+        <svg className="w-4 h-4 text-yellow-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M14.487 12L9.153 2.667a1.333 1.333 0 00-2.32 0L1.5 12c-.243.421.06.933.574.933h11.84c.513 0 .816-.512.573-.933z"/>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 6v2.667M8 11.333h.007"/>
+        </svg>
+        <p className="text-sm text-yellow-800">File uploads and automated analysis are disabled in Phase 1. Use Manual Line Items below.</p>
+      </div>
 
-          <div className="rounded border bg-white">
-            <div className="flex items-center justify-between border-b px-4 py-2 font-semibold">
-              <div>Line Items</div>
-              {canEdit && <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowManual(true)}>+ Add Manual Line Item</button>}
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Left Column - 65% */}
+        <div className="flex-1 lg:w-[65%] space-y-8">
+          
+          {/* Line Items Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base">Line Items</h2>
+              {canEdit && (
+                <button onClick={()=> setShowManual(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black text-white text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4.287 8h9.333M8.953 3.333v9.334"/>
+                  </svg>
+                  Add Manual Line Item
+                </button>
+              )}
             </div>
-            <div className="p-4 space-y-3">
+            <div className="space-y-3">
               {lineItems.map(it => {
                 const effectiveRate = ((it.unit_rate_override ?? it.unit_rate) ?? 0);
-                const computedLineTotal = (Number(effectiveRate) * Number(it.billable_pages || 0)) + Number(it.certification_amount || 0);
-                const displayTotal = Number(it.line_total ?? computedLineTotal);
+                const computedLineTotal = (Number(effectiveRate) * Number(it.billable_pages || 0));
                 return (
-                  <div key={it.id} className="rounded border p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-start gap-2">
-                        {it.source !== 'manual' && it.override_reason && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">Edited</span>
-                        )}
-                        {it.source !== 'manual' && !it.override_reason && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">Auto</span>
-                        )}
-                        {it.source === 'manual' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">Manual</span>
-                        )}
-                        <div>
-                          <div className="font-medium">{it.filename || it.doc_type || 'Document'}</div>
-                          <div className="text-xs text-gray-500">{it.total_pages ? `${it.total_pages} pages` : null}</div>
+                  <div key={it.id} className="p-4 rounded-xl border bg-white">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M12.5 1.667H5c-.442 0-.866.175-1.179.488A1.667 1.667 0 003.333 3.333v13.334c0 .442.176.866.488 1.179.313.313.737.487 1.179.487h10c.442 0 .866-.174 1.179-.487.313-.313.488-.737.488-1.179V5.833l-4.167-4.166z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M11.667 1.667v3.333c0 .442.175.866.488 1.179.313.313.737.488 1.179.488h3.333M8.333 7.5h-1.666M13.333 10.833H6.667M13.333 14.167H6.667"/>
+                        </svg>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">{it.filename || it.doc_type || 'Document'}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Pages: {it.total_pages||it.billable_pages} | Billable: {it.billable_pages} | Rate: ${Number(effectiveRate).toFixed(2)}/page
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">Total: ${computedLineTotal.toFixed(2)}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm text-gray-600">{Number(it.billable_pages||0)} billable page(s)</div>
-                        <div className="font-semibold">${displayTotal.toFixed(2)}</div>
-                      </div>
+                      {canEdit && (
+                        <div className="flex items-center gap-2">
+                          <button className="p-2 rounded-lg hover:bg-gray-100">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8"/>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
+                            </svg>
+                          </button>
+                          <button onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}/line-items/${it.id}`, { method:'DELETE' }); const j = await r.json(); if (j?.success){ setLineItems(list=> list.filter(x=> x.id !== it.id)); if (j.totals) setTotals(j.totals); } }} className="p-2 rounded-lg hover:bg-gray-100">
+                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M6.667 7.333v4M9.333 7.333v4M12.667 4v9.333c0 .354-.14.693-.391.943-.25.25-.589.391-.943.391H4.667c-.354 0-.693-.14-.943-.391a1.333 1.333 0 01-.391-.943V4M2 4h12M5.333 4V2.667c0-.354.14-.694.391-.944.25-.25.59-.39.943-.39h2.666c.354 0 .694.14.944.39.25.25.39.59.39.944V4"/>
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    {canEdit && (
-                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                        <Field label="Billable Pages">
-                          <input type="number" step="0.1" defaultValue={it.billable_pages} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { billable_pages: e.target.value })} />
-                        </Field>
-                        <Field label="Unit Rate ($)">
-                          <input type="number" step="0.01" defaultValue={it.unit_rate} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { unit_rate: e.target.value })} />
-                        </Field>
-                        <Field label="Override Rate ($)">
-                          <input type="number" step="0.01" defaultValue={it.unit_rate_override || ''} placeholder="optional" className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { unit_rate_override: e.target.value || null })} />
-                        </Field>
-                        <Field label="Override Reason">
-                          <input type="text" defaultValue={it.override_reason || ''} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { override_reason: e.target.value || null })} />
-                        </Field>
-                        <Field label="Certification Amount ($)">
-                          <input type="number" step="0.01" defaultValue={it.certification_amount || 0} className="w-full rounded border px-2 py-1" onBlur={e=> updateLineItem(it.id, { certification_amount: e.target.value })} />
-                        </Field>
-                        <div className="col-span-2">
-                          <button className="text-red-600 text-xs" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}/line-items/${it.id}`, { method:'DELETE' }); const j = await r.json(); if (j?.success){ setLineItems(list=> list.filter(x=> x.id !== it.id)); if (j.totals) setTotals(j.totals); } }}>Remove</button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
-              {lineItems.length === 0 && <div className="text-sm text-gray-500">No line items</div>}
-              {canEdit && (
-                <div className="pt-2 border-t mt-2 flex justify-end">
-                  <button className="rounded bg-blue-600 text-white px-3 py-1 text-sm" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>Confirm and Update Summary</button>
-                </div>
-              )}
+              {lineItems.length === 0 && <p className="text-sm text-gray-500">No line items</p>}
             </div>
           </div>
 
-
+          {/* Certifications Section */}
           <CertificationsManager
             quoteId={quote.id}
             initialCertifications={certifications}
@@ -198,156 +184,308 @@ export default function Page({ initialAdmin }){
             onChange={(res)=> { if (res?.totals) setTotals(res.totals); }}
           />
 
-          <div className="rounded border bg-white">
-            <div className="border-b px-4 py-2 font-semibold">Adjustments</div>
-            <div className="p-4 space-y-3">
-              {adjustments.map(a => (
-                <div key={a.id} className="flex items-center justify-between rounded border p-3 text-sm">
-                  <div>
-                    <div className="font-medium">{a.type}: {a.description}</div>
-                    {a.discount_type && <div className="text-xs text-gray-500">{a.discount_type} {a.discount_value}</div>}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="font-semibold">{a.type==='discount' ? '-' : ''}${Number(a.total_amount||0).toFixed(2)}</div>
-                    {canEdit && <button className="text-red-600 text-xs" onClick={()=> deleteAdjustment(a.id)}>Delete</button>}
-                  </div>
-                </div>
-              ))}
+          {/* Adjustments Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base">Adjustments</h2>
               {canEdit && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowAddItem(true)}>+ Add Item</button>
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowDiscount(true)}>+ Add Discount</button>
-                  <button className="rounded border px-3 py-1 text-sm" onClick={()=> setShowSurcharge(true)}>+ Add Surcharge</button>
+                <div className="flex items-center gap-2">
+                  <button onClick={()=> setShowAddItem(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4.185 8h9.333M8.852 3.333v9.334"/>
+                    </svg>
+                    Add Item
+                  </button>
+                  <button onClick={()=> setShowDiscount(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M3.474 8h9.333M8.14 3.333v9.334"/>
+                    </svg>
+                    Add Discount
+                  </button>
+                  <button onClick={()=> setShowSurcharge(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4.216 8h9.334M8.883 3.333v9.334"/>
+                    </svg>
+                    Add Surcharge
+                  </button>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-4">
+              {/* Additional Items */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Additional Items:</h3>
+                {additionalItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {additionalItems.map(a => (
+                      <div key={a.id} className="p-4 rounded-xl border bg-white">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M9.167 18.108a1.667 1.667 0 001.666 0l5.834-3.333a1.667 1.667 0 00.833-1.442V6.667c0-.507-.183-.994-.515-1.358a1.667 1.667 0 00-.318-.308L10.833 1.892a1.667 1.667 0 00-1.666 0L3.333 5.225a1.667 1.667 0 00-.833 1.442v6.666c0 .508.183.995.515 1.359.118.13.256.24.408.324l5.744 3.092zM10 18.333V10M2.742 5.833L10 10l7.258-4.167M6.25 3.558L13.75 7.85"/>
+                            </svg>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{a.description}</h4>
+                              <p className="text-sm text-gray-600 mt-1">Amount: ${Number(a.total_amount||0).toFixed(2)}</p>
+                            </div>
+                          </div>
+                          {canEdit && (
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 rounded-lg hover:bg-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
+                                </svg>
+                              </button>
+                              <button onClick={()=> deleteAdjustment(a.id)} className="p-2 rounded-lg hover:bg-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M6.667 7.333v4M9.333 7.333v4M12.667 4v9.333c0 .354-.14.693-.391.943-.25.25-.589.391-.943.391H4.667c-.354 0-.693-.14-.943-.391a1.333 1.333 0 01-.391-.943V4M2 4h12M5.333 4V2.667c0-.354.14-.694.391-.944.25-.25.59-.39.943-.39h2.666c.354 0 .694.14.944.39.25.25.39.59.39.944V4"/>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Discounts */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Discounts:</h3>
+                {discounts.length > 0 ? (
+                  <div className="space-y-3">
+                    {discounts.map(a => (
+                      <div key={a.id} className="p-4 rounded-xl border bg-white">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M15.833 4.167L4.167 15.833M5.417 7.5a2.083 2.083 0 100-4.167 2.083 2.083 0 000 4.167zM14.583 16.667a2.083 2.083 0 100-4.167 2.083 2.083 0 000 4.167z"/>
+                            </svg>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{a.description}</h4>
+                              <p className="text-sm text-gray-600 mt-1">Type: {a.discount_type === 'percentage' ? `Percentage (${a.discount_value}%)` : `Fixed Amount`}</p>
+                              <p className="text-sm text-gray-600">Applied to: ${Number(totals?.subtotal||0).toFixed(2)} subtotal = -${Number(a.total_amount||0).toFixed(2)}</p>
+                            </div>
+                          </div>
+                          {canEdit && (
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 rounded-lg hover:bg-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
+                                </svg>
+                              </button>
+                              <button onClick={()=> deleteAdjustment(a.id)} className="p-2 rounded-lg hover:bg-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M6.667 7.333v4M9.333 7.333v4M12.667 4v9.333c0 .354-.14.693-.391.943-.25.25-.589.391-.943.391H4.667c-.354 0-.693-.14-.943-.391a1.333 1.333 0 01-.391-.943V4M2 4h12M5.333 4V2.667c0-.354.14-.694.391-.944.25-.25.59-.39.943-.39h2.666c.354 0 .694.14.944.39.25.25.39.59.39.944V4"/>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Surcharges */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Surcharges:</h3>
+                {surcharges.length > 0 ? (
+                  <div className="space-y-3">
+                    {surcharges.map(a => (
+                      <div key={a.id} className="p-4 rounded-xl border bg-white">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <svg className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M13.333 5.833h5v5M18.333 5.833l-7.083 7.084-4.167-4.167L1.667 14.167"/>
+                            </svg>
+                            <div>
+                              <h4 className="font-medium text-gray-900">{a.description}</h4>
+                              <p className="text-sm text-gray-600 mt-1">Amount: ${Number(a.total_amount||0).toFixed(2)}</p>
+                            </div>
+                          </div>
+                          {canEdit && (
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 rounded-lg hover:bg-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
+                                </svg>
+                              </button>
+                              <button onClick={()=> deleteAdjustment(a.id)} className="p-2 rounded-lg hover:bg-gray-100">
+                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M6.667 7.333v4M9.333 7.333v4M12.667 4v9.333c0 .354-.14.693-.391.943-.25.25-.589.391-.943.391H4.667c-.354 0-.693-.14-.943-.391a1.333 1.333 0 01-.391-.943V4M2 4h12M5.333 4V2.667c0-.354.14-.694.391-.944.25-.25.59-.39.943-.39h2.666c.354 0 .694.14.944.39.25.25.39.59.39.944V4"/>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-1">
-          <div className="sticky top-4 space-y-4">
-            <div className="rounded border bg-white p-4">
-              <div className="mb-2 text-sm font-semibold">Pricing Summary</div>
-
-              <div className="mb-2">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Translation ({lineItems.length} items)</span>
-                  <span>${Number(totals?.translation || 0).toFixed(2)}</span>
+        {/* Right Column - Sticky Pricing Summary - 35% */}
+        <div className="lg:w-[35%]">
+          <div className="sticky top-4">
+            <div className="rounded-xl border bg-white p-6 shadow-lg">
+              <h2 className="text-base mb-4">Pricing Summary</h2>
+              
+              <div className="space-y-4">
+                {/* Translation */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">Translation</span>
+                    <span className="font-medium">${Number(totals?.translation || 0).toFixed(2)}</span>
+                  </div>
+                  <ul className="ml-4 space-y-1 text-sm text-gray-600">
+                    {lineItems.map(it => {
+                      const rate = Number((it.unit_rate_override ?? it.unit_rate) || 0);
+                      const pages = Number(it.billable_pages||0);
+                      const amount = (rate * pages);
+                      return (
+                        <li key={it.id} className="flex items-center justify-between">
+                          <span>• {(it.filename || it.doc_type || 'Document')}</span>
+                          <span>${amount.toFixed(2)}</span>
+                        </li>
+                      );
+                    })}
+                    {lineItems.length === 0 && <li className="text-gray-400">No items</li>}
+                  </ul>
                 </div>
-                <ul className="mt-1 text-xs text-gray-600 space-y-1">
-                  {lineItems.map(it => {
-                    const rate = Number((it.unit_rate_override ?? it.unit_rate) || 0);
-                    const pages = Number(it.billable_pages||0);
-                    const amount = (rate * pages);
-                    return (
-                      <li key={it.id} className="flex items-center justify-between">
-                        <span>• {(it.filename || it.doc_type || 'Document')} ({pages} pg)</span>
-                        <span>${amount.toFixed(2)}</span>
+
+                {/* Certification */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">Certification</span>
+                    <span className="font-medium">${Number(totals?.certification || 0).toFixed(2)}</span>
+                  </div>
+                  <ul className="ml-4 space-y-1 text-sm text-gray-600">
+                    {(certifications||[]).map(c => {
+                      const label = c.cert_type_name || 'Certification';
+                      const rate = Number((c.override_rate ?? c.default_rate) || 0);
+                      const isOverride = Number(c.override_rate) > 0;
+                      return (
+                        <li key={c.id} className="flex items-center justify-between">
+                          <span>• {label}{isOverride ? ' (override)' : ''}</span>
+                          <span>${rate.toFixed(2)}</span>
+                        </li>
+                      );
+                    })}
+                    {((certifications?.length||0)) === 0 && <li className="text-gray-400">No items</li>}
+                  </ul>
+                </div>
+
+                {/* Additional Items */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">Additional Items</span>
+                    <span className="font-medium">${Number(additionalItems.reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                  </div>
+                  <ul className="ml-4 space-y-1 text-sm text-gray-600">
+                    {additionalItems.map(a => (
+                      <li key={a.id} className="flex items-center justify-between">
+                        <span>• {a.description}</span>
+                        <span>${Number(a.total_amount||0).toFixed(2)}</span>
                       </li>
-                    );
-                  })}
-                  {lineItems.length === 0 && <li className="text-gray-400">No items</li>}
-                </ul>
-              </div>
-
-              <div className="mb-2">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Certification {(certifications && certifications.length ? `(${certifications.length + lineItems.filter(i=>Number(i.certification_amount||0)>0).length} items)` : '')}</span>
-                  <span>${Number(totals?.certification || 0).toFixed(2)}</span>
+                    ))}
+                    {additionalItems.length === 0 && <li className="text-gray-400">None</li>}
+                  </ul>
                 </div>
-                <ul className="mt-1 text-xs text-gray-600 space-y-1">
-                  {(certifications||[]).map(c => {
-                    const label = c.cert_type_name || 'Certification';
-                    const rate = Number((c.override_rate ?? c.default_rate) || 0);
-                    const isOverride = Number(c.override_rate) > 0;
-                    return (
-                      <li key={c.id} className="flex items-center justify-between">
-                        <span>• {label}{isOverride ? ' (override)' : ''}</span>
-                        <span>${rate.toFixed(2)}</span>
+
+                {/* Discounts */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-green-700">Discounts</span>
+                    <span className="font-medium text-green-700">-${Number(discounts.reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                  </div>
+                  <ul className="ml-4 space-y-1 text-sm text-gray-600">
+                    {discounts.map(a => (
+                      <li key={a.id} className="flex items-center justify-between">
+                        <span>• {a.description}</span>
+                        <span>-${Number(a.total_amount||0).toFixed(2)}</span>
                       </li>
-                    );
-                  })}
-                  {lineItems.filter(i=>Number(i.certification_amount||0)>0).map(li => (
-                    <li key={`li-cert-${li.id}`} className="flex items-center justify-between">
-                      <span>• Certification - {li.filename || li.doc_type || 'Document'}</span>
-                      <span>${Number(li.certification_amount||0).toFixed(2)}</span>
-                    </li>
-                  ))}
-                  {((certifications?.length||0) + lineItems.filter(i=>Number(i.certification_amount||0)>0).length) === 0 && <li className="text-gray-400">No certifications</li>}
-                </ul>
-              </div>
-
-              <div className="mb-2">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Additional Items</span>
-                  <span>${Number(adjustments.filter(a=>a.type==='additional_item').reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                    ))}
+                    {discounts.length === 0 && <li className="text-gray-400">None</li>}
+                  </ul>
                 </div>
-                <ul className="mt-1 text-xs text-gray-600 space-y-1">
-                  {adjustments.filter(a=>a.type==='additional_item').map(a => (
-                    <li key={a.id} className="flex items-center justify-between">
-                      <span>• {a.description}</span>
-                      <span>${Number(a.total_amount||0).toFixed(2)}</span>
-                    </li>
-                  ))}
-                  {adjustments.filter(a=>a.type==='additional_item').length === 0 && <li className="text-gray-400">None</li>}
-                </ul>
-              </div>
 
-              <div className="mb-2">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Discounts</span>
-                  <span>- ${Number(adjustments.filter(a=>a.type==='discount').reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                {/* Surcharges */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-orange-700">Surcharges</span>
+                    <span className="font-medium text-orange-700">+${Number(surcharges.reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                  </div>
+                  <ul className="ml-4 space-y-1 text-sm text-gray-600">
+                    {surcharges.map(a => (
+                      <li key={a.id} className="flex items-center justify-between">
+                        <span>• {a.description}</span>
+                        <span>+${Number(a.total_amount||0).toFixed(2)}</span>
+                      </li>
+                    ))}
+                    {surcharges.length === 0 && <li className="text-gray-400">None</li>}
+                  </ul>
                 </div>
-                <ul className="mt-1 text-xs text-gray-600 space-y-1">
-                  {adjustments.filter(a=>a.type==='discount').map(a => (
-                    <li key={a.id} className="flex items-center justify-between">
-                      <span>• {a.description}</span>
-                      <span>- ${Number(a.total_amount||0).toFixed(2)}</span>
-                    </li>
-                  ))}
-                  {adjustments.filter(a=>a.type==='discount').length === 0 && <li className="text-gray-400">None</li>}
-                </ul>
               </div>
 
-              <div className="mb-2">
-                <div className="flex items-center justify-between text-sm font-medium">
-                  <span>Surcharges</span>
-                  <span>+ ${Number(adjustments.filter(a=>a.type==='surcharge').reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+              <div className="border-t my-4" />
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Subtotal</span>
+                  <span className="font-medium">${Number(totals?.subtotal || 0).toFixed(2)}</span>
                 </div>
-                <ul className="mt-1 text-xs text-gray-600 space-y-1">
-                  {adjustments.filter(a=>a.type==='surcharge').map(a => (
-                    <li key={a.id} className="flex items-center justify-between">
-                      <span>• {a.description}</span>
-                      <span>+ ${Number(a.total_amount||0).toFixed(2)}</span>
-                    </li>
-                  ))}
-                  {adjustments.filter(a=>a.type==='surcharge').length === 0 && <li className="text-gray-400">None</li>}
-                </ul>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Tax (0%)</span>
+                  <span>${Number(totals?.tax || 0).toFixed(2)}</span>
+                </div>
               </div>
 
-              <div className="my-2 border-t" />
-              <SummaryRow label="Subtotal" value={`$${Number(totals?.subtotal || 0).toFixed(2)}`} />
-              <SummaryRow label="Tax" value={`$${Number(totals?.tax || 0).toFixed(2)}`} />
-              <div className="my-2 border-t" />
-              <SummaryRow label="Total" value={`$${Number(totals?.total || 0).toFixed(2)}`} />
-            </div>
+              <div className="border-t my-4" />
 
-            <div className="rounded border bg-white p-4">
-              <div className="mb-2 text-sm font-semibold">Delivery</div>
-              <select disabled={!canEdit} className="w-full rounded border px-2 py-2 text-sm" value={quote.delivery_speed || 'standard'} onChange={e=> changeDelivery(e.target.value)}>
-                <option value="standard">Standard</option>
-                <option value="rush">Rush</option>
-              </select>
-              <div className="mt-2 text-sm text-gray-600">Estimated: {quote.delivery_date ? new Date(quote.delivery_date).toLocaleDateString() : '—'}</div>
-            </div>
+              <div className="flex items-center justify-between text-lg font-semibold">
+                <span>Total</span>
+                <span>${Number(totals?.total || 0).toFixed(2)}</span>
+              </div>
 
-            <div className="rounded border bg-white p-4 space-y-2">
-              <button disabled={!canEdit} className="w-full rounded bg-cyan-600 px-3 py-2 text-white disabled:opacity-50" onClick={sendToCustomer}>Send to Customer</button>
-              <a className="w-full rounded border px-3 py-2 text-center text-sm" href={`/quote-review?id=${encodeURIComponent(quote.order_id)}`} target="_blank" rel="noreferrer">View as Customer</a>
+              <div className="border-t my-4" />
+
+              {/* Delivery */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">Delivery</label>
+                <select disabled={!canEdit} className="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm" value={quote.delivery_speed || 'standard'} onChange={e=> changeDelivery(e.target.value)}>
+                  <option value="standard">Standard</option>
+                  <option value="rush">Rush</option>
+                </select>
+                <p className="mt-2 text-sm text-gray-600">• Estimated: {quote.delivery_date ? new Date(quote.delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Oct 10, 2025'}</p>
+              </div>
+
+              <div className="border-t pt-4" />
+
+              {/* Action Buttons */}
+              <div className="space-y-2">
+                <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
+                  Confirm and Update Summary
+                </button>
+                <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50">
+                  Send to Customer
+                </button>
+                <a href={`/quote-review?id=${encodeURIComponent(quote.order_id)}`} target="_blank" rel="noreferrer" className="block w-full rounded-lg border px-4 py-2 text-center text-sm font-medium">
+                  View as Customer
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modals */}
       <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={[]} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
       <AdditionalItemModal
         open={showAddItem}
