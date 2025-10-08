@@ -71,7 +71,6 @@ async function createQuote(req, res){
   const source_lang = (body.source_lang || '').toString().trim() || null;
   const target_lang = (body.target_lang || '').toString().trim() || null;
   const intended_use = (body.intended_use || '').toString().trim() || null;
-  const delivery_speed = (body.delivery_speed || 'standard').toString().trim();
 
   if (name.length < 2) return res.status(400).json({ error: 'Name is required' });
   if (!isValidEmail(email)) return res.status(400).json({ error: 'Valid email required' });
@@ -96,7 +95,6 @@ async function createQuote(req, res){
     source_lang,
     target_lang,
     intended_use,
-    delivery_speed,
     status: 'draft',
     quote_state: 'draft',
     payment_status: 'unpaid',

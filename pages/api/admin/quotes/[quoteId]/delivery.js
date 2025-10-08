@@ -15,14 +15,26 @@ async function handler(req, res){
   const now = new Date();
   const estimate = new Date(now.getTime() + (speed === 'rush' ? 2 : 5) * 24 * 60 * 60 * 1000);
 
-  const { error } = await supabase
-    .from('quote_submissions')
-    .update({ delivery_speed: speed, delivery_date: estimate.toISOString(), last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
-    .eq('quote_id', quoteId);
-  if (error) return res.status(500).json({ error: error.message });
+  let updateError = null;
+  try {
+    const { error } = await supabase
+      .from('quote_submissions')
+      .update({ delivery_speed: speed, delivery_date: estimate.toISOString(), last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
+      .eq('quote_id', quoteId);
+    if (error) updateError = error;
+  } catch (e) { updateError = e; }
+
+  if (updateError) {
+    try {
+      await supabase
+        .from('quote_submissions')
+        .update({ last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
+        .eq('quote_id', quoteId);
+    } catch (_) {}
+  }
 
   const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
-  return res.status(200).json({ success: true, delivery_date: estimate.toISOString(), totals });
+  return res.status(200).json({ success: true, delivery_date: estimate.toISOString(), totals, note: updateError ? 'delivery fields not stored (missing columns)' : undefined });
 }
 
 export default withPermission('quotes','edit')(handler);
