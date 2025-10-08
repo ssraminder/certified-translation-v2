@@ -1,5 +1,8 @@
-import { withPermission } from '../../../../lib/apiAdmin';
+import { withAdmin } from '../../../../lib/apiAdmin';
+import { hasPermission } from '../../../../lib/permissions';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { normalizeEmail, isValidEmail } from '../../../../lib/validation';
+import { logAdminActivity } from '../../../../lib/activityLog';
 
 function parseQuery(q){
   const page = Math.max(1, Number(q.page || 1));
@@ -9,8 +12,8 @@ function parseQuery(q){
   return { page, limit, search, status };
 }
 
-async function handler(req, res){
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+async function listQuotes(req, res){
+  if (!hasPermission(req.admin?.role, 'quotes', 'view')) return res.status(403).json({ error: 'Forbidden' });
   const supabase = getSupabaseServerClient();
   const { page, limit, search, status } = parseQuery(req.query || {});
 
@@ -58,4 +61,68 @@ async function handler(req, res){
   return res.status(200).json({ quotes, total_count: count || 0, page, pages });
 }
 
-export default withPermission('quotes','view')(handler);
+async function createQuote(req, res){
+  if (!hasPermission(req.admin?.role, 'quotes', 'create')) return res.status(403).json({ error: 'Forbidden' });
+  const supabase = getSupabaseServerClient();
+  const body = req.body || {};
+
+  const name = (body.name || '').toString().trim();
+  const email = normalizeEmail(body.email || '');
+  const source_lang = (body.source_lang || '').toString().trim() || null;
+  const target_lang = (body.target_lang || '').toString().trim() || null;
+  const intended_use = (body.intended_use || '').toString().trim() || null;
+  const delivery_speed = (body.delivery_speed || 'standard').toString().trim();
+
+  if (name.length < 2) return res.status(400).json({ error: 'Name is required' });
+  if (!isValidEmail(email)) return res.status(400).json({ error: 'Valid email required' });
+
+  const quote_id = global.crypto?.randomUUID ? global.crypto.randomUUID() : require('crypto').randomUUID();
+  let quote_number = null;
+  try {
+    const { data: gen } = await supabase.rpc('generate_quote_number');
+    if (gen) quote_number = gen;
+  } catch {}
+  if (!quote_number){
+    const ts = Date.now().toString().slice(-6);
+    quote_number = `Q${ts}`;
+  }
+
+  const nowIso = new Date().toISOString();
+  const insert = {
+    quote_id,
+    quote_number,
+    name,
+    email,
+    source_lang,
+    target_lang,
+    intended_use,
+    delivery_speed,
+    status: 'draft',
+    quote_state: 'draft',
+    payment_status: 'unpaid',
+    created_at: nowIso,
+    updated_at: nowIso
+  };
+
+  const { error: insErr } = await supabase.from('quote_submissions').insert([insert]);
+  if (insErr) return res.status(500).json({ error: insErr.message });
+
+  await logAdminActivity({
+    action: 'quote_created',
+    actor_id: req.admin.id,
+    actor_name: (req.admin.first_name && req.admin.last_name) ? `${req.admin.first_name} ${req.admin.last_name}` : (req.admin.first_name || req.admin.last_name || req.admin.email),
+    target_id: quote_id,
+    target_name: quote_number,
+    details: { name, email, source_lang, target_lang, intended_use }
+  });
+
+  return res.status(200).json({ success: true, quote_id, quote_number });
+}
+
+async function handler(req, res){
+  if (req.method === 'GET') return listQuotes(req, res);
+  if (req.method === 'POST') return createQuote(req, res);
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+export default withAdmin(handler);
