@@ -23,6 +23,7 @@ export default function Page({ initialAdmin }){
   const [showDiscount, setShowDiscount] = useState(false);
   const [showSurcharge, setShowSurcharge] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showEditHeader, setShowEditHeader] = useState(false);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
@@ -99,7 +100,6 @@ export default function Page({ initialAdmin }){
     }
   };
 
-  const [showEditHeader, setShowEditHeader] = useState(false);
   const handleEdit = () => { setShowEditHeader(true); };
 
   return (
