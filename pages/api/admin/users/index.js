@@ -38,8 +38,6 @@ async function createUser(req, res){
     phone: body.phone ? (toE164(body.phone) || null) : null,
     account_type: body.ordering_type === 'business' ? 'business' : 'individual',
     company_name: body.ordering_type === 'business' ? (body.company_name || null) : null,
-    designation: body.ordering_type === 'business' ? (body.designation || null) : null,
-    frequency: body.ordering_type === 'business' ? (body.frequency || null) : null,
     account_creation_source: 'admin',
     created_at: nowIso,
     updated_at: nowIso
