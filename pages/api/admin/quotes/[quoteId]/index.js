@@ -1,10 +1,57 @@
 import { withPermission } from '../../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 
+import { toE164 } from '../../../../../lib/formatters/phone';
+
 async function handler(req, res){
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const { quoteId } = req.query;
   const supabase = getSupabaseServerClient();
+
+  if (req.method === 'PUT'){
+    try{
+      const body = req.body || {};
+      const update = {};
+      if (typeof body.name === 'string') update.name = body.name.trim();
+      if (typeof body.email === 'string') update.email = body.email.trim().toLowerCase();
+      if ('phone' in body) update.phone = body.phone ? (toE164(body.phone) || null) : null;
+      if (typeof body.source_lang === 'string' || body.source_lang === null) update.source_lang = body.source_lang || null;
+      if (typeof body.target_lang === 'string' || body.target_lang === null) update.target_lang = body.target_lang || null;
+      if (typeof body.intended_use === 'string' || body.intended_use === null) update.intended_use = body.intended_use || null;
+      const { data: updated, error: upErr } = await supabase.from('quote_submissions').update(update).eq('quote_id', quoteId).select('*, quote_results(*)').maybeSingle();
+      if (upErr) return res.status(500).json({ error: upErr.message });
+      if (!updated) return res.status(404).json({ error: 'Quote not found' });
+      const can_edit = !['sent','accepted','converted'].includes(String(updated.quote_state||'').toLowerCase());
+      const totals = updated?.quote_results ? {
+        translation_subtotal: updated?.quote_results?.results_json?.pricing?.translation ?? null,
+        certification_subtotal: (updated?.quote_results?.results_json?.pricing?.certifications ?? updated?.quote_results?.results_json?.pricing?.certification) ?? null,
+        adjustments_total: ((updated?.quote_results?.results_json?.pricing?.additional_items || 0) + (updated?.quote_results?.results_json?.pricing?.discounts_or_surcharges || 0)) ?? 0,
+        subtotal: updated.quote_results.subtotal,
+        tax: updated.quote_results.tax,
+        total: updated.quote_results.total
+      } : null;
+      return res.status(200).json({
+        quote: {
+          id: updated.quote_id,
+          order_id: updated.quote_number || updated.quote_id,
+          quote_state: updated.quote_state,
+          customer_name: updated.name,
+          customer_email: updated.email,
+          customer_phone: updated.phone || null,
+          source_language: updated.source_lang,
+          target_language: updated.target_lang,
+          intended_use: updated.intended_use,
+          delivery_speed: updated.delivery_speed || 'standard',
+          delivery_date: updated.delivery_date || null,
+          can_edit
+        },
+        totals
+      });
+    } catch(e){
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const { data: q } = await supabase
     .from('quote_submissions')
@@ -101,6 +148,7 @@ async function handler(req, res){
       quote_state: q.quote_state,
       customer_name: q.name,
       customer_email: q.email,
+      customer_phone: q.phone || null,
       source_language: q.source_lang,
       target_language: q.target_lang,
       intended_use: q.intended_use,
