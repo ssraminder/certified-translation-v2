@@ -9,7 +9,7 @@ const ORDERING_OPTIONS = [
   { value: 'business', label: 'Company/Business' }
 ];
 
-export default function UserForm({ mode = 'create', initial = {}, onSubmit, submitting = false }){
+export default function UserForm({ mode = 'create', initial = null, onSubmit, submitting = false }){
   const [fullName, setFullName] = useState(initial.full_name || '');
   const [email, setEmail] = useState(initial.email || '');
   const [phone, setPhone] = useState(initial.phone || ''); // E.164 or ''
@@ -24,6 +24,7 @@ export default function UserForm({ mode = 'create', initial = {}, onSubmit, subm
   const [checkingEmail, setCheckingEmail] = useState(false);
 
   useEffect(() => {
+    if (!initial) return;
     setFullName(initial.full_name || '');
     setEmail(initial.email || '');
     setPhone(initial.phone || '');
