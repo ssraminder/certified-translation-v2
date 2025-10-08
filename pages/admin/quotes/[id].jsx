@@ -236,6 +236,7 @@ export default function Page({ initialAdmin }){
                             <div>
                               <h4 className="font-medium text-gray-900">{a.description}</h4>
                               <p className="text-sm text-gray-600 mt-1">Amount: ${Number(a.total_amount||0).toFixed(2)}</p>
+                              {a.notes && <p className="text-sm text-gray-500 mt-1">{a.notes}</p>}
                             </div>
                           </div>
                           {canEdit && (
@@ -275,6 +276,7 @@ export default function Page({ initialAdmin }){
                               <h4 className="font-medium text-gray-900">{a.description}</h4>
                               <p className="text-sm text-gray-600 mt-1">Type: {a.discount_type === 'percentage' ? `Percentage (${a.discount_value}%)` : `Fixed Amount`}</p>
                               <p className="text-sm text-gray-600">Applied to: ${Number(totals?.subtotal||0).toFixed(2)} subtotal = -${Number(a.total_amount||0).toFixed(2)}</p>
+                              {a.notes && <p className="text-sm text-gray-500 mt-1">{a.notes}</p>}
                             </div>
                           </div>
                           {canEdit && (
@@ -312,7 +314,9 @@ export default function Page({ initialAdmin }){
                             </svg>
                             <div>
                               <h4 className="font-medium text-gray-900">{a.description}</h4>
-                              <p className="text-sm text-gray-600 mt-1">Amount: ${Number(a.total_amount||0).toFixed(2)}</p>
+                              <p className="text-sm text-gray-600 mt-1">Type: {a.discount_type === 'percentage' ? `Percentage (${a.discount_value}%)` : `Fixed Amount`}</p>
+                              <p className="text-sm text-gray-600">Applied: +${Number(a.total_amount||0).toFixed(2)}</p>
+                              {a.notes && <p className="text-sm text-gray-500 mt-1">Reason: {a.notes}</p>}
                             </div>
                           </div>
                           {canEdit && (
@@ -513,18 +517,18 @@ export default function Page({ initialAdmin }){
         open={showDiscount}
         onClose={()=> setShowDiscount(false)}
         subtotal={Number(totals?.subtotal||0)}
-        onSubmit={async ({ description, discount_type, discount_value }) => {
+        onSubmit={async ({ description, discount_type, discount_value, notes }) => {
           setShowDiscount(false);
-          await addAdjustment({ type:'discount', description, discount_type, discount_value, is_taxable:false });
+          await addAdjustment({ type:'discount', description, discount_type, discount_value, notes, is_taxable:false });
         }}
       />
       <SurchargeModal
         open={showSurcharge}
         onClose={()=> setShowSurcharge(false)}
         subtotal={Number(totals?.subtotal||0)}
-        onSubmit={async ({ description, discount_type, discount_value }) => {
+        onSubmit={async ({ description, discount_type, discount_value, notes }) => {
           setShowSurcharge(false);
-          await addAdjustment({ type:'surcharge', description, discount_type, discount_value, is_taxable:true });
+          await addAdjustment({ type:'surcharge', description, discount_type, discount_value, notes, is_taxable:true });
         }}
       />
     </AdminLayout>

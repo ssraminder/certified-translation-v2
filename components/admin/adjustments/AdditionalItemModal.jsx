@@ -3,26 +3,109 @@ import { useState, useEffect } from 'react';
 export default function AdditionalItemModal({ open, onClose, onSubmit }){
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  useEffect(()=>{ if (!open){ setDescription(''); setAmount(''); } }, [open]);
+  const [notes, setNotes] = useState('');
+  
+  useEffect(()=>{ 
+    if (!open){ 
+      setDescription(''); 
+      setAmount(''); 
+      setNotes('');
+    } 
+  }, [open]);
+  
   if (!open) return null;
-  const previewAmount = Number.parseFloat(amount || 0).toFixed(2);
+
+  const handleSubmit = () => {
+    if (onSubmit) {
+      onSubmit({ 
+        description: description.trim(), 
+        amount: Number(amount || 0),
+        notes: notes.trim() || null
+      });
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded bg-white p-4">
-        <h3 className="text-lg font-semibold mb-3">Add Additional Item</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Description *</label>
-            <input type="text" placeholder="e.g., Rush fee, Handling fee" value={description} onChange={e=> setDescription(e.target.value)} className="w-full rounded border px-2 py-2" />
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl relative">
+        {/* Close button */}
+        <button 
+          onClick={onClose}
+          className="absolute right-4 top-4 p-1 rounded hover:bg-gray-100 opacity-70 hover:opacity-100 transition-opacity"
+          aria-label="Close"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 17 17">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12.5 4.5L4.5 12.5M4.5 4.5l8 8"/>
+          </svg>
+        </button>
+
+        {/* Title */}
+        <h2 className="text-lg font-semibold mb-6" style={{ letterSpacing: '-0.439px' }}>
+          Add Additional Item
+        </h2>
+
+        {/* Form fields */}
+        <div className="space-y-4">
+          {/* Description */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">
+              Description <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              placeholder="Enter item description" 
+              value={description} 
+              onChange={e=> setDescription(e.target.value)}
+              className="w-full rounded-lg bg-gray-100 border-0 px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Amount *</label>
-            <input type="number" step="0.01" min="0" placeholder="0.00" value={amount} onChange={e=> setAmount(e.target.value)} className="w-full rounded border px-2 py-2" />
+
+          {/* Amount */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">
+              Amount <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">$</span>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0" 
+                placeholder="0.00" 
+                value={amount} 
+                onChange={e=> setAmount(e.target.value)}
+                className="w-full rounded-lg bg-gray-100 border-0 pl-8 pr-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              />
+            </div>
           </div>
-          <div className="bg-gray-50 p-3 rounded text-sm">Preview: {description || 'Description'}: ${previewAmount}</div>
-          <div className="flex gap-2 pt-2">
-            <button onClick={()=> onSubmit && onSubmit({ description: description.trim(), amount: Number(amount||0) })} disabled={!description.trim() || !(Number(amount) > 0)} className="rounded bg-cyan-600 px-3 py-2 text-white disabled:opacity-50">Add Item</button>
-            <button onClick={onClose} className="rounded border px-3 py-2">Cancel</button>
+
+          {/* Notes (Optional) */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Notes (Optional)</label>
+            <textarea 
+              placeholder="Enter any additional notes..." 
+              value={notes} 
+              onChange={e=> setNotes(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg bg-gray-100 border-0 px-3 py-2 text-sm placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-end gap-3 pt-4">
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleSubmit}
+              disabled={!description.trim() || !(Number(amount) > 0)}
+              className="px-4 py-2 rounded-lg bg-black text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-900 transition-colors"
+            >
+              Add Item
+            </button>
           </div>
         </div>
       </div>
