@@ -11,16 +11,16 @@ const ROLE_OPTIONS = [
 
 function classNames(...c){ return c.filter(Boolean).join(' '); }
 
-export default function AdminForm({ mode = 'create', initial = null, disableRole = false, disableActive = false, onSubmit, submitting = false }){
-  const [fullName, setFullName] = useState(initial.full_name || '');
-  const [email, setEmail] = useState(initial.email || '');
-  const [role, setRole] = useState(initial.role || 'manager');
-  const [isActive, setIsActive] = useState(initial.is_active !== false);
+export default function AdminForm({ mode = 'create', initial = {}, disableRole = false, disableActive = false, onSubmit, submitting = false }){
+  const [fullName, setFullName] = useState(initial?.full_name || '');
+  const [email, setEmail] = useState(initial?.email || '');
+  const [role, setRole] = useState(initial?.role || 'manager');
+  const [isActive, setIsActive] = useState(initial?.is_active !== false);
   const [errors, setErrors] = useState({});
   const [emailExists, setEmailExists] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
 
-  useEffect(() => { if (!initial) return; setFullName(initial.full_name || ''); setEmail(initial.email || ''); setRole(initial.role || 'manager'); setIsActive(initial.is_active !== false); setErrors({}); setEmailExists(false); }, [initial]);
+  useEffect(() => { if (!initial || Object.keys(initial).length === 0) return; setFullName(initial.full_name || ''); setEmail(initial.email || ''); setRole(initial.role || 'manager'); setIsActive(initial.is_active !== false); setErrors({}); setEmailExists(false); }, [initial]);
 
   useEffect(() => {
     if (mode !== 'create') return; // only live-check for create
