@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
+import QuoteHeader from '../../../components/admin/QuoteHeader';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
@@ -89,21 +90,28 @@ export default function Page({ initialAdmin }){
   const discounts = adjustments.filter(a=>a.type==='discount');
   const surcharges = adjustments.filter(a=>a.type==='surcharge');
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
+  const handleEdit = () => {
+    console.log('Edit quote details');
+  };
+
   return (
-    <AdminLayout title={quote.order_id} initialAdmin={initialAdmin}>
+    <AdminLayout title="Quote Details" initialAdmin={initialAdmin}>
       {/* Quote Header */}
-      <div className="bg-white border-b mb-6 -mx-4 px-4 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-lg">{quote.order_id}</h1>
-          <span className="px-2 py-0.5 text-xs rounded-lg border bg-gray-50">{quote.quote_state || 'draft'}</span>
-        </div>
-        <div className="text-gray-700 mb-2">{quote.customer_name} • {quote.customer_email}</div>
-        <div className="flex items-center gap-2 text-gray-600">
-          <span>Source: {quote.source_language||'—'}</span>
-          <span>→</span>
-          <span>Target: {quote.target_language||'—'}</span>
-        </div>
-        <div className="text-gray-500 text-sm mt-1">Intended Use: {quote.intended_use||'—'}</div>
+      <div className="-mx-4 sm:-mx-6 mb-6">
+        <QuoteHeader
+          quote={quote}
+          admin={initialAdmin}
+          onLogout={handleLogout}
+          onEdit={handleEdit}
+        />
       </div>
 
       {/* Alert */}
