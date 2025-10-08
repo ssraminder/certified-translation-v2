@@ -145,8 +145,8 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b">
               <h2 className="text-lg font-semibold">Add Certification</h2>
-              <button 
-                onClick={() => setOpen(false)} 
+              <button
+                onClick={() => setOpen(false)}
                 className="p-1 rounded hover:bg-gray-100 opacity-70 hover:opacity-100"
                 type="button"
               >
@@ -163,13 +163,13 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
                 <div>
                   <label className="block text-sm font-medium mb-2">Certification Type *</label>
                   <div className="relative">
-                    <select 
-                      value={selectedType} 
-                      onChange={e=> { 
-                        const ct = certTypes.find(x=>x.code===e.target.value); 
-                        setSelectedType(e.target.value); 
-                        setDefaultRate(ct?.default_rate||0); 
-                      }} 
+                    <select
+                      value={selectedType}
+                      onChange={e=> {
+                        const ct = certTypes.find(x=>x.code===e.target.value);
+                        setSelectedType(e.target.value);
+                        setDefaultRate(ct?.default_rate||0);
+                      }}
                       className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
                       required
                     >
@@ -186,15 +186,15 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
 
                 {/* Apply to File */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Apply to File *</label>
+                  <label className="block text-sm font-medium mb-2">Apply to File {Array.isArray(files) && files.length > 0 ? '*' : '(optional)'}</label>
                   <div className="relative">
-                    <select 
-                      value={selectedFile} 
-                      onChange={e=> setSelectedFile(e.target.value)} 
+                    <select
+                      value={selectedFile}
+                      onChange={e=> setSelectedFile(e.target.value)}
                       className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
-                      required
+                      required={Array.isArray(files) && files.length > 0}
                     >
-                      <option value="">Choose a file...</option>
+                      <option value="">{Array.isArray(files) && files.length > 0 ? 'Choose a file...' : 'No files available'}</option>
                       {(files||[]).map(f => (
                         <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
                       ))}
@@ -218,12 +218,12 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
                   <label className="block text-sm font-medium mb-2">Override Rate (Optional)</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">$</span>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      min="0" 
-                      value={overrideRate} 
-                      onChange={e=> setOverrideRate(e.target.value)} 
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={overrideRate}
+                      onChange={e=> setOverrideRate(e.target.value)}
                       className="w-full rounded-lg border-0 bg-gray-100 pl-7 pr-3 py-2 text-sm"
                     />
                   </div>
@@ -232,9 +232,9 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
                 {/* Override Reason */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Override Reason</label>
-                  <textarea 
-                    value={overrideReason} 
-                    onChange={e=> setOverrideReason(e.target.value)} 
+                  <textarea
+                    value={overrideReason}
+                    onChange={e=> setOverrideReason(e.target.value)}
                     placeholder="Optional reason for override..."
                     rows={3}
                     className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm resize-none"
@@ -243,16 +243,16 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end gap-2 pt-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setOpen(false)} 
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
                     className="px-4 py-2 rounded-lg border text-sm font-medium"
                   >
                     Cancel
                   </button>
-                  <button 
-                    onClick={save} 
-                    disabled={loading || !selectedFile || !selectedType} 
+                  <button
+                    onClick={save}
+                    disabled={loading || !selectedType || ((Array.isArray(files) && files.length > 0) && !selectedFile)}
                     className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50"
                   >
                     Add Certification
