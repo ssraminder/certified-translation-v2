@@ -9,22 +9,22 @@ const ORDERING_OPTIONS = [
   { value: 'business', label: 'Company/Business' }
 ];
 
-export default function UserForm({ mode = 'create', initial = null, onSubmit, submitting = false }){
-  const [fullName, setFullName] = useState(initial.full_name || '');
-  const [email, setEmail] = useState(initial.email || '');
-  const [phone, setPhone] = useState(initial.phone || ''); // E.164 or ''
-  const [orderingType, setOrderingType] = useState(initial.ordering_type || '');
-  const [companyName, setCompanyName] = useState(initial.company_name || '');
-  const [designation, setDesignation] = useState(initial.designation || '');
-  const [frequency, setFrequency] = useState(initial.frequency || '');
-  const [notes, setNotes] = useState(initial.notes || '');
-  const [tags, setTags] = useState(Array.isArray(initial.tags) ? initial.tags.join(', ') : '');
+export default function UserForm({ mode = 'create', initial = {}, onSubmit, submitting = false }){
+  const [fullName, setFullName] = useState(initial?.full_name || '');
+  const [email, setEmail] = useState(initial?.email || '');
+  const [phone, setPhone] = useState(initial?.phone || ''); // E.164 or ''
+  const [orderingType, setOrderingType] = useState(initial?.ordering_type || '');
+  const [companyName, setCompanyName] = useState(initial?.company_name || '');
+  const [designation, setDesignation] = useState(initial?.designation || '');
+  const [frequency, setFrequency] = useState(initial?.frequency || '');
+  const [notes, setNotes] = useState(initial?.notes || '');
+  const [tags, setTags] = useState(Array.isArray(initial?.tags) ? initial.tags.join(', ') : '');
   const [errors, setErrors] = useState({});
   const [emailExists, setEmailExists] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
 
   useEffect(() => {
-    if (!initial) return;
+    if (!initial || Object.keys(initial).length === 0) return;
     setFullName(initial.full_name || '');
     setEmail(initial.email || '');
     setPhone(initial.phone || '');
