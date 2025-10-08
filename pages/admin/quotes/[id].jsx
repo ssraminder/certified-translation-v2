@@ -8,6 +8,7 @@ import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
 import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal';
 import CertificationsManager from '../../../components/admin/CertificationsManager';
 import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
+import EditLineItemModal from '../../../components/admin/EditLineItemModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -24,6 +25,9 @@ export default function Page({ initialAdmin }){
   const [showSurcharge, setShowSurcharge] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showEditHeader, setShowEditHeader] = useState(false);
+  const [showAlert, setShowAlert] = useState(true);
+  const [editingItem, setEditingItem] = useState(null);
+  const [showEditLine, setShowEditLine] = useState(false);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
@@ -117,13 +121,20 @@ export default function Page({ initialAdmin }){
       </div>
 
       {/* Alert */}
-      <div className="my-4 mb-6 flex items-start gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50" role="alert" aria-live="polite">
-        <svg className="mt-0.5 w-4 h-4 text-yellow-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 16 16" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M14.487 12L9.153 2.667a1.333 1.333 0 00-2.32 0L1.5 12c-.243.421.06.933.574.933h11.84c.513 0 .816-.512.573-.933z"/>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 6v2.667M8 11.333h.007"/>
-        </svg>
-        <p className="text-sm text-yellow-900">File uploads and automated analysis are disabled in Phase 1. Use Manual Line Items below.</p>
-      </div>
+      {showAlert && (
+        <div className="my-4 mb-6 flex items-start gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50" role="alert" aria-live="polite">
+          <svg className="mt-0.5 w-4 h-4 text-yellow-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M14.487 12L9.153 2.667a1.333 1.333 0 00-2.32 0L1.5 12c-.243.421.06.933.574.933h11.84c.513 0 .816-.512.573-.933z"/>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 6v2.667M8 11.333h.007"/>
+          </svg>
+          <p className="text-sm text-yellow-900 flex-1">File uploads and automated analysis are disabled in Phase 1. Use Manual Line Items below.</p>
+          <button onClick={()=> setShowAlert(false)} className="p-1 rounded hover:bg-yellow-100" aria-label="Dismiss">
+            <svg className="w-4 h-4 text-yellow-800" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12 4L4 12M4 4l8 8"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - 65% */}
@@ -164,7 +175,7 @@ export default function Page({ initialAdmin }){
                       </div>
                       {canEdit && (
                         <div className="flex items-center gap-2">
-                          <button className="p-2 rounded-lg hover:bg-gray-100">
+                          <button className="p-2 rounded-lg hover:bg-gray-100" onClick={()=> { setEditingItem(it); setShowEditLine(true); }}>
                             <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8"/>
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
@@ -506,7 +517,7 @@ export default function Page({ initialAdmin }){
         quote={quote}
         onSaved={(updated)=> setQuote(q=> ({ ...q, ...updated }))}
       />
-      <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={[]} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
+      <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={files} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
       <AdditionalItemModal
         open={showAddItem}
         onClose={()=> setShowAddItem(false)}
@@ -532,6 +543,12 @@ export default function Page({ initialAdmin }){
           setShowSurcharge(false);
           await addAdjustment({ type:'surcharge', description, discount_type, discount_value, notes, is_taxable:true });
         }}
+      />
+      <EditLineItemModal
+        open={showEditLine}
+        onClose={()=> { setShowEditLine(false); setEditingItem(null); }}
+        lineItem={editingItem}
+        onSave={async (patch)=> { if (editingItem) await updateLineItem(editingItem.id, patch); }}
       />
     </AdminLayout>
   );
