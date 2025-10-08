@@ -6,6 +6,7 @@ import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
 import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
 import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal';
+import CertificationsManager from '../../../components/admin/CertificationsManager';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -135,11 +136,11 @@ export default function Page({ initialAdmin }){
                   <div key={it.id} className="rounded border p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-start gap-2">
-                        {it.source === 'n8n' && it.override_reason === 'edited' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">edited</span>
+                        {it.source !== 'manual' && it.override_reason && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">Edited</span>
                         )}
-                        {it.source === 'n8n' && it.override_reason !== 'edited' && (
-                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">AI Analysis</span>
+                        {it.source !== 'manual' && !it.override_reason && (
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">Auto</span>
                         )}
                         {it.source === 'manual' && (
                           <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">Manual</span>
@@ -189,6 +190,14 @@ export default function Page({ initialAdmin }){
           </div>
 
 
+          <CertificationsManager
+            quoteId={quote.id}
+            initialCertifications={certifications}
+            files={files}
+            canEdit={canEdit}
+            onChange={(res)=> { if (res?.totals) setTotals(res.totals); }}
+          />
+
           <div className="rounded border bg-white">
             <div className="border-b px-4 py-2 font-semibold">Adjustments</div>
             <div className="p-4 space-y-3">
@@ -219,8 +228,103 @@ export default function Page({ initialAdmin }){
           <div className="sticky top-4 space-y-4">
             <div className="rounded border bg-white p-4">
               <div className="mb-2 text-sm font-semibold">Pricing Summary</div>
-              <SummaryRow label="Translation" value={`$${Number(totals?.translation || 0).toFixed(2)}`} />
-              <SummaryRow label="Certification" value={`$${Number(totals?.certification || 0).toFixed(2)}`} />
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Translation ({lineItems.length} items)</span>
+                  <span>${Number(totals?.translation || 0).toFixed(2)}</span>
+                </div>
+                <ul className="mt-1 text-xs text-gray-600 space-y-1">
+                  {lineItems.map(it => {
+                    const rate = Number((it.unit_rate_override ?? it.unit_rate) || 0);
+                    const pages = Number(it.billable_pages||0);
+                    const amount = (rate * pages);
+                    return (
+                      <li key={it.id} className="flex items-center justify-between">
+                        <span>• {(it.filename || it.doc_type || 'Document')} ({pages} pg)</span>
+                        <span>${amount.toFixed(2)}</span>
+                      </li>
+                    );
+                  })}
+                  {lineItems.length === 0 && <li className="text-gray-400">No items</li>}
+                </ul>
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Certification {(certifications && certifications.length ? `(${certifications.length + lineItems.filter(i=>Number(i.certification_amount||0)>0).length} items)` : '')}</span>
+                  <span>${Number(totals?.certification || 0).toFixed(2)}</span>
+                </div>
+                <ul className="mt-1 text-xs text-gray-600 space-y-1">
+                  {(certifications||[]).map(c => {
+                    const label = c.cert_type_name || 'Certification';
+                    const rate = Number((c.override_rate ?? c.default_rate) || 0);
+                    const isOverride = Number(c.override_rate) > 0;
+                    return (
+                      <li key={c.id} className="flex items-center justify-between">
+                        <span>• {label}{isOverride ? ' (override)' : ''}</span>
+                        <span>${rate.toFixed(2)}</span>
+                      </li>
+                    );
+                  })}
+                  {lineItems.filter(i=>Number(i.certification_amount||0)>0).map(li => (
+                    <li key={`li-cert-${li.id}`} className="flex items-center justify-between">
+                      <span>• Certification - {li.filename || li.doc_type || 'Document'}</span>
+                      <span>${Number(li.certification_amount||0).toFixed(2)}</span>
+                    </li>
+                  ))}
+                  {((certifications?.length||0) + lineItems.filter(i=>Number(i.certification_amount||0)>0).length) === 0 && <li className="text-gray-400">No certifications</li>}
+                </ul>
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Additional Items</span>
+                  <span>${Number(adjustments.filter(a=>a.type==='additional_item').reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                </div>
+                <ul className="mt-1 text-xs text-gray-600 space-y-1">
+                  {adjustments.filter(a=>a.type==='additional_item').map(a => (
+                    <li key={a.id} className="flex items-center justify-between">
+                      <span>• {a.description}</span>
+                      <span>${Number(a.total_amount||0).toFixed(2)}</span>
+                    </li>
+                  ))}
+                  {adjustments.filter(a=>a.type==='additional_item').length === 0 && <li className="text-gray-400">None</li>}
+                </ul>
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Discounts</span>
+                  <span>- ${Number(adjustments.filter(a=>a.type==='discount').reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                </div>
+                <ul className="mt-1 text-xs text-gray-600 space-y-1">
+                  {adjustments.filter(a=>a.type==='discount').map(a => (
+                    <li key={a.id} className="flex items-center justify-between">
+                      <span>• {a.description}</span>
+                      <span>- ${Number(a.total_amount||0).toFixed(2)}</span>
+                    </li>
+                  ))}
+                  {adjustments.filter(a=>a.type==='discount').length === 0 && <li className="text-gray-400">None</li>}
+                </ul>
+              </div>
+
+              <div className="mb-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span>Surcharges</span>
+                  <span>+ ${Number(adjustments.filter(a=>a.type==='surcharge').reduce((s,a)=> s + Number(a.total_amount||0), 0)).toFixed(2)}</span>
+                </div>
+                <ul className="mt-1 text-xs text-gray-600 space-y-1">
+                  {adjustments.filter(a=>a.type==='surcharge').map(a => (
+                    <li key={a.id} className="flex items-center justify-between">
+                      <span>• {a.description}</span>
+                      <span>+ ${Number(a.total_amount||0).toFixed(2)}</span>
+                    </li>
+                  ))}
+                  {adjustments.filter(a=>a.type==='surcharge').length === 0 && <li className="text-gray-400">None</li>}
+                </ul>
+              </div>
+
               <div className="my-2 border-t" />
               <SummaryRow label="Subtotal" value={`$${Number(totals?.subtotal || 0).toFixed(2)}`} />
               <SummaryRow label="Tax" value={`$${Number(totals?.tax || 0).toFixed(2)}`} />
