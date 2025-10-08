@@ -4,12 +4,14 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
   const [description, setDescription] = useState('');
   const [discountType, setDiscountType] = useState('percentage');
   const [discountValue, setDiscountValue] = useState('');
+  const [reason, setReason] = useState('');
   
   useEffect(()=>{ 
     if (!open){ 
       setDescription(''); 
       setDiscountType('percentage'); 
       setDiscountValue(''); 
+      setReason('');
     } 
   }, [open]);
   
@@ -26,7 +28,8 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
       onSubmit({ 
         description: description.trim(), 
         discount_type: discountType, 
-        discount_value: Number(discountValue || 0)
+        discount_value: Number(discountValue || 0),
+        notes: reason.trim() || null
       });
     }
   };
@@ -57,7 +60,7 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
             <label className="text-sm font-medium">Description *</label>
             <input 
               type="text" 
-              placeholder={positive ? 'e.g., Rush surcharge' : 'e.g., Bulk order discount'} 
+              placeholder={positive ? 'e.g., Rush processing fee' : 'e.g., Bulk order discount'} 
               value={description} 
               onChange={e=> setDescription(e.target.value)}
               className="w-full rounded-lg bg-gray-100 border-0 px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
@@ -137,6 +140,20 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
             </div>
           </div>
 
+          {/* Reason (Optional) - for surcharges */}
+          {positive && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Reason (Optional)</label>
+              <textarea 
+                placeholder="Enter reason for surcharge..." 
+                value={reason} 
+                onChange={e=> setReason(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg bg-gray-100 border-0 px-3 py-2 text-sm placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
+              />
+            </div>
+          )}
+
           {/* Current Subtotal */}
           <div className="bg-gray-50 rounded px-3 py-3">
             <p className="text-sm text-gray-600">
@@ -148,8 +165,8 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
           <div className="h-px bg-gray-200" />
 
           {/* Preview */}
-          <div className="bg-green-50 border border-green-200 rounded px-3 py-3">
-            <p className="text-base font-medium text-green-800">
+          <div className={`rounded px-3 py-3 ${positive ? 'bg-orange-50 border border-orange-200' : 'bg-green-50 border border-green-200'}`}>
+            <p className={`text-base font-medium ${positive ? 'text-orange-900' : 'text-green-800'}`}>
               Preview: {positive ? 'Surcharge' : 'Discount'}: {positive ? '+' : '-'}${computed.toFixed(2)}
             </p>
           </div>
