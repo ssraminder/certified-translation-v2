@@ -11,17 +11,35 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
   const [selectedType, setSelectedType] = useState('');
   const [defaultRate, setDefaultRate] = useState(0);
   const [overrideRate, setOverrideRate] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(()=>{ setCerts(initialCertifications || []); }, [initialCertifications]);
 
   useEffect(()=>{
     async function load(){
-      try { const { data } = await supabase.from('cert_types').select('id, name, amount'); setCertTypes((data||[]).map(d=>{ const code = toCode(d.name); let rate = Number(d.amount||0); if (code === 'standard' && !(rate > 0)) rate = 35; return { code, name: d.name, default_rate: rate }; })); }
-      catch {}
+      try { 
+        const { data } = await supabase.from('cert_types').select('id, name, amount'); 
+        setCertTypes((data||[]).map(d=>{ 
+          const code = toCode(d.name); 
+          let rate = Number(d.amount||0); 
+          if (code === 'standard' && !(rate > 0)) rate = 35; 
+          return { code, name: d.name, default_rate: rate }; 
+        })); 
+      } catch {}
     }
     load();
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedFile('');
+      setSelectedType('');
+      setDefaultRate(0);
+      setOverrideRate('');
+      setOverrideReason('');
+    }
+  }, [open]);
 
   async function remove(id){
     if (!canEdit) return;
@@ -41,23 +59,16 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
         cert_type_name: ct.name,
         default_rate: ct.default_rate,
         override_rate: overrideRate ? Number(overrideRate) : null,
+        override_reason: overrideReason || null,
         applies_to_file_id: selectedFile,
         applies_to_filename: files.find(f=> (f.file_id||f.id)===selectedFile)?.filename || null
       };
-      console.log('CertificationsManager.save payload', payload);
       const resp = await fetch(`/api/admin/quotes/${quoteId}/certifications`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
-      console.log('CertificationsManager.save response', { ok: resp.ok, status: resp.status, json });
       if (json?.success){
         setCerts(list => [...list, json.certification]);
         onChange && onChange({ totals: json.totals });
         setOpen(false);
-        setSelectedFile('');
-        setSelectedType('');
-        setDefaultRate(0);
-        setOverrideRate('');
-      } else {
-        console.warn('Certification add failed', json);
       }
     } catch (e) {
       console.error('Certification save error', e);
@@ -71,80 +82,187 @@ export default function CertificationsManager({ quoteId, initialCertifications, 
   }
 
   return (
-    <div className="rounded border bg-white p-4 mb-4">
-      <h3 className="text-lg font-semibold mb-3">Certifications</h3>
-      {certs.length === 0 ? (
-        <div className="text-sm text-gray-500 mb-3">No certifications added yet</div>
-      ):(
-        <div className="space-y-3 mb-3">
-          {certs.map(c => (
-            <div key={c.id} className="border rounded p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-medium">{c.cert_type_name}</div>
-                  <div className="text-xs text-gray-600">For: {c.applies_to_filename || '—'}</div>
-                </div>
-                {canEdit && <button onClick={()=> remove(c.id)} className="text-red-600 text-sm">Remove</button>}
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
-                <div>
-                  <div className="text-gray-600">Default Rate</div>
-                  <div>${Number(c.default_rate||0).toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Override Rate</div>
-                  <div>{c.override_rate ? `$${Number(c.override_rate).toFixed(2)}` : '—'}</div>
-                </div>
-                {canEdit && (
-                  <div className="col-span-2 flex items-center gap-2">
-                    <select className="rounded border px-2 py-1" value={c.cert_type_code} onChange={e=> update(c.id, { cert_type_code: e.target.value, cert_type_name: certTypes.find(x=>x.code===e.target.value)?.name, default_rate: certTypes.find(x=>x.code===e.target.value)?.default_rate })}>
-                      {certTypes.map(ct => (<option key={ct.code} value={ct.code}>{ct.name} (${ct.default_rate})</option>))}
-                    </select>
-                    <input type="number" step="0.01" placeholder="Override" className="rounded border px-2 py-1" defaultValue={c.override_rate||''} onBlur={e=> update(c.id, { override_rate: e.target.value })} />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {canEdit && (
-        <div>
-          {!open ? (
-            <button onClick={()=> setOpen(true)} className="w-full rounded border px-3 py-2 text-sm">+ Add Certification</button>
-          ):(
-            <div className="border rounded p-3">
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Apply to File</label>
-                  <select value={selectedFile} onChange={e=> setSelectedFile(e.target.value)} className="w-full rounded border px-2 py-2">
-                    <option value="">-- Choose a file --</option>
-                    {(files||[]).map(f => (<option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Certification Type</label>
-                  <select value={selectedType} onChange={e=> { const ct = certTypes.find(x=>x.code===e.target.value); setSelectedType(e.target.value); setDefaultRate(ct?.default_rate||0); }} className="w-full rounded border px-2 py-2">
-                    <option value="">-- Choose certification --</option>
-                    {certTypes.map(ct => (<option key={ct.code} value={ct.code}>{ct.name} (${ct.default_rate})</option>))}
-                  </select>
-                </div>
-              </div>
-              {selectedType && (
-                <div className="mb-3 text-sm">Default Rate: <span className="font-semibold">${Number(defaultRate).toFixed(2)}</span></div>
-              )}
-              <div className="mb-3">
-                <label className="block text-sm font-medium mb-1">Override Rate (optional)</label>
-                <input type="number" step="0.01" min="0.01" value={overrideRate} onChange={e=> setOverrideRate(e.target.value)} className="w-full rounded border px-2 py-2" />
-              </div>
-              <div className="flex gap-2">
-                <button disabled={loading} onClick={save} className="rounded bg-cyan-600 px-3 py-2 text-white disabled:opacity-50">Add Certification</button>
-                <button onClick={()=> { setOpen(false); setSelectedFile(''); setSelectedType(''); setOverrideRate(''); }} className="rounded border px-3 py-2">Cancel</button>
-              </div>
-            </div>
+    <>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base">Certifications</h2>
+          {canEdit && (
+            <button onClick={()=> setOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black text-white text-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M3.716 8h9.334M8.382 3.333v9.334"/>
+              </svg>
+              Add Certification
+            </button>
           )}
         </div>
+
+        {certs.length === 0 ? (
+          <p className="text-sm text-gray-500">No certifications added</p>
+        ) : (
+          <div className="space-y-3">
+            {certs.map(c => (
+              <div key={c.id} className="p-4 rounded-xl border bg-white">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M12.897 10.742l1.263 7.105a.833.833 0 01-1.318.77L10 16.5l-2.842 2.117a.833.833 0 01-1.318-.77l1.263-7.105M10 11.667a5 5 0 100-10 5 5 0 000 10z"/>
+                    </svg>
+                    <div>
+                      <h4 className="font-medium text-gray-900">{c.cert_type_name}</h4>
+                      <p className="text-sm text-gray-600 mt-1">Applied to: {c.applies_to_filename || '—'}</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">
+                        Rate: ${Number(c.default_rate||0).toFixed(2)}
+                        {c.override_rate && ` → Override: $${Number(c.override_rate).toFixed(2)}`}
+                        {c.override_reason && ` (${c.override_reason})`}
+                      </p>
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <div className="flex items-center gap-2">
+                      <button className="p-2 rounded-lg hover:bg-gray-100">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
+                        </svg>
+                      </button>
+                      <button onClick={()=> remove(c.id)} className="p-2 rounded-lg hover:bg-gray-100">
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M6.667 7.333v4M9.333 7.333v4M12.667 4v9.333c0 .354-.14.693-.391.943-.25.25-.589.391-.943.391H4.667c-.354 0-.693-.14-.943-.391a1.333 1.333 0 01-.391-.943V4M2 4h12M5.333 4V2.667c0-.354.14-.694.391-.944.25-.25.59-.39.943-.39h2.666c.354 0 .694.14.944.39.25.25.39.59.39.944V4"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Add Certification Modal */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-lg border bg-white shadow-lg">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b">
+              <h2 className="text-lg font-semibold">Add Certification</h2>
+              <button 
+                onClick={() => setOpen(false)} 
+                className="p-1 rounded hover:bg-gray-100 opacity-70 hover:opacity-100"
+                type="button"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12 4L4 12M4 4l8 8"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="px-6 py-4">
+              <div className="space-y-4">
+                {/* Certification Type */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Certification Type *</label>
+                  <div className="relative">
+                    <select 
+                      value={selectedType} 
+                      onChange={e=> { 
+                        const ct = certTypes.find(x=>x.code===e.target.value); 
+                        setSelectedType(e.target.value); 
+                        setDefaultRate(ct?.default_rate||0); 
+                      }} 
+                      className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
+                      required
+                    >
+                      <option value="">Choose certification type...</option>
+                      {certTypes.map(ct => (
+                        <option key={ct.code} value={ct.code}>{ct.name}</option>
+                      ))}
+                    </select>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4 6l4 4 4-4"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Apply to File */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Apply to File *</label>
+                  <div className="relative">
+                    <select 
+                      value={selectedFile} 
+                      onChange={e=> setSelectedFile(e.target.value)} 
+                      className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
+                      required
+                    >
+                      <option value="">Choose a file...</option>
+                      {(files||[]).map(f => (
+                        <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
+                      ))}
+                    </select>
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4 6l4 4 4-4"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Default Rate */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Default Rate</label>
+                  <div className="rounded bg-gray-50 px-3 py-3">
+                    <p className="font-medium">${Number(defaultRate).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Override Rate */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Override Rate (Optional)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">$</span>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      min="0" 
+                      value={overrideRate} 
+                      onChange={e=> setOverrideRate(e.target.value)} 
+                      className="w-full rounded-lg border-0 bg-gray-100 pl-7 pr-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Override Reason */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">Override Reason</label>
+                  <textarea 
+                    value={overrideReason} 
+                    onChange={e=> setOverrideReason(e.target.value)} 
+                    placeholder="Optional reason for override..."
+                    rows={3}
+                    className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm resize-none"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setOpen(false)} 
+                    className="px-4 py-2 rounded-lg border text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={save} 
+                    disabled={loading || !selectedFile || !selectedType} 
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50"
+                  >
+                    Add Certification
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
