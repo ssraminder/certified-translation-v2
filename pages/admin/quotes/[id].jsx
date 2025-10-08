@@ -100,7 +100,6 @@ export default function Page({ initialAdmin }){
     }
   };
 
-  const [showEditHeader, setShowEditHeader] = useState(false);
   const handleEdit = () => { setShowEditHeader(true); };
 
   return (
