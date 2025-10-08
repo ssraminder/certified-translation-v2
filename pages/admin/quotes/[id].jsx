@@ -7,6 +7,7 @@ import AdditionalItemModal from '../../../components/admin/adjustments/Additiona
 import DiscountModal from '../../../components/admin/adjustments/DiscountModal';
 import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal';
 import CertificationsManager from '../../../components/admin/CertificationsManager';
+import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -98,9 +99,8 @@ export default function Page({ initialAdmin }){
     }
   };
 
-  const handleEdit = () => {
-    console.log('Edit quote details');
-  };
+  const [showEditHeader, setShowEditHeader] = useState(false);
+  const handleEdit = () => { setShowEditHeader(true); };
 
   return (
     <AdminLayout title="Quote Details" initialAdmin={initialAdmin}>
@@ -494,6 +494,12 @@ export default function Page({ initialAdmin }){
       </div>
 
       {/* Modals */}
+      <EditQuoteHeaderModal
+        open={showEditHeader}
+        onClose={()=> setShowEditHeader(false)}
+        quote={quote}
+        onSaved={(updated)=> setQuote(q=> ({ ...q, ...updated }))}
+      />
       <ManualLineItemForm open={showManual} onClose={()=> setShowManual(false)} quoteId={quote.id} files={[]} onCreated={(li, t)=> { setLineItems(list => [...list, li]); if (t) setTotals(t); }} />
       <AdditionalItemModal
         open={showAddItem}
