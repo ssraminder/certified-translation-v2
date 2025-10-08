@@ -314,8 +314,9 @@ export default function Page({ initialAdmin }){
                             </svg>
                             <div>
                               <h4 className="font-medium text-gray-900">{a.description}</h4>
-                              <p className="text-sm text-gray-600 mt-1">Amount: ${Number(a.total_amount||0).toFixed(2)}</p>
-                              {a.notes && <p className="text-sm text-gray-500 mt-1">{a.notes}</p>}
+                              <p className="text-sm text-gray-600 mt-1">Type: {a.discount_type === 'percentage' ? `Percentage (${a.discount_value}%)` : `Fixed Amount`}</p>
+                              <p className="text-sm text-gray-600">Applied: +${Number(a.total_amount||0).toFixed(2)}</p>
+                              {a.notes && <p className="text-sm text-gray-500 mt-1">Reason: {a.notes}</p>}
                             </div>
                           </div>
                           {canEdit && (
