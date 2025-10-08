@@ -71,15 +71,16 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
           <div className="space-y-4">
             {/* Select File */}
             <div>
-              <label className="block text-sm font-medium mb-2">Select File *</label>
+              <label className="block text-sm font-medium mb-2">Select File {hasFiles ? '*' : '(optional)'}</label>
               <div className="relative">
-                <select 
-                  value={fileId} 
-                  onChange={e=> setFileId(e.target.value)} 
+                <select
+                  value={fileId}
+                  onChange={e=> setFileId(e.target.value)}
                   className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
                   required={hasFiles}
+                  disabled={!hasFiles}
                 >
-                  <option value="">Choose a file...</option>
+                  <option value="">{hasFiles ? 'Choose a file...' : 'No files available'}</option>
                   {(files||[]).map(f => (
                     <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
                   ))}
