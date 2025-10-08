@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
+import { formatForDisplay as formatPhone } from '../../lib/formatters/phone';
 
 export default function QuoteHeader({ quote, admin, onLogout, onEdit }) {
   const [editMode, setEditMode] = useState(false);
@@ -67,7 +68,7 @@ export default function QuoteHeader({ quote, admin, onLogout, onEdit }) {
             <div>
               <h2 className="text-base font-normal text-gray-800">{quote?.customer_name || '—'}</h2>
               <p className="text-sm text-gray-600 mt-0.5">
-                {quote?.customer_email || '—'} {quote?.customer_phone && `• ${quote.customer_phone}`}
+                {quote?.customer_email || '—'} {quote?.customer_phone ? `• ${formatPhone(quote.customer_phone)}` : ''}
               </p>
             </div>
           </div>
