@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
+import { invokeHitlForQuote, HITL_REASONS } from '../../../lib/hitlManagement';
 
 function extractSecret(req) {
   const headerSecret = req.headers['x-webhook-secret']
