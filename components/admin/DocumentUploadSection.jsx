@@ -21,6 +21,8 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
   }, [uploadedFiles]);
 
   async function getPageCount(file) {
+    if (!file) return null;
+
     const fileType = file.type;
 
     if (fileType === 'application/pdf') {
@@ -32,7 +34,7 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
         console.error('PDF page count error:', error);
         return null;
       }
-    } else if (fileType.startsWith('image/')) {
+    } else if (fileType?.startsWith('image/')) {
       return 1;
     } else {
       return null;
