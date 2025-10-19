@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { formatForDisplay as formatPhone } from '../lib/formatters/phone';
+import AddressDisplay from '../components/checkout/AddressDisplay';
+import OrderSummaryCard from '../components/checkout/OrderSummaryCard';
+import PricingBreakdown from '../components/checkout/PricingBreakdown';
+import { formatBytes, round2, GST_RATE } from '../lib/checkoutUtils';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
