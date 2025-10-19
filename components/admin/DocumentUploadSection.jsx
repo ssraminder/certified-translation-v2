@@ -54,10 +54,12 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
     return days + ' day' + (days > 1 ? 's' : '') + ' ago';
   }
 
-  function getFileIcon(fileType) {
-    if (fileType === 'application/pdf') return '📄';
-    if (fileType.startsWith('image/')) return '🖼️';
-    if (fileType.includes('word') || fileType.includes('document')) return '📝';
+  function getFileIcon(fileType, filename) {
+    if (!fileType && !filename) return '📎';
+
+    if (fileType === 'application/pdf' || filename?.endsWith('.pdf')) return '📄';
+    if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif)$/i.test(filename)) return '🖼️';
+    if (fileType?.includes('word') || fileType?.includes('document') || /\.(doc|docx)$/i.test(filename)) return '📝';
     return '📎';
   }
 
