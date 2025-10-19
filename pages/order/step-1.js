@@ -101,6 +101,10 @@ export default function Step1() {
     setRawFiles(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const removeReferenceFile = (idx) => {
+    setReferenceFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSourceLanguageChange = (value) => {
     setFormData(fd => ({ ...fd, sourceLanguage: value, targetLanguage: '' }));
     setShowCustomLanguage(false);
