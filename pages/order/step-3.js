@@ -611,11 +611,58 @@ function DeliveryOptionsCard({ options, timezone, selectedKey, onSelect }) {
 }
 
 function ReferenceFilesAndNotes({ files, quoteMeta }) {
+  const [downloadingFileId, setDownloadingFileId] = useState(null);
+  const [fileErrors, setFileErrors] = useState({});
   const referenceFiles = (files || []).filter(f => f.file_purpose === 'reference');
   const notes = quoteMeta?.customer_notes;
 
   if (referenceFiles.length === 0 && !notes) {
     return null;
+  }
+
+  async function handleDownload(file) {
+    try {
+      setDownloadingFileId(file.id);
+      setFileErrors(prev => ({ ...prev, [file.id]: null }));
+
+      let url = file.file_url;
+
+      // If URL might be expired or missing, try to refresh it
+      if (!url || (file.file_url_expires_at && new Date(file.file_url_expires_at) < new Date())) {
+        try {
+          const refreshRes = await fetch('/api/quotes/refresh-signed-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              quoteId: quoteMeta?.quote_id,
+              fileId: file.id
+            })
+          });
+
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            if (data.file?.file_url) {
+              url = data.file.file_url;
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to refresh signed URL, attempting to download with existing URL', err);
+        }
+      }
+
+      if (!url) {
+        setFileErrors(prev => ({ ...prev, [file.id]: 'Download link not available' }));
+        return;
+      }
+
+      // Open the file in a new tab
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Download error:', err);
+      setFileErrors(prev => ({ ...prev, [file.id]: 'Failed to download file' }));
+    } finally {
+      setDownloadingFileId(null);
+    }
   }
 
   return (
@@ -628,22 +675,23 @@ function ReferenceFilesAndNotes({ files, quoteMeta }) {
           <div>
             <h4 className="text-sm font-medium text-gray-900 mb-3">Reference materials</h4>
             <div className="space-y-2">
-              {referenceFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div>
+              {referenceFiles.map((file) => (
+                <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">{file.filename}</p>
                     <p className="text-xs text-gray-600">Reference - Not included in translation analysis</p>
+                    {fileErrors[file.id] && (
+                      <p className="text-xs text-red-600 mt-1">{fileErrors[file.id]}</p>
+                    )}
                   </div>
-                  {file.file_url && (
-                    <a
-                      href={file.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 font-medium"
-                    >
-                      Download
-                    </a>
-                  )}
+                  <button
+                    onClick={() => handleDownload(file)}
+                    disabled={downloadingFileId === file.id}
+                    className="ml-3 px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 font-medium disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    title={file.file_url ? 'Download file' : 'File not available'}
+                  >
+                    {downloadingFileId === file.id ? 'Downloading...' : 'Download'}
+                  </button>
                 </div>
               ))}
             </div>
