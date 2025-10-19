@@ -93,6 +93,10 @@ export default function Page({ initialAdmin }){
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({ quotes: [], total_count: 0, pages: 1, page: 1 });
   const [showCreate, setShowCreate] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -100,6 +104,8 @@ export default function Page({ initialAdmin }){
       const params = new URLSearchParams();
       if (status) params.set('status', status);
       if (search) params.set('search', search);
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
       params.set('page', String(page));
       params.set('limit', '20');
       fetch(`/api/admin/quotes?${params.toString()}`)
@@ -108,7 +114,51 @@ export default function Page({ initialAdmin }){
         .finally(() => setLoading(false));
     }, 400);
     return () => clearTimeout(t);
-  }, [status, search, page]);
+  }, [status, search, page, startDate, endDate]);
+
+  function toggleSelect(quoteId) {
+    setSelected(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(quoteId)) {
+        newSet.delete(quoteId);
+      } else {
+        newSet.add(quoteId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === (data.quotes?.length || 0)) {
+      setSelected(new Set());
+    } else {
+      const newSet = new Set((data.quotes || []).map(q => q.id));
+      setSelected(newSet);
+    }
+  }
+
+  async function handleDelete() {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} quote(s)? This action cannot be undone.`)) return;
+
+    setDeleting(true);
+    try {
+      const resp = await fetch('/api/admin/quotes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quote_ids: Array.from(selected) })
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.error || 'Failed to delete quotes');
+      setSelected(new Set());
+      setPage(1);
+      window.location.reload();
+    } catch (e) {
+      alert(e.message || 'Error deleting quotes');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const allowCreate = canCreateQuote(initialAdmin?.role);
 
