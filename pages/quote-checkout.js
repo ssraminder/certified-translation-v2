@@ -256,17 +256,46 @@ export default function QuoteCheckoutPage() {
                 </div>
               </div>
 
+              {/* Scanned Copy Option - Separated */}
+              {shippingOptions.find(o => o.is_always_selected) && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-6">
+                    <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="shipping"
+                        value={shippingOptions.find(o => o.is_always_selected)?.id}
+                        checked={String(selectedShipping) === String(shippingOptions.find(o => o.is_always_selected)?.id)}
+                        onChange={(e) => {
+                          setSelectedShipping(e.target.value);
+                        }}
+                        className="w-4 h-4 mt-1"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">Scanned Copy in your Dashboard</p>
+                        {shippingOptions.find(o => o.is_always_selected)?.description && (
+                          <p className="text-sm text-gray-600 mt-1">{shippingOptions.find(o => o.is_always_selected).description}</p>
+                        )}
+                        {shippingOptions.find(o => o.is_always_selected)?.delivery_time && (
+                          <p className="text-sm text-gray-600">Delivery: {shippingOptions.find(o => o.is_always_selected).delivery_time}</p>
+                        )}
+                      </div>
+                      <p className="font-semibold whitespace-nowrap text-gray-900">Always free</p>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* Shipping Options Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
                   <h2 className="text-white font-semibold text-lg">Shipping Options</h2>
                 </div>
                 <div className="p-6 space-y-3">
-                  {shippingOptions.length === 0 ? (
-                    <p className="text-gray-600 text-sm">No shipping options available</p>
+                  {shippingOptions.filter(o => !o.is_always_selected).length === 0 ? (
+                    <p className="text-gray-600 text-sm">No additional shipping options available</p>
                   ) : (
-                    shippingOptions.map((option) => {
-                      const isAlwaysSelected = option.is_always_selected;
+                    shippingOptions.filter(o => !o.is_always_selected).map((option) => {
                       const isDisabledOption = !option.is_active;
                       const isChecked = String(selectedShipping) === String(option.id);
                       return (
@@ -296,7 +325,6 @@ export default function QuoteCheckoutPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className={`font-medium ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>{option.name}</p>
-                              {isAlwaysSelected && <span className="text-xs text-gray-500">(Always included)</span>}
                               {isDisabledOption && <span className="text-xs text-red-600">(Disabled)</span>}
                             </div>
                             {option.description && <p className="text-sm text-gray-600">{option.description}</p>}
