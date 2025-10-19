@@ -24,12 +24,29 @@ async function generateOrderNumber(supabase) {
 }
 
 async function getQuoteTotals(supabase, quote_id){
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('quote_results')
     .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
     .eq('quote_id', quote_id)
     .maybeSingle();
   if (error) throw error;
+
+  // If no results exist, trigger calculation (will be saved to DB)
+  if (!data) {
+    try {
+      const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../lib/quoteTotals');
+      await recalcAndUpsertUnifiedQuoteResults(quote_id);
+      const { data: newData } = await supabase
+        .from('quote_results')
+        .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
+        .eq('quote_id', quote_id)
+        .maybeSingle();
+      data = newData || null;
+    } catch (calcErr) {
+      console.error('[create-from-quote] Failed to auto-calculate results:', calcErr);
+    }
+  }
+
   return data || null;
 }
 
