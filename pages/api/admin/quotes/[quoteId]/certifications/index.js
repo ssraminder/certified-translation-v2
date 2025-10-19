@@ -10,16 +10,17 @@ async function handler(req, res){
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const supabase = getSupabaseServerClient();
-  const { quoteId } = req.query;
+  try {
+    const supabase = getSupabaseServerClient();
+    const { quoteId } = req.query;
 
-  // Ensure quote is editable
-  const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
-  if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())){
-    return res.status(400).json({ error: 'Quote is locked' });
-  }
+    // Ensure quote is editable
+    const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
+    if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())){
+      return res.status(400).json({ error: 'Quote is locked' });
+    }
 
-  const { cert_type_code, cert_type_name, default_rate, override_rate, applies_to_file_id, applies_to_filename } = req.body || {};
+    const { cert_type_code, cert_type_name, default_rate, override_rate, applies_to_file_id, applies_to_filename } = req.body || {};
 
   let typeName = cert_type_name;
   let typeCode = cert_type_code || (typeName ? toCode(typeName) : null);
@@ -57,14 +58,18 @@ async function handler(req, res){
     applies_to_filename: applies_to_filename || null
   };
 
-  console.log('API certifications.insert payload', insert);
-  const { data: row, error } = await supabase.from('quote_certifications').insert([insert]).select('*').maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
-  console.log('API certifications.insert row', row);
+    console.log('API certifications.insert payload', insert);
+    const { data: row, error } = await supabase.from('quote_certifications').insert([insert]).select('*').maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    console.log('API certifications.insert row', row);
 
-  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
-  await logAdminActivity({ action: 'quote_certification_added', actor_id: req.admin?.id || null, target_id: quoteId, details: { cert_id: row?.id, cert_type_name: typeName } });
-  return res.status(200).json({ success: true, certification: row, totals });
+    const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
+    await logAdminActivity({ action: 'quote_certification_added', actor_id: req.admin?.id || null, target_id: quoteId, details: { cert_id: row?.id, cert_type_name: typeName } });
+    return res.status(200).json({ success: true, certification: row, totals });
+  } catch (err) {
+    console.error('Error adding certification:', err);
+    return res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
 }
 
 import { withPermission } from '../../../../../../lib/apiAdmin';

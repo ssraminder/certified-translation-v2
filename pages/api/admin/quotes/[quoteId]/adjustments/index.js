@@ -7,8 +7,9 @@ function asNumber(v){ const n = Number(v); return Number.isFinite(n) ? n : null;
 
 async function handler(req, res){
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const { quoteId } = req.query;
-  const supabase = getSupabaseServerClient();
+  try {
+    const { quoteId } = req.query;
+    const supabase = getSupabaseServerClient();
 
   const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
   if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
@@ -36,19 +37,23 @@ async function handler(req, res){
     return res.status(400).json({ error: 'Invalid type' });
   }
 
-  console.log('API adjustments.insert', insert);
-  const { data, error } = await supabase.from('quote_adjustments').insert([insert]).select('*').maybeSingle();
-  if (error) return res.status(500).json({ error: error.message });
+    console.log('API adjustments.insert', insert);
+    const { data, error } = await supabase.from('quote_adjustments').insert([insert]).select('*').maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
 
-  await supabase
-    .from('quote_submissions')
-    .update({ last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
-    .eq('quote_id', quoteId);
+    await supabase
+      .from('quote_submissions')
+      .update({ last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
+      .eq('quote_id', quoteId);
 
-  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
-  await logActivity({ adminUserId: req.admin?.id, actionType: 'quote_adjustment_added', targetType: 'quote', targetId: quoteId, details: { adjustment_id: data?.id, type } });
+    const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
+    await logActivity({ adminUserId: req.admin?.id, actionType: 'quote_adjustment_added', targetType: 'quote', targetId: quoteId, details: { adjustment_id: data?.id, type } });
 
-  return res.status(200).json({ success: true, adjustment: data, totals });
+    return res.status(200).json({ success: true, adjustment: data, totals });
+  } catch (err) {
+    console.error('Error creating adjustment:', err);
+    return res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
 }
 
 export default withPermission('quotes','edit')(handler);
