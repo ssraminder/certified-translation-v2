@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatPhoneNumber } from '../../../lib/formatters/phone';
+import { formatForDisplay, toE164 } from '../../../lib/formatters/phone';
 
 export default function CustomerInformationSection({ order, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
