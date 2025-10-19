@@ -97,11 +97,19 @@ export default function PhoneInput({
   const selectedCountry = ALL_COUNTRIES.find(c => c.code === countryCode);
   const isValidNumber = input && isValid(input, countryCode);
   let displayValue = input;
-  
+
   if (touched && input) {
     const e164 = toE164(input, countryCode);
     if (e164) {
-      displayValue = formatForDisplay(e164, countryCode);
+      try {
+        const parsed = parsePhoneNumber(e164);
+        if (parsed) {
+          // Format as national number (without country code, since we show it separately)
+          displayValue = parsed.formatNational();
+        }
+      } catch (e) {
+        displayValue = input;
+      }
     }
   }
   
