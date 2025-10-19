@@ -262,13 +262,14 @@ export default function QuoteCheckoutPage() {
                     shippingOptions.map((option) => {
                       const isAlwaysSelected = option.is_always_selected;
                       const isDisabledOption = !option.is_active;
+                      const isChecked = selectedShipping === option.id;
                       return (
                         <label
                           key={option.id}
-                          className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition ${
-                            isAlwaysSelected || isDisabledOption ? 'opacity-75' : ''
+                          className={`flex items-start gap-3 p-4 border rounded-lg transition ${
+                            isDisabledOption ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                           } ${
-                            selectedShipping === option.id
+                            isChecked
                               ? 'border-blue-300 bg-blue-50'
                               : 'border-gray-200 bg-white hover:bg-gray-50'
                           }`}
@@ -277,9 +278,13 @@ export default function QuoteCheckoutPage() {
                             type="radio"
                             name="shipping"
                             value={option.id}
-                            checked={selectedShipping === option.id}
-                            disabled={isAlwaysSelected || isDisabledOption}
-                            onChange={(e) => !isAlwaysSelected && !isDisabledOption && setSelectedShipping(e.target.value)}
+                            checked={isChecked}
+                            disabled={isDisabledOption}
+                            onChange={(e) => {
+                              if (!isDisabledOption) {
+                                setSelectedShipping(e.target.value);
+                              }
+                            }}
                             className="w-4 h-4 mt-1"
                           />
                           <div className="flex-1">
