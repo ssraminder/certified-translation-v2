@@ -130,9 +130,9 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
                 <select
                   value={fileId}
                   onChange={handleFileChange}
-                  className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
+                  disabled={!hasFiles || loadingPages}
+                  className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8 disabled:opacity-75"
                   required
-                  disabled={!hasFiles}
                 >
                   <option value="">{hasFiles ? 'Choose a file...' : 'No files uploaded yet'}</option>
                   {hasFiles && files.map(f => {
@@ -148,6 +148,9 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4 6l4 4 4-4"/>
                 </svg>
               </div>
+              {loadingPages && (
+                <p className="mt-1 text-xs text-gray-600">Calculating page count...</p>
+              )}
             </div>
 
             {/* Total Pages */}
