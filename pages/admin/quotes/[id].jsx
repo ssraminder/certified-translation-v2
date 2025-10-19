@@ -94,7 +94,7 @@ export default function Page({ initialAdmin }){
       const stateResp = await fetch(`/api/admin/quotes/${quote.id}/state`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_state: 'under_review' }) });
       const stateJson = await stateResp.json();
       if (!stateResp.ok) throw new Error(stateJson?.error || 'Failed to change state');
-      setQuote(q => ({ ...q, quote_state: 'under_review' }));
+      setQuote(q => ({ ...q, quote_state: 'under_review', can_edit: true }));
     } catch (e) {
       alert(`Error: ${e.message}`);
     }
