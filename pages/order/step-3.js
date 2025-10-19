@@ -1300,7 +1300,7 @@ export default function Step3() {
         setPricing({ subtotal: 0, estimatedTax: 0, total: 0 });
         setDeliveryEstimates(null);
         setError('All documents were removed. A human specialist will follow up with you.');
-        await triggerHitlReview(quoteId);
+        await triggerHitlReview(quoteId, HITL_REASONS.NO_DOCUMENTS);
         setShowHITL(true);
         return;
       }
