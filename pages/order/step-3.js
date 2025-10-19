@@ -1132,7 +1132,26 @@ export default function Step3() {
         return;
       }
 
-      const filesList = filesRes.data || [];
+      let filesList = filesRes.data || [];
+
+      // Regenerate signed URLs for files if expired
+      const BUCKET = 'orders';
+      filesList = await Promise.all(filesList.map(async (f) => {
+        let url = f.file_url || f.signed_url || null;
+        // Check if URL is expired or missing
+        if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
+          try {
+            const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+            if (signed?.signedUrl) {
+              url = signed.signedUrl;
+            }
+          } catch (err) {
+            console.error('Failed to generate signed URL for file:', f.filename, err);
+          }
+        }
+        return { ...f, file_url: url };
+      }));
+
       const qualifiersList = qualifiersRes.data || [];
       const deliveryOptionsList = (deliveryOptionsRes.data || []).filter((option) => option);
       if (holidaysRes?.error) {
