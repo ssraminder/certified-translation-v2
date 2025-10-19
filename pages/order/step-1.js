@@ -375,10 +375,61 @@ export default function Step1() {
         country_of_issue: formData.countryOfIssue,
         status: 'uploaded',
         upload_session_id: uploadSessionId,
-        file_url_expires_at: new Date(Date.now() + 86400000).toISOString()
+        file_url_expires_at: new Date(Date.now() + 86400000).toISOString(),
+        file_purpose: 'translate'
       }));
       const { error: filesErr } = await supabase.from('quote_files').insert(fileInserts);
       if (filesErr) throw filesErr;
+
+      // Save reference files if any
+      if (referenceFiles.length > 0) {
+        const referenceUploads = [];
+        for (const f of referenceFiles) {
+          const ext = (f.name.split('.').pop() || '').toLowerCase();
+          if (ext === 'pdf') {
+            const uploaded = await uploadPDFToStorage(f, f.name);
+            referenceUploads.push(uploaded);
+          } else if (ext === 'doc' || ext === 'docx') {
+            const { blob, filename } = await convertDocxToPDF(f);
+            const uploaded = await uploadPDFToStorage(blob, filename);
+            referenceUploads.push(uploaded);
+          }
+        }
+
+        if (referenceUploads.length > 0) {
+          const refFileInserts = referenceUploads.map(u => ({
+            quote_id: quoteId,
+            job_id: jobId,
+            file_id: u.fileId,
+            filename: u.filename,
+            storage_path: u.storagePath,
+            storage_key: u.storageKey,
+            file_url: u.fileUrl,
+            signed_url: u.signedUrl,
+            bytes: u.bytes,
+            content_type: 'application/pdf',
+            source_lang: formData.sourceLanguage,
+            target_lang: customLanguage || formData.targetLanguage,
+            intended_use_id: intendedUse?.id || null,
+            country_of_issue: formData.countryOfIssue,
+            status: 'uploaded',
+            upload_session_id: uploadSessionId,
+            file_url_expires_at: new Date(Date.now() + 86400000).toISOString(),
+            file_purpose: 'reference'
+          }));
+          const { error: refErr } = await supabase.from('quote_files').insert(refFileInserts);
+          if (refErr) throw refErr;
+        }
+      }
+
+      // Save notes if any
+      if (notes.trim()) {
+        const { error: notesErr } = await supabase
+          .from('quote_submissions')
+          .update({ customer_notes: notes })
+          .eq('quote_id', quoteId);
+        if (notesErr) throw notesErr;
+      }
 
       setProcessingStep('Starting analysis...');
       await triggerWebhook(quoteId);
