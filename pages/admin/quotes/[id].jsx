@@ -160,6 +160,14 @@ export default function Page({ initialAdmin }){
           {/* Order Details Card */}
           <OrderDetailsCard quote={quote} certifications={certifications} />
 
+          {/* Document Upload Section */}
+          <DocumentUploadSection
+            quoteId={quote?.id}
+            initialFiles={uploadedFiles}
+            onFilesChange={setUploadedFiles}
+            canEdit={canEdit}
+          />
+
           {/* Line Items Section */}
           <div>
             <div className="flex items-center justify-between mb-4">
