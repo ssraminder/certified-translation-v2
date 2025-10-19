@@ -59,6 +59,18 @@ async function handleGetQuote(req, res, quoteId) {
       .select('*')
       .eq('quote_id', quoteId);
 
+    // If no quote_results exist, trigger calculation (will be saved to DB)
+    if ((!Array.isArray(quote.quote_results) || quote.quote_results.length === 0)) {
+      try {
+        const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../../lib/quoteTotals');
+        await recalcAndUpsertUnifiedQuoteResults(quoteId);
+        const { data: newResults } = await supabase.from('quote_results').select('*').eq('quote_id', quoteId).maybeSingle();
+        if (newResults) quote.quote_results = [newResults];
+      } catch (calcErr) {
+        console.error('[dashboard/quotes] Failed to auto-calculate results:', calcErr);
+      }
+    }
+
     let daysUntilExpiry = null;
     if (quote.expires_at) {
       const now = new Date();
