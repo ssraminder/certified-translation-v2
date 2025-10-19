@@ -51,13 +51,10 @@ function CheckoutSteps({ currentStep = 2 }) {
   );
 }
 
-function CheckoutForm({ order }) {
+function CheckoutForm({ order, termsAccepted, setTermsAccepted, isProcessing, setIsProcessing }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('card');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,76 +83,10 @@ function CheckoutForm({ order }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Method</h2>
-        
-        <div className="space-y-3">
-          <div
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              paymentMethod === 'card'
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setPaymentMethod('card')}
-          >
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'card' ? 'bg-gray-900' : ''}`}></div>
-            </div>
-            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-              <path d="M26.6667 6.66663H5.33333C3.86057 6.66663 2.66666 7.86053 2.66666 9.33329V22.6666C2.66666 24.1394 3.86057 25.3333 5.33333 25.3333H26.6667C28.1394 25.3333 29.3333 24.1394 29.3333 22.6666V9.33329C29.3333 7.86053 28.1394 6.66663 26.6667 6.66663Z" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2.66666 13.3334H29.3333" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="flex-1">
-              <div className="text-sm font-normal text-gray-900">Credit / Debit Card</div>
-              <div className="flex items-center gap-2 mt-2">
-                {['VISA', 'MC', 'AMEX'].map((brand) => (
-                  <div key={brand} className="px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded bg-white">
-                    {brand}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          <div
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              paymentMethod === 'debit'
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setPaymentMethod('debit')}
-          >
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'debit' ? 'bg-gray-900' : ''}`}></div>
-            </div>
-            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-              <path d="M16 13.3334H16.0133M16 18.6666H16.0133M16 8H16.0133M21.3333 13.3334H21.3467M21.3333 18.6666H21.3467M21.3333 8H21.3467M10.6667 13.3334H10.68M10.6667 18.6666H10.68M10.6667 8H10.68" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 29.3333V25.3333C12 24.9797 12.1405 24.6406 12.3905 24.3905C12.6406 24.1405 12.9797 24 13.3333 24H18.6667C19.0203 24 19.3594 24.1405 19.6095 24.3905C19.8595 24.6406 20 24.9797 20 25.3333V29.3333M24 2.66663H8C6.52724 2.66663 5.33334 3.86053 5.33334 5.33329V26.6666C5.33334 28.1394 6.52724 29.3333 8 29.3333H24C25.4728 29.3333 26.6667 28.1394 26.6667 26.6666V5.33329C26.6667 3.86053 25.4728 2.66663 24 2.66663Z" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="text-sm font-normal text-gray-900">Pre-authorized Debit</div>
-          </div>
-
-          <div
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              paymentMethod === 'alipay'
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setPaymentMethod('alipay')}
-          >
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'alipay' ? 'bg-gray-900' : ''}`}></div>
-            </div>
-            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-              <path d="M16 2.66663V29.3333M22.6667 6.66663H12.6667C11.429 6.66663 10.242 7.15829 9.36684 8.03346C8.49167 8.90863 8 10.0956 8 11.3333C8 12.571 8.49167 13.758 9.36684 14.6331C10.242 15.5083 11.429 16 12.6667 16H19.3333C20.571 16 21.758 16.4916 22.6332 17.3668C23.5083 18.242 24 19.4289 24 20.6666C24 21.9043 23.5083 23.0913 22.6332 23.9665C21.758 24.8416 20.571 25.3333 19.3333 25.3333H8" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="text-sm font-normal text-gray-900">Alipay</div>
-          </div>
+        <div className="mt-6">
+          <PaymentElement />
         </div>
-
-        {paymentMethod === 'card' && (
-          <div className="mt-6">
-            <PaymentElement />
-          </div>
-        )}
 
         <div className="mt-6 pt-6 border-t border-gray-200">
           <label className="flex items-start gap-3 cursor-pointer">
@@ -326,7 +257,7 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
 
             {clientSecret && (
               <Elements stripe={stripePromise} options={stripeOptions}>
-                <CheckoutForm order={order} />
+                <CheckoutForm order={order} termsAccepted={termsAccepted} setTermsAccepted={setTermsAccepted} isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
               </Elements>
             )}
           </div>
@@ -353,7 +284,8 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
               </div>
 
               <button
-                onClick={handlePayment}
+                type="submit"
+                form="checkout-form"
                 disabled={!stripe || !elements || isProcessing || !termsAccepted}
                 className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
