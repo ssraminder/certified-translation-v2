@@ -3,9 +3,11 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-export default function DocumentUploadSection({ quoteId, initialFiles = [], onFilesChange, canEdit = true }) {
+export default function DocumentUploadSection({ quoteId, initialFiles = [], onFilesChange, onUploadComplete, canEdit = true }) {
   const [uploadedFiles, setUploadedFiles] = useState(initialFiles);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
