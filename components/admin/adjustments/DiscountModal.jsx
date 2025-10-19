@@ -32,8 +32,7 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
         await onSubmit({
           description: description.trim(),
           discount_type: discountType,
-          discount_value: Number(discountValue || 0),
-          notes: reason.trim() || null
+          discount_value: Number(discountValue || 0)
         });
       } catch (error) {
         console.error('Error submitting discount:', error);
