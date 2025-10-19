@@ -117,10 +117,10 @@ async function handler(req, res){
     results = (effectiveRunId ? resultsRows.find(r => r.run_id === effectiveRunId) : null) || resultsRows[0] || null;
   }
 
-  // If no results or totals are zero but there are line items, recalculate
-  if (items && items.length > 0 && (!results || (results.total === 0 || results.total === null))) {
+  // If no results exist but there are line items, recalculate
+  if (items && items.length > 0 && !results) {
     try {
-      await recalcAndUpsertUnifiedQuoteResults(quoteId);
+      await recalcAndUpsertUnifiedQuoteResults(quoteId, effectiveRunId);
       // Refetch results after recalculation
       const { data: newResults } = await supabase
         .from('quote_results')
