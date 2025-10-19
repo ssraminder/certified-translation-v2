@@ -32,8 +32,7 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
         await onSubmit({
           description: description.trim(),
           discount_type: discountType,
-          discount_value: Number(discountValue || 0),
-          notes: reason.trim() || null
+          discount_value: Number(discountValue || 0)
         });
       } catch (error) {
         console.error('Error submitting discount:', error);
@@ -149,19 +148,6 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
             </div>
           </div>
 
-          {/* Reason (Optional) - for surcharges */}
-          {positive && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Reason (Optional)</label>
-              <textarea 
-                placeholder="Enter reason for surcharge..." 
-                value={reason} 
-                onChange={e=> setReason(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg bg-gray-100 border-0 px-3 py-2 text-sm placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-gray-300"
-              />
-            </div>
-          )}
 
           {/* Current Subtotal */}
           <div className="bg-gray-50 rounded px-3 py-3">

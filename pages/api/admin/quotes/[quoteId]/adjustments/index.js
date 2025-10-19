@@ -18,10 +18,9 @@ async function handler(req, res){
   console.log('API adjustments.body', body);
   const type = String(body.type || '').toLowerCase();
   const description = body.description || '';
-  const notes = body.notes ? String(body.notes).trim() : null;
   const is_taxable = body.is_taxable !== undefined ? !!body.is_taxable : true;
 
-  let insert = { quote_id: quoteId, type, description, notes, is_taxable };
+  let insert = { quote_id: quoteId, type, description, is_taxable };
   let total_amount = 0;
 
   if (type === 'additional_item'){
