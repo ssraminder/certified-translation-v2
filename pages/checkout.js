@@ -334,35 +334,22 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg border-2 border-gray-300 p-6 shadow-md sticky top-8">
               <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Summary</h2>
-              
+
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start pb-4 border-b border-gray-300">
                   <div>
                     <div className="text-base text-gray-900">Certified Translation Service</div>
                     <div className="text-sm text-gray-600">{quote.source_lang} to {quote.target_lang}</div>
                   </div>
                   <div className="text-base text-gray-900">${totalService.toFixed(2)}</div>
                 </div>
-                
-                <div className="flex justify-between items-center pb-4 border-b border-gray-300">
-                  <div className="text-base text-gray-900">Courier Shipping</div>
-                  <div className="text-base text-gray-900">${Number(order.shipping_total || 0).toFixed(2)}</div>
-                </div>
-                
-                <div className="flex justify-between items-center pt-2">
-                  <div className="text-base text-gray-700">Subtotal</div>
-                  <div className="text-base text-gray-900">${Number(order.subtotal || 0).toFixed(2)}</div>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-600">GST ({(Number(order.tax_rate || 0) * 100).toFixed(0)}%)</div>
-                  <div className="text-sm text-gray-600">${Number(order.tax_total || 0).toFixed(2)}</div>
-                </div>
-                
-                <div className="flex justify-between items-center pt-4 border-t-2 border-gray-300">
-                  <div className="text-lg text-gray-900">Total</div>
-                  <div className="text-3xl font-normal text-gray-900">${Number(order.total || 0).toFixed(2)}</div>
-                </div>
+
+                <PricingBreakdown
+                  subtotal={Number(order.subtotal || 0) - Number(order.shipping_total || 0)}
+                  shipping={Number(order.shipping_total || 0)}
+                  taxRate={Number(order.tax_rate || 0)}
+                  showShipping={true}
+                />
               </div>
 
               <button
