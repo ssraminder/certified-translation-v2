@@ -7,8 +7,9 @@ function asNumber(v){ const n = Number(v); return Number.isFinite(n) ? n : null;
 
 async function handler(req, res){
   if (req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed' });
-  const { quoteId } = req.query;
-  const supabase = getSupabaseServerClient();
+  try {
+    const { quoteId } = req.query;
+    const supabase = getSupabaseServerClient();
 
   const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
   if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
@@ -38,11 +39,15 @@ async function handler(req, res){
     .update({ last_edited_by: req.admin?.id || null, last_edited_at: new Date().toISOString() })
     .eq('quote_id', quoteId);
 
-  const { data: updated } = await supabase.from('quote_sub_orders').select('*').eq('id', line_item_id).maybeSingle();
-  const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId, updated?.run_id || null);
-  await logActivity({ adminUserId: req.admin?.id, actionType: 'quote_line_item_updated', targetType: 'quote', targetId: quoteId, details: { line_item_id, updates: patch } });
+    const { data: updated } = await supabase.from('quote_sub_orders').select('*').eq('id', line_item_id).maybeSingle();
+    const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId, updated?.run_id || null);
+    await logActivity({ adminUserId: req.admin?.id, actionType: 'quote_line_item_updated', targetType: 'quote', targetId: quoteId, details: { line_item_id, updates: patch } });
 
-  return res.status(200).json({ success: true, line_item: updated, totals });
+    return res.status(200).json({ success: true, line_item: updated, totals });
+  } catch (err) {
+    console.error('Error updating line item:', err);
+    return res.status(500).json({ error: err?.message || 'Internal server error' });
+  }
 }
 
 export default withPermission('quotes','edit')(handler);
