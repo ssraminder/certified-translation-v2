@@ -165,16 +165,20 @@ export default function Step4() {
     const opt = options.find(o => o.id === id);
     if (!opt || opt.is_always_selected) return;
 
-    // Remove all non-always-selected options
     const alwaysSelectedIds = options.filter(o => o.is_always_selected).map(o => o.id);
-    for (const optId of copy) {
-      if (!alwaysSelectedIds.includes(optId)) {
-        copy.delete(optId);
+    const additionalOptions = options.filter(o => !o.is_always_selected);
+
+    if (copy.has(id)) {
+      copy.delete(id);
+    } else {
+      for (const optId of additionalOptions) {
+        if (!alwaysSelectedIds.includes(optId)) {
+          copy.delete(optId);
+        }
       }
+      copy.add(id);
     }
 
-    // Add the newly selected option (radio button behavior)
-    copy.add(id);
     setSelected(copy);
   }
 
