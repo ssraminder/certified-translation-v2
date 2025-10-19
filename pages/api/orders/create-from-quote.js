@@ -199,6 +199,11 @@ async function handler(req, res){
       .update({ converted_to_order_id: order.id, converted_at: new Date().toISOString() })
       .eq('quote_id', quote_id);
 
+    await supabase
+      .from('quote_submissions')
+      .update({ quote_state: 'converted', updated_at: new Date().toISOString() })
+      .eq('quote_id', quote_id);
+
     await supabase.from('order_status_history').insert([
       {
         order_id: order.id,

@@ -120,7 +120,10 @@ export default function QuotesListPage() {
                   <div className="font-semibold text-gray-900">{q.quote_number || String(q.id).slice(0, 8)}</div>
                   <div className="text-sm text-gray-600">{formatDate(q.created_at)}</div>
                 </div>
-                <StatusBadge state={q.quote_state} />
+                <div className="flex flex-col items-end gap-1">
+                  {q.hitl_required && <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">HITL</span>}
+                  <StatusBadge state={q.quote_state} />
+                </div>
               </div>
               <div className="mt-3 text-sm text-gray-700 space-y-1">
                 <div>🌐 {q.source_language} → {q.target_language}</div>
@@ -130,8 +133,11 @@ export default function QuotesListPage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <Link href={`/dashboard/quotes/${q.id}`} className="px-3 py-2 bg-gray-100 rounded-lg text-sm">View</Link>
-                {q.quote_state === 'draft' && (
+                {q.quote_state === 'draft' && !q.hitl_required && (
                   <Link href={`/order/step-3?quote=${q.id}`} className="px-3 py-2 bg-cyan-500 text-white rounded-lg text-sm">Resume Quote</Link>
+                )}
+                {q.hitl_required && (
+                  <button disabled className="px-3 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm cursor-not-allowed" title="Cannot resume - quote is under human review">Resume Quote</button>
                 )}
                 {q.quote_state === 'expired' && (
                   <button onClick={() => handleRegenerate(q.id)} className="px-3 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm">Regenerate</button>
@@ -156,6 +162,7 @@ function StatusBadge({ state }) {
     reviewed: 'bg-purple-100 text-purple-700',
     expired: 'bg-orange-100 text-orange-700',
     converted: 'bg-green-100 text-green-700',
+    paid: 'bg-green-100 text-green-700',
   };
   const cls = colors[state] || 'bg-gray-100 text-gray-700';
   return <span className={`px-2 py-1 rounded text-xs font-semibold ${cls}`}>{formatStatus(state)}</span>;

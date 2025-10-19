@@ -63,8 +63,8 @@ async function handleGetQuotes(req, res) {
         query = query.eq('quote_state', status);
       }
     } else {
-      // Hide converted quotes from user profile by default
-      query = query.neq('quote_state', 'converted');
+      // Hide converted and paid quotes from user profile by default (they appear in orders)
+      query = query.notIn('quote_state', ['converted', 'paid']);
     }
 
     if (search) {
@@ -136,14 +136,14 @@ async function handleGetQuotes(req, res) {
       .eq('user_id', userId)
       .is('archived_at', null);
 
-    const nonConverted = (allForStats || []).filter((q) => q.quote_state !== 'converted');
+    const nonCompletedQuotes = (allForStats || []).filter((q) => !['converted', 'paid'].includes(q.quote_state));
     const stats = {
-      all: nonConverted.length || 0,
-      draft: nonConverted.filter((q) => q.quote_state === 'draft').length || 0,
-      open: nonConverted.filter((q) => ['open', 'sent'].includes(q.quote_state)).length || 0,
-      under_review: nonConverted.filter((q) => ['pending_review', 'under_review', 'reviewed'].includes(q.quote_state)).length || 0,
-      expired: nonConverted.filter((q) => q.quote_state === 'expired').length || 0,
-      converted: (allForStats || []).filter((q) => q.quote_state === 'converted').length || 0,
+      all: nonCompletedQuotes.length || 0,
+      draft: nonCompletedQuotes.filter((q) => q.quote_state === 'draft').length || 0,
+      open: nonCompletedQuotes.filter((q) => ['open', 'sent'].includes(q.quote_state)).length || 0,
+      under_review: nonCompletedQuotes.filter((q) => ['pending_review', 'under_review', 'reviewed'].includes(q.quote_state)).length || 0,
+      expired: nonCompletedQuotes.filter((q) => q.quote_state === 'expired').length || 0,
+      converted: (allForStats || []).filter((q) => ['converted', 'paid'].includes(q.quote_state)).length || 0,
     };
 
     return res.status(200).json({ quotes: enhancedQuotes, stats });

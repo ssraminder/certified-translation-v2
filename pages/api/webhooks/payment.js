@@ -73,6 +73,13 @@ async function handlePaymentSuccess(paymentIntent){
   ]);
 
   const order = await getOrderWithDetails(supabase, orderId);
+  if (order && order.quote_id) {
+    await supabase
+      .from('quote_submissions')
+      .update({ quote_state: 'paid', updated_at: new Date().toISOString() })
+      .eq('quote_id', order.quote_id);
+  }
+
   if (order) {
     await sendOrderConfirmationEmail(order);
   }

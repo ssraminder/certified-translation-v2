@@ -72,7 +72,10 @@ export default function QuoteDetailPage() {
         <div>
           <Link href="/dashboard/quotes" className="text-sm text-cyan-600">← Back to Quotes</Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">Quote {quote.quote_number || String(quote.id).slice(0,8)}</h1>
-          <div className="text-gray-600 mt-1">{formatDate(quote.created_at)} • <StatusBadge state={quote.quote_state} /></div>
+          <div className="text-gray-600 mt-1 flex items-center gap-2">
+            <span>{formatDate(quote.created_at)} • <StatusBadge state={quote.quote_state} /></span>
+            {quote.hitl_required && <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">HITL</span>}
+          </div>
         </div>
         <div className="flex gap-2">
           {quote.quote_state === 'expired' && (
@@ -157,12 +160,23 @@ export default function QuoteDetailPage() {
         </div>
 
         <aside className="space-y-6">
+          {['converted', 'paid'].includes(quote.quote_state) && (
+            <section className="bg-white rounded-lg border border-green-200 p-4 bg-green-50">
+              <h2 className="font-semibold text-green-900 mb-2">Order Created</h2>
+              <p className="text-sm text-green-800">This quote has been converted to an order. View your order in the <Link href="/dashboard/orders" className="underline font-semibold">Orders</Link> section.</p>
+            </section>
+          )}
+
           {quote.quote_state === 'draft' && (
             <section className="bg-white rounded-lg border border-gray-200 p-4">
               <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
-              <Link href={`/order/step-3?quote=${quote.id}`}>
-                <button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-lg font-semibold">Resume Quote</button>
-              </Link>
+              {quote.hitl_required ? (
+                <button disabled className="w-full bg-gray-300 text-gray-500 py-2 rounded-lg font-semibold cursor-not-allowed" title="Cannot resume - quote is under human review">Resume Quote</button>
+              ) : (
+                <Link href={`/order/step-3?quote=${quote.id}`}>
+                  <button className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 rounded-lg font-semibold">Resume Quote</button>
+                </Link>
+              )}
             </section>
           )}
 
@@ -252,6 +266,7 @@ function StatusBadge({ state }) {
     reviewed: 'bg-purple-100 text-purple-700',
     expired: 'bg-orange-100 text-orange-700',
     converted: 'bg-green-100 text-green-700',
+    paid: 'bg-green-100 text-green-700',
   };
   const cls = colors[state] || 'bg-gray-100 text-gray-700';
   return <span className={`px-2 py-1 rounded text-xs font-semibold ${cls}`}>{formatStatus(state)}</span>;
