@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
@@ -15,6 +15,8 @@ import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
 import SendMagicLinkModal from '../../../components/admin/SendMagicLinkModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
+
+function round2(n){ const x = Number(n); return Math.round((Number.isFinite(x)?x:0)*100)/100; }
 
 export default function Page({ initialAdmin }){
   const [quote, setQuote] = useState(null);
@@ -34,6 +36,7 @@ export default function Page({ initialAdmin }){
   const [showEditLine, setShowEditLine] = useState(false);
   const [showSendMagicLink, setShowSendMagicLink] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
