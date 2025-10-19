@@ -257,9 +257,36 @@ export default function Step4() {
             <h2 className="text-lg font-semibold text-gray-900">Shipping Method</h2>
             <p className="text-xs text-gray-500 mb-4">Choose how you'd like to receive your documents</p>
             <div className="space-y-3">
-              {options.map(o => {
+              {options.find(o => o.is_always_selected) && (
+                <label
+                  className={classNames(
+                    'flex items-start justify-between rounded-xl border p-4 transition cursor-pointer',
+                    selected.has(options.find(o => o.is_always_selected)?.id) ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                  )}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="shipping-method"
+                        className="h-4 w-4"
+                        checked={selected.has(options.find(o => o.is_always_selected)?.id)}
+                        onChange={() => {
+                          toggle(options.find(o => o.is_always_selected)?.id);
+                        }}
+                      />
+                      <span className="text-sm font-semibold text-gray-900">
+                        Scanned Copy in your Dashboard
+                      </span>
+                    </div>
+                    {options.find(o => o.is_always_selected)?.description && <p className="mt-1 text-xs text-gray-600">{options.find(o => o.is_always_selected).description}</p>}
+                    {options.find(o => o.is_always_selected)?.delivery_time && <p className="mt-0.5 text-[11px] text-gray-500">Delivery: {options.find(o => o.is_always_selected).delivery_time}</p>}
+                  </div>
+                  <div className="ml-4 whitespace-nowrap text-sm font-semibold text-gray-900">Always free</div>
+                </label>
+              )}
+              {options.filter(o => !o.is_always_selected).map(o => {
                 const checked = selected.has(o.id);
-                const isAlwaysSelected = o.is_always_selected;
                 const isDisabledOption = !o.is_active;
                 return (
                   <label
@@ -287,7 +314,6 @@ export default function Step4() {
                         <span className={classNames('text-sm font-medium', isDisabledOption ? 'text-gray-500' : 'text-gray-900')}>
                           {o.name}
                         </span>
-                        {isAlwaysSelected && <span className="text-[11px] text-gray-500">(Always included)</span>}
                         {isDisabledOption && <span className="text-[11px] text-red-600">(Disabled)</span>}
                       </div>
                       {o.description && <p className="mt-1 text-xs text-gray-600">{o.description}</p>}
