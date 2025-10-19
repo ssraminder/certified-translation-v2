@@ -12,7 +12,7 @@ async function handler(req, res){
     const supabase = getSupabaseServerClient();
 
   const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
-  if (['sent','accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
+  if (['accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
 
   const { line_item_id, updates } = req.body || {};
   if (!line_item_id || !updates) return res.status(400).json({ error: 'line_item_id and updates are required' });
