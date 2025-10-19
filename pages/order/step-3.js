@@ -612,6 +612,59 @@ function DeliveryOptionsCard({ options, timezone, selectedKey, onSelect }) {
   );
 }
 
+function ReferenceFilesAndNotes({ files, quoteMeta }) {
+  const referenceFiles = (files || []).filter(f => f.file_purpose === 'reference');
+  const notes = quoteMeta?.customer_notes;
+
+  if (referenceFiles.length === 0 && !notes) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-blue-100">
+      <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
+        <h3 className="text-lg font-semibold text-gray-900">Reference Files & Notes</h3>
+      </div>
+      <div className="p-6 space-y-6">
+        {referenceFiles.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Reference materials</h4>
+            <div className="space-y-2">
+              {referenceFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{file.filename}</p>
+                    <p className="text-xs text-gray-600">Reference - Not included in translation analysis</p>
+                  </div>
+                  {file.file_url && (
+                    <a
+                      href={file.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 font-medium"
+                    >
+                      Download
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {notes && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Notes & Instructions</h4>
+            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 whitespace-pre-wrap text-sm text-gray-700">
+              {notes}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LineItemsTable({ items, onRemove, disableRemove, isSaving }) {
   if (!items || items.length === 0) return null;
   const isSingleItem = disableRemove || items.length <= 1;
@@ -1376,6 +1429,7 @@ export default function Step3() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{infoMessage}</div>
               )}
               <QuoteSummaryCard quoteMeta={quoteMeta} jobId={jobId || quoteMeta?.job_id} />
+              <ReferenceFilesAndNotes files={files} quoteMeta={quoteMeta} />
               <LineItemsTable
                 items={lineItems}
                 onRemove={handleRemoveItem}

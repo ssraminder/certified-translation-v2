@@ -42,6 +42,7 @@ function classNames(...arr) { return arr.filter(Boolean).join(' '); }
 
 export default function Step1() {
   const [rawFiles, setRawFiles] = useState([]); // File[]
+  const [referenceFiles, setReferenceFiles] = useState([]); // Reference files
   const [errors, setErrors] = useState({});
   const [processing, setProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
@@ -58,8 +59,10 @@ export default function Step1() {
   });
   const [customLanguage, setCustomLanguage] = useState('');
   const [showCustomLanguage, setShowCustomLanguage] = useState(false);
+  const [notes, setNotes] = useState('');
 
   const totalBytes = useMemo(() => rawFiles.reduce((sum, f) => sum + (f.size || 0), 0), [rawFiles]);
+  const totalReferenceBytes = useMemo(() => referenceFiles.reduce((sum, f) => sum + (f.size || 0), 0), [referenceFiles]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,6 +99,10 @@ export default function Step1() {
 
   const removeFile = (idx) => {
     setRawFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const removeReferenceFile = (idx) => {
+    setReferenceFiles(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleSourceLanguageChange = (value) => {
@@ -262,20 +269,21 @@ export default function Step1() {
   async function triggerWebhook(quoteId) {
     const payload = JSON.stringify({ quote_id: quoteId });
     try {
-      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function' && payload.length <= 64000) {
-        const blob = new Blob([payload], { type: 'application/json' });
-        const sent = navigator.sendBeacon('/api/trigger-n8n', blob);
-        if (sent) return;
-      }
-
-      await fetch('/api/trigger-n8n', {
+      console.log('[Step1] Triggering webhook for quoteId:', quoteId);
+      const response = await fetch('/api/trigger-n8n', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
         keepalive: true,
       });
+
+      if (!response.ok) {
+        console.error('[Step1] Webhook request failed with status:', response.status);
+      } else {
+        console.log('[Step1] Webhook triggered successfully');
+      }
     } catch (e) {
-      console.warn('Webhook trigger failed:', e);
+      console.error('[Step1] Webhook trigger error:', e);
     }
   }
 
@@ -368,10 +376,61 @@ export default function Step1() {
         country_of_issue: formData.countryOfIssue,
         status: 'uploaded',
         upload_session_id: uploadSessionId,
-        file_url_expires_at: new Date(Date.now() + 86400000).toISOString()
+        file_url_expires_at: new Date(Date.now() + 86400000).toISOString(),
+        file_purpose: 'translate'
       }));
       const { error: filesErr } = await supabase.from('quote_files').insert(fileInserts);
       if (filesErr) throw filesErr;
+
+      // Save reference files if any
+      if (referenceFiles.length > 0) {
+        const referenceUploads = [];
+        for (const f of referenceFiles) {
+          const ext = (f.name.split('.').pop() || '').toLowerCase();
+          if (ext === 'pdf') {
+            const uploaded = await uploadPDFToStorage(f, f.name);
+            referenceUploads.push(uploaded);
+          } else if (ext === 'doc' || ext === 'docx') {
+            const { blob, filename } = await convertDocxToPDF(f);
+            const uploaded = await uploadPDFToStorage(blob, filename);
+            referenceUploads.push(uploaded);
+          }
+        }
+
+        if (referenceUploads.length > 0) {
+          const refFileInserts = referenceUploads.map(u => ({
+            quote_id: quoteId,
+            job_id: jobId,
+            file_id: u.fileId,
+            filename: u.filename,
+            storage_path: u.storagePath,
+            storage_key: u.storageKey,
+            file_url: u.fileUrl,
+            signed_url: u.signedUrl,
+            bytes: u.bytes,
+            content_type: 'application/pdf',
+            source_lang: formData.sourceLanguage,
+            target_lang: customLanguage || formData.targetLanguage,
+            intended_use_id: intendedUse?.id || null,
+            country_of_issue: formData.countryOfIssue,
+            status: 'uploaded',
+            upload_session_id: uploadSessionId,
+            file_url_expires_at: new Date(Date.now() + 86400000).toISOString(),
+            file_purpose: 'reference'
+          }));
+          const { error: refErr } = await supabase.from('quote_files').insert(refFileInserts);
+          if (refErr) throw refErr;
+        }
+      }
+
+      // Save notes if any
+      if (notes.trim()) {
+        const { error: notesErr } = await supabase
+          .from('quote_submissions')
+          .update({ customer_notes: notes })
+          .eq('quote_id', quoteId);
+        if (notesErr) throw notesErr;
+      }
 
       setProcessingStep('Starting analysis...');
       await triggerWebhook(quoteId);
@@ -424,18 +483,71 @@ export default function Step1() {
           {errors.files && <p className="text-sm text-red-600 mb-4">{errors.files}</p>}
 
           {rawFiles.length > 0 && (
-            <ul className="mb-6 divide-y divide-gray-200 border border-gray-200 rounded-lg">
-              {rawFiles.map((f, idx) => (
-                <li key={idx} className="flex items-center justify-between p-3">
-                  <div>
-                    <p className="text-sm text-gray-900">{f.name}</p>
-                    <p className="text-xs text-gray-500">{bytesToMB(f.size)}MB</p>
-                  </div>
-                  <button className="text-sm text-red-600 hover:underline" onClick={() => removeFile(idx)}>Remove</button>
-                </li>
-              ))}
-            </ul>
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Documents to translate</h3>
+              <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                {rawFiles.map((f, idx) => (
+                  <li key={idx} className="flex items-center justify-between p-3">
+                    <div>
+                      <p className="text-sm text-gray-900">{f.name}</p>
+                      <p className="text-xs text-gray-500">{bytesToMB(f.size)}MB</p>
+                    </div>
+                    <button className="text-sm text-red-600 hover:underline" onClick={() => removeFile(idx)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
+
+          {/* Reference Files Section */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Reference files (optional)</h3>
+            <p className="text-xs text-gray-600 mb-3">Upload any reference materials, glossaries, or previous translations that can help with context (not included in translation analysis)</p>
+
+            {referenceFiles.length > 0 && (
+              <ul className="mb-3 divide-y divide-blue-200 border border-blue-200 rounded-lg bg-white">
+                {referenceFiles.map((f, idx) => (
+                  <li key={idx} className="flex items-center justify-between p-3">
+                    <div>
+                      <p className="text-sm text-gray-900">{f.name}</p>
+                      <p className="text-xs text-gray-500">{bytesToMB(f.size)}MB</p>
+                    </div>
+                    <button className="text-sm text-red-600 hover:underline" onClick={() => removeReferenceFile(idx)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex gap-3">
+              <label className="inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                <input suppressHydrationWarning type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden" onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const accepted = files.filter(f => {
+                    const ext = (f.name.split('.').pop() || '').toLowerCase();
+                    return ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(ext);
+                  });
+                  setReferenceFiles(prev => [...prev, ...accepted]);
+                  if (e.target) e.target.value = '';
+                }} />
+                📎 Add reference files
+              </label>
+              {referenceFiles.length > 0 && (
+                <p className="text-xs text-gray-600 flex items-center">{bytesToMB(totalReferenceBytes)}MB</p>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Instructions (optional)</label>
+              <textarea
+                suppressHydrationWarning
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+                rows="3"
+                placeholder="Any notes, special instructions, or context for the translator..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
 
           {/* Form */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
