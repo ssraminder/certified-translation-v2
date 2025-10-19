@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatPhoneNumber } from '../../../lib/formatters/phone';
+import { formatForDisplay, toE164 } from '../../../lib/formatters/phone';
 
 export default function CustomerInformationSection({ order, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -33,7 +33,7 @@ export default function CustomerInformationSection({ order, onUpdate }) {
     }
   };
 
-  const displayPhone = formData.customer_phone ? formatPhoneNumber(formData.customer_phone) : '—';
+  const displayPhone = formData.customer_phone ? formatForDisplay(toE164(formData.customer_phone, 'CA') || formData.customer_phone) : '—';
 
   return (
     <div className="bg-white rounded-lg p-6 border border-gray-200">
@@ -120,10 +120,8 @@ export default function CustomerInformationSection({ order, onUpdate }) {
                 value={formData.customer_phone}
                 onChange={(e) => handleChange('customer_phone', e.target.value)}
                 onBlur={(e) => {
-                  const formatted = formatPhoneNumber(e.target.value);
-                  if (formatted) {
-                    handleChange('customer_phone', e.target.value);
-                  }
+                  // Phone formatting handled on display, save raw value
+                  handleChange('customer_phone', e.target.value);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
