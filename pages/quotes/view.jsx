@@ -155,15 +155,15 @@ export default function QuoteViewPage() {
               </div>
             </div>
 
-            {/* Documents */}
-            {files.length > 0 && (
+            {/* Documents to translate */}
+            {files.filter(f => f.file_purpose !== 'reference').length > 0 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
                   <h2 className="text-white font-semibold text-lg">Documents</h2>
                 </div>
                 <div className="p-6">
                   <div className="space-y-3">
-                    {files.map((file, idx) => (
+                    {files.filter(f => f.file_purpose !== 'reference').map((file, idx) => (
                       <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div>
                           <p className="font-medium text-gray-900">{file.filename}</p>
@@ -181,6 +181,52 @@ export default function QuoteViewPage() {
                         )}
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Reference Files */}
+            {files.filter(f => f.file_purpose === 'reference').length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border border-blue-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 px-6 py-4">
+                  <h2 className="text-white font-semibold text-lg">Reference Files</h2>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-4">These reference materials are not included in the translation analysis.</p>
+                  <div className="space-y-3">
+                    {files.filter(f => f.file_purpose === 'reference').map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg border border-cyan-200">
+                        <div>
+                          <p className="font-medium text-gray-900">{file.filename}</p>
+                          <p className="text-sm text-gray-600">{(file.bytes / 1024).toFixed(1)} KB</p>
+                        </div>
+                        {file.file_url && (
+                          <a
+                            href={file.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded text-sm hover:bg-cyan-200 font-medium"
+                          >
+                            Download
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Customer Notes */}
+            {quoteData?.customer_notes && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+                  <h2 className="text-white font-semibold text-lg">Notes & Instructions</h2>
+                </div>
+                <div className="p-6">
+                  <div className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    {quoteData.customer_notes}
                   </div>
                 </div>
               </div>
