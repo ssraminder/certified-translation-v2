@@ -5,15 +5,19 @@ import Spinner from '../components/dashboard/Spinner';
 import PhoneInput from '../components/form/PhoneInput';
 import CountrySelect from '../components/form/CountrySelect';
 import RegionSelect from '../components/form/RegionSelect';
+import ShippingMethodSelector from '../components/checkout/ShippingMethodSelector';
+import PricingBreakdown from '../components/checkout/PricingBreakdown';
 import { formatPostal, labelForPostal } from '../lib/formatters/postal';
-import { isValid as isPhoneValid } from '../lib/formatters/phone';
-
-const GST_RATE = 0.05;
-
-function classNames(...v) { return v.filter(Boolean).join(' '); }
-function round2(n){ const x = Number(n); return Math.round((Number.isFinite(x)?x:0)*100)/100; }
-function formatCurrency(v){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD'}).format(round2(v)); }
-function emailOk(v){ return /.+@.+\..+/.test(String(v||'')); }
+import {
+  validateEmail,
+  validatePhone,
+  validateBillingAddress,
+  updateAddressField,
+  formatCurrency,
+  round2,
+  GST_RATE,
+  DEFAULT_COUNTRY
+} from '../lib/checkoutUtils';
 
 export default function QuoteCheckoutPage() {
   const router = useRouter();
