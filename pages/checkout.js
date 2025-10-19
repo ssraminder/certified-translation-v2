@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { formatForDisplay as formatPhone } from '../lib/formatters/phone';
+import AddressDisplay from '../components/checkout/AddressDisplay';
+import OrderSummaryCard from '../components/checkout/OrderSummaryCard';
+import PricingBreakdown from '../components/checkout/PricingBreakdown';
+import { formatBytes, round2, GST_RATE } from '../lib/checkoutUtils';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -193,12 +196,6 @@ function CheckoutForm({ order }) {
   );
 }
 
-function formatBytes(bytes) {
-  const b = Number(bytes || 0);
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing, termsAccepted, setIsProcessing, setTermsAccepted }) {
   const router = useRouter();
@@ -248,45 +245,14 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-normal text-gray-900">Order Summary</h2>
-                <button
-                  onClick={() => router.push(`/order/step-2?quote=${order.quote_id}`)}
-                  className="text-sm text-blue-600 hover:underline"
-                >
-                  Edit
-                </button>
-              </div>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Order ID:</span>
-                  <span className="text-gray-900">{order.order_number || order.id?.slice(0, 8)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Translation:</span>
-                  <span className="text-gray-900">{quote.source_lang} → {quote.target_lang}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Purpose:</span>
-                  <span className="text-gray-900">{quote.intended_use_name || quote.intended_use || '—'}</span>
-                </div>
-                <div className="pt-3 border-t border-gray-200">
-                  <div className="text-gray-600 mb-2">Documents:</div>
-                  <div className="space-y-2">
-                    {(order.documents || []).map((doc, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm">
-                        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 16 16" fill="none">
-                          <path d="M10 1.33334H4C3.64638 1.33334 3.30724 1.47382 3.05719 1.72387C2.80714 1.97392 2.66667 2.31305 2.66667 2.66668V13.3333C2.66667 13.687 2.80714 14.0261 3.05719 14.2762C3.30724 14.5262 3.64638 14.6667 4 14.6667H12C12.3536 14.6667 12.6928 14.5262 12.9428 14.2762C13.1929 14.0261 13.3333 13.687 13.3333 13.3333V4.66668L10 1.33334Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M9.33334 1.33334V4.00001C9.33334 4.35363 9.47381 4.69277 9.72386 4.94282C9.97391 5.19287 10.313 5.33334 10.6667 5.33334H13.3333M6.66667 6H5.33333M10.6667 8.66666H5.33333M10.6667 11.3333H5.33333" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-gray-900 truncate flex-1" title={doc.filename}>{doc.filename}</span>
-                        <span className="text-gray-500 text-xs flex-shrink-0">({formatBytes(doc.bytes)})</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div>
+              <OrderSummaryCard order={order} quote={quote} />
+              <button
+                onClick={() => router.push(`/order/step-2?quote=${order.quote_id}`)}
+                className="text-sm text-blue-600 hover:underline mt-2 ml-6"
+              >
+                Edit Order
+              </button>
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -318,28 +284,7 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
                   Edit
                 </button>
               </div>
-              {order.billing_address && (
-                <div className="text-sm space-y-2">
-                  <div className="text-base font-normal text-gray-900">{order.billing_address.full_name}</div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                      <path d="M14.6667 4.66669L8.67266 8.48469C8.46926 8.60283 8.23822 8.66506 8.003 8.66506C7.76777 8.66506 7.53674 8.60283 7.33333 8.48469L1.33333 4.66669M13.3333 2.66669H2.66667C1.93029 2.66669 1.33333 3.26364 1.33333 4.00002V12C1.33333 12.7364 1.93029 13.3334 2.66667 13.3334H13.3333C14.0697 13.3334 14.6667 12.7364 14.6667 12V4.00002C14.6667 3.26364 14.0697 2.66669 13.3333 2.66669Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span>{order.billing_address.email || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                      <path d="M9.22133 11.0453C9.35902 11.1085 9.51413 11.123 9.66113 11.0863C9.80812 11.0496 9.93822 10.9639 10.03 10.8433L10.2667 10.5333C10.3909 10.3677 10.5519 10.2333 10.737 10.1407C10.9222 10.0482 11.1263 9.99998 11.3333 9.99998H13.3333C13.687 9.99998 14.0261 10.1405 14.2761 10.3905C14.5262 10.6406 14.6667 10.9797 14.6667 11.3333V13.3333C14.6667 13.6869 14.5262 14.0261 14.2761 14.2761C14.0261 14.5262 13.687 14.6666 13.3333 14.6666C10.1507 14.6666 7.09849 13.4024 4.84805 11.1519C2.59761 8.90149 1.33333 5.84924 1.33333 2.66665C1.33333 2.31302 1.47381 1.97389 1.72386 1.72384C1.9739 1.47379 2.31304 1.33331 2.66667 1.33331H4.66667C5.02029 1.33331 5.35943 1.47379 5.60947 1.72384C5.85952 1.97389 6 2.31302 6 2.66665V4.66665C6 4.87364 5.95181 5.07779 5.85923 5.26293C5.76666 5.44807 5.63226 5.60912 5.46667 5.73331L5.15467 5.96731C5.03228 6.06076 4.94601 6.1937 4.91053 6.34355C4.87504 6.49339 4.89252 6.6509 4.96 6.78931C5.87112 8.63989 7.36961 10.1365 9.22133 11.0453Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span>{formatPhone(order.billing_address.phone, order.billing_address.country)}</span>
-                  </div>
-                  <div className="text-gray-600">
-                    <div>{order.billing_address.address_line1}</div>
-                    {order.billing_address.address_line2 && <div>{order.billing_address.address_line2}</div>}
-                    <div>{order.billing_address.city}, {order.billing_address.province_state} {order.billing_address.postal_code}</div>
-                  </div>
-                </div>
-              )}
+              <AddressDisplay address={order.billing_address} showEmail showPhone />
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -368,19 +313,13 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
                 <span>Same as billing address</span>
               </label>
               {order.shipping_address && order.shipping_address.id !== order.billing_address?.id && (
-                <div className="pl-6 border-l-2 border-gray-200 text-sm space-y-1 text-gray-600">
-                  <div className="text-base font-normal text-gray-900">{order.shipping_address.full_name}</div>
-                  <div>{order.shipping_address.address_line1}</div>
-                  {order.shipping_address.address_line2 && <div>{order.shipping_address.address_line2}</div>}
-                  <div>{order.shipping_address.city}, {order.shipping_address.province_state} {order.shipping_address.postal_code}</div>
+                <div className="pl-6 border-l-2 border-gray-200">
+                  <AddressDisplay address={order.shipping_address} />
                 </div>
               )}
               {(!order.shipping_address || order.shipping_address.id === order.billing_address?.id) && order.billing_address && (
-                <div className="pl-6 border-l-2 border-gray-200 text-sm space-y-1 text-gray-600">
-                  <div className="text-base font-normal text-gray-900">{order.billing_address.full_name}</div>
-                  <div>{order.billing_address.address_line1}</div>
-                  {order.billing_address.address_line2 && <div>{order.billing_address.address_line2}</div>}
-                  <div>{order.billing_address.city}, {order.billing_address.province_state} {order.billing_address.postal_code}</div>
+                <div className="pl-6 border-l-2 border-gray-200">
+                  <AddressDisplay address={order.billing_address} />
                 </div>
               )}
             </div>
@@ -395,35 +334,22 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg border-2 border-gray-300 p-6 shadow-md sticky top-8">
               <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Summary</h2>
-              
+
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start pb-4 border-b border-gray-300">
                   <div>
                     <div className="text-base text-gray-900">Certified Translation Service</div>
                     <div className="text-sm text-gray-600">{quote.source_lang} to {quote.target_lang}</div>
                   </div>
                   <div className="text-base text-gray-900">${totalService.toFixed(2)}</div>
                 </div>
-                
-                <div className="flex justify-between items-center pb-4 border-b border-gray-300">
-                  <div className="text-base text-gray-900">Courier Shipping</div>
-                  <div className="text-base text-gray-900">${Number(order.shipping_total || 0).toFixed(2)}</div>
-                </div>
-                
-                <div className="flex justify-between items-center pt-2">
-                  <div className="text-base text-gray-700">Subtotal</div>
-                  <div className="text-base text-gray-900">${Number(order.subtotal || 0).toFixed(2)}</div>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-600">GST ({(Number(order.tax_rate || 0) * 100).toFixed(0)}%)</div>
-                  <div className="text-sm text-gray-600">${Number(order.tax_total || 0).toFixed(2)}</div>
-                </div>
-                
-                <div className="flex justify-between items-center pt-4 border-t-2 border-gray-300">
-                  <div className="text-lg text-gray-900">Total</div>
-                  <div className="text-3xl font-normal text-gray-900">${Number(order.total || 0).toFixed(2)}</div>
-                </div>
+
+                <PricingBreakdown
+                  subtotal={Number(order.subtotal || 0) - Number(order.shipping_total || 0)}
+                  shipping={Number(order.shipping_total || 0)}
+                  taxRate={Number(order.tax_rate || 0)}
+                  showShipping={true}
+                />
               </div>
 
               <button

@@ -5,15 +5,19 @@ import Spinner from '../components/dashboard/Spinner';
 import PhoneInput from '../components/form/PhoneInput';
 import CountrySelect from '../components/form/CountrySelect';
 import RegionSelect from '../components/form/RegionSelect';
+import ShippingMethodSelector from '../components/checkout/ShippingMethodSelector';
+import PricingBreakdown from '../components/checkout/PricingBreakdown';
 import { formatPostal, labelForPostal } from '../lib/formatters/postal';
-import { isValid as isPhoneValid } from '../lib/formatters/phone';
-
-const GST_RATE = 0.05;
-
-function classNames(...v) { return v.filter(Boolean).join(' '); }
-function round2(n){ const x = Number(n); return Math.round((Number.isFinite(x)?x:0)*100)/100; }
-function formatCurrency(v){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD'}).format(round2(v)); }
-function emailOk(v){ return /.+@.+\..+/.test(String(v||'')); }
+import {
+  validateEmail,
+  validatePhone,
+  validateBillingAddress,
+  updateAddressField,
+  formatCurrency,
+  round2,
+  GST_RATE,
+  DEFAULT_COUNTRY
+} from '../lib/checkoutUtils';
 
 export default function QuoteCheckoutPage() {
   const router = useRouter();
@@ -27,11 +31,11 @@ export default function QuoteCheckoutPage() {
   const [error, setError] = useState(null);
 
   const [billing, setBilling] = useState({
-    full_name: '', email: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
+    full_name: '', email: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: DEFAULT_COUNTRY
   });
   const [shipSame, setShipSame] = useState(true);
   const [shipping, setShipping] = useState({
-    full_name: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
+    full_name: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: DEFAULT_COUNTRY
   });
 
   const requiresShippingAddress = useMemo(() => {
@@ -99,18 +103,14 @@ export default function QuoteCheckoutPage() {
     fetchQuote();
   }, [token]);
 
-  function updateField(setter, key, value) { setter(prev => ({ ...prev, [key]: value })); }
+  function updateField(setter, key, value) { updateAddressField(setter, key, value); }
 
   const handleCreateOrder = async () => {
     try {
       setError('');
 
-      if (!emailOk(billing.email)) throw new Error('Please enter a valid email');
-      if (!isPhoneValid(billing.phone, billing.country)) throw new Error('Please enter a valid phone');
-      
-      const requiredBilling = ['full_name', 'address_line1', 'city', 'province_state', 'postal_code', 'country'];
-      for (const k of requiredBilling) {
-        if (!String(billing[k] || '').trim()) throw new Error('Please complete all required billing fields');
+      if (!validateBillingAddress(billing)) {
+        throw new Error('Please complete all required billing fields with valid data');
       }
 
       if (!selectedShipping) {
@@ -123,9 +123,8 @@ export default function QuoteCheckoutPage() {
           const { email: _e, ...copyBill } = billing;
           shippingPayload = copyBill;
         } else {
-          const requiredShip = ['full_name', 'phone', 'address_line1', 'city', 'province_state', 'postal_code', 'country'];
-          for (const k of requiredShip) {
-            if (!String(shipping[k] || '').trim()) throw new Error('Please complete all required shipping fields');
+          if (!validateBillingAddress(shipping)) {
+            throw new Error('Please complete all required shipping fields');
           }
           shippingPayload = shipping;
         }
@@ -310,84 +309,12 @@ export default function QuoteCheckoutPage() {
                 )}
               </section>
 
-              {/* Shipping Options Section */}
-              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900">Shipping Method</h2>
-                <p className="text-xs text-gray-500 mb-6">Choose how you'd like to receive your documents</p>
-
-                <div className="space-y-3">
-                  {shippingOptions.filter(o => o.is_always_selected).map((option) => (
-                    <div key={option.id} className="flex items-start gap-4 rounded-xl border-2 border-blue-400 bg-blue-50 p-4">
-                      <input
-                        type="checkbox"
-                        checked
-                        disabled
-                        className="h-5 w-5 mt-0.5 cursor-not-allowed"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <h3 className="font-semibold text-gray-900">{option.name}</h3>
-                          <span className="text-sm font-semibold text-gray-900">FREE</span>
-                        </div>
-                        {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
-                        {option.delivery_time && <p className="text-xs text-gray-500 mt-1">Delivery: {option.delivery_time}</p>}
-                      </div>
-                    </div>
-                  ))}
-
-                  {shippingOptions.filter(o => !o.is_always_selected).length > 0 && (
-                    <>
-                      <div className="mt-6 pt-4 border-t border-gray-200">
-                        <p className="text-sm text-gray-700 font-medium mb-4">Choose additional delivery method (optional):</p>
-
-                        <div className="space-y-3">
-                          {shippingOptions.filter(o => !o.is_always_selected).map((option) => {
-                            const isDisabled = !option.is_active;
-                            const isChecked = String(selectedShipping) === String(option.id);
-
-                            return (
-                              <label
-                                key={option.id}
-                                className={`flex items-start gap-4 rounded-xl border p-4 transition ${
-                                  isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                                } ${
-                                  isChecked ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name="physical_delivery"
-                                  checked={isChecked}
-                                  disabled={isDisabled}
-                                  onChange={() => {
-                                    if (!isDisabled) {
-                                      setSelectedShipping(String(option.id));
-                                    }
-                                  }}
-                                  className="h-5 w-5 mt-0.5"
-                                />
-                                <div className="flex-1">
-                                  <div className="flex items-baseline justify-between">
-                                    <h3 className={`font-semibold ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}>
-                                      {option.name}
-                                      {isDisabled && <span className="text-xs text-red-600 ml-2">(Unavailable)</span>}
-                                    </h3>
-                                    <span className="text-sm font-semibold text-gray-900 ml-4">
-                                      {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
-                                    </span>
-                                  </div>
-                                  {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
-                                  {option.delivery_time && <p className="text-xs text-gray-500 mt-1">Delivery: {option.delivery_time}</p>}
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </section>
+              <ShippingMethodSelector
+                options={shippingOptions}
+                selectedId={selectedShipping}
+                onSelect={setSelectedShipping}
+                requiresAddress={requiresShippingAddress}
+              />
             </div>
 
             {/* Right Column - Summary */}
@@ -396,38 +323,20 @@ export default function QuoteCheckoutPage() {
                 <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 px-6 py-4">
                   <h3 className="text-white font-semibold text-lg">Order Summary</h3>
                 </div>
-                <div className="p-6 space-y-4">
-                  <div className="space-y-2 pb-4 border-b border-gray-200">
+                <div className="p-6">
+                  <div className="space-y-2 pb-4 border-b border-gray-200 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Quote Subtotal</span>
                       <span className="text-gray-900 font-medium">${Number(results?.subtotal || 0).toFixed(2)}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2 pb-4 border-b border-gray-200">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-gray-900 font-medium">
-                        {selectedShippingOption ? `$${Number(selectedShippingOption.price || 0).toFixed(2)}` : '$0.00'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pb-4 border-b border-gray-200">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="text-gray-900 font-medium">${formatCurrency(grandSubtotal).replace('$', '')}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax (5% GST)</span>
-                      <span className="text-gray-900 font-medium">${formatCurrency(tax).replace('$', '')}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-lg font-bold text-gray-900">Total</span>
-                    <span className="text-2xl font-bold text-cyan-600">${formatCurrency(grandTotal).replace('$', '')} CAD</span>
-                  </div>
+                  <PricingBreakdown
+                    subtotal={results?.subtotal || 0}
+                    shipping={shippingTotal}
+                    taxRate={GST_RATE}
+                    showShipping={true}
+                  />
 
                   <button
                     onClick={handleCreateOrder}
