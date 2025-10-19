@@ -6,16 +6,73 @@ async function handler(req, res) {
   const { orderId } = req.query;
   if (!orderId) return res.status(400).json({ error: 'Missing orderId' });
 
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
   try {
     const supabase = getSupabaseServerClient();
-    const order = await getOrderWithDetails(supabase, orderId);
-    if (!order) return res.status(404).json({ error: 'Order not found' });
-    return res.status(200).json({ order });
+
+    if (req.method === 'GET') {
+      const order = await getOrderWithDetails(supabase, orderId);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      return res.status(200).json({ order });
+    }
+
+    if (req.method === 'PATCH') {
+      const updates = req.body;
+
+      // Build updateable fields
+      const updateData = {};
+      const allowedFields = [
+        'customer_name',
+        'customer_email',
+        'customer_phone',
+        'service_type',
+        'source_language',
+        'target_language',
+        'document_type',
+        'page_count',
+        'word_count',
+        'urgency',
+        'assigned_to',
+        'due_date',
+        'project_status',
+        'special_instructions',
+        'internal_notes',
+        'billing_address',
+        'shipping_address',
+        'translation_total',
+        'certification_total',
+        'delivery_total',
+        'shipping_total',
+        'discount_amount',
+        'discount_type',
+        'discount_reason',
+      ];
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (allowedFields.includes(key)) {
+          updateData[key] = value;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'No valid fields to update' });
+      }
+
+      updateData.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Fetch updated order
+      const order = await getOrderWithDetails(supabase, orderId);
+      return res.status(200).json({ order });
+    }
+
+    res.setHeader('Allow', ['GET', 'PATCH']);
+    return res.status(405).json({ error: 'Method Not Allowed' });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
