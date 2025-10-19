@@ -42,6 +42,7 @@ export default function Page({ initialAdmin }){
   }, []);
 
   const canEdit = quote?.can_edit;
+  const isSent = quote?.quote_state === 'sent';
 
   async function updateLineItem(id, patch){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/line-items`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ line_item_id: id, updates: patch }) });
@@ -86,6 +87,17 @@ export default function Page({ initialAdmin }){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: '' }) });
     const json = await resp.json();
     if (json?.success){ setQuote(q => ({ ...q, quote_state: 'sent' })); }
+  }
+
+  async function editAndResend(){
+    try {
+      const stateResp = await fetch(`/api/admin/quotes/${quote.id}/state`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_state: 'under_review' }) });
+      const stateJson = await stateResp.json();
+      if (!stateResp.ok) throw new Error(stateJson?.error || 'Failed to change state');
+      setQuote(q => ({ ...q, quote_state: 'under_review' }));
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+    }
   }
 
   if (loading) return (
