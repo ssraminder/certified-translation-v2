@@ -103,7 +103,7 @@ export default function QuoteCheckoutPage() {
     fetchQuote();
   }, [token]);
 
-  function updateField(setter, key, value) { setter(prev => ({ ...prev, [key]: value })); }
+  function updateField(setter, key, value) { updateAddressField(setter, key, value); }
 
   const handleCreateOrder = async () => {
     try {
