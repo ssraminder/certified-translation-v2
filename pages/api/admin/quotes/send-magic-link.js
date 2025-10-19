@@ -19,7 +19,7 @@ async function handler(req, res) {
     // Get quote details
     const { data: quote, error: quoteError } = await supabase
       .from('quote_submissions')
-      .select('quote_id, quote_number, source_lang, target_lang, certification_type_name, customer_first_name')
+      .select('quote_id, quote_number, source_lang, target_lang, name')
       .eq('quote_id', quote_id)
       .maybeSingle();
 
