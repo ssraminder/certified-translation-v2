@@ -204,10 +204,6 @@ export default function Page({ initialAdmin }){
     </AdminLayout>
   );
 
-  const additionalItems = adjustments.filter(a=>a.type==='additional_item');
-  const discounts = adjustments.filter(a=>a.type==='discount');
-  const surcharges = adjustments.filter(a=>a.type==='surcharge');
-
   const handleLogout = async () => {
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
