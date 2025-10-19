@@ -4,7 +4,7 @@ import Spinner from '../dashboard/Spinner';
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function AdminSettingsPanel() {
-  const [settings, state('settings', null);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [locations, setLocations] = useState([]);
@@ -130,92 +130,7 @@ export default function AdminSettingsPanel() {
 
       {/* General Settings Tab */}
       {activeTab === 'general' && (
-        <div className="space-y-6 bg-white p-6 rounded-lg border border-gray-200">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = (event) => {
-                    updateSetting('logo_url', event.target?.result, 'file_url');
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-            />
-            {settings?.logo_url?.value && (
-              <div className="mt-3">
-                <img src={settings.logo_url.value} alt="Logo" className="h-16 object-contain" />
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-            <input
-              type="text"
-              defaultValue={settings?.company_name?.value || ''}
-              onBlur={(e) => updateSetting('company_name', e.target.value, 'string')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Support Email</label>
-            <input
-              type="email"
-              defaultValue={settings?.support_email?.value || ''}
-              onBlur={(e) => updateSetting('support_email', e.target.value, 'string')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Support Phone</label>
-            <input
-              type="tel"
-              defaultValue={settings?.support_phone?.value || ''}
-              onBlur={(e) => updateSetting('support_phone', e.target.value, 'string')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Default Turnaround Time</label>
-            <input
-              type="text"
-              defaultValue={settings?.default_turnaround_time?.value || ''}
-              onBlur={(e) => updateSetting('default_turnaround_time', e.target.value, 'string')}
-              placeholder="e.g., 3-5 business days"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Quote Expiry (days)</label>
-            <input
-              type="number"
-              defaultValue={settings?.quote_expiry_days?.value || 30}
-              onBlur={(e) => updateSetting('quote_expiry_days', e.target.value, 'number')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Magic Link Expiry (days)</label>
-            <input
-              type="number"
-              defaultValue={settings?.magic_link_expiry_days?.value || 30}
-              onBlur={(e) => updateSetting('magic_link_expiry_days', e.target.value, 'number')}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+        <GeneralSettingsTab settings={settings} updateSetting={updateSetting} saving={saving} />
       )}
 
       {/* Business Hours Tab */}
@@ -223,8 +138,105 @@ export default function AdminSettingsPanel() {
         <BusinessHoursManager locations={locations} onUpdate={updateBusinessHours} saving={saving} />
       )}
 
-      {/* Holidays Tab - rendered separately */}
+      {/* Holidays Tab */}
       {activeTab === 'holidays' && <HolidaysManager locations={locations} />}
+    </div>
+  );
+}
+
+function GeneralSettingsTab({ settings, updateSetting, saving }) {
+  const [logoPreview, setLogoPreview] = useState(null);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result;
+        setLogoPreview(dataUrl);
+        updateSetting('logo_url', dataUrl, 'file_url');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="space-y-6 bg-white p-6 rounded-lg border border-gray-200">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleLogoUpload}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
+        {(logoPreview || settings?.logo_url?.value) && (
+          <div className="mt-3">
+            <img src={logoPreview || settings?.logo_url?.value} alt="Logo" className="h-16 object-contain" />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+        <input
+          type="text"
+          defaultValue={settings?.company_name?.value || ''}
+          onBlur={(e) => updateSetting('company_name', e.target.value, 'string')}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Support Email</label>
+        <input
+          type="email"
+          defaultValue={settings?.support_email?.value || ''}
+          onBlur={(e) => updateSetting('support_email', e.target.value, 'string')}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Support Phone</label>
+        <input
+          type="tel"
+          defaultValue={settings?.support_phone?.value || ''}
+          onBlur={(e) => updateSetting('support_phone', e.target.value, 'string')}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Default Turnaround Time</label>
+        <input
+          type="text"
+          defaultValue={settings?.default_turnaround_time?.value || ''}
+          onBlur={(e) => updateSetting('default_turnaround_time', e.target.value, 'string')}
+          placeholder="e.g., 3-5 business days"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Quote Expiry (days)</label>
+        <input
+          type="number"
+          defaultValue={settings?.quote_expiry_days?.value || 30}
+          onBlur={(e) => updateSetting('quote_expiry_days', e.target.value, 'number')}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Magic Link Expiry (days)</label>
+        <input
+          type="number"
+          defaultValue={settings?.magic_link_expiry_days?.value || 30}
+          onBlur={(e) => updateSetting('magic_link_expiry_days', e.target.value, 'number')}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
     </div>
   );
 }
@@ -464,8 +476,18 @@ function HolidayForm({ locationId, onSave }) {
       </label>
       {!form.is_closed && (
         <div className="flex gap-2">
-          <input type="time" value={form.opening_time} onChange={(e) => setForm(prev => ({ ...prev, opening_time: e.target.value }))} className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" />
-          <input type="time" value={form.closing_time} onChange={(e) => setForm(prev => ({ ...prev, closing_time: e.target.value }))} className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" />
+          <input 
+            type="time" 
+            value={form.opening_time} 
+            onChange={(e) => setForm(prev => ({ ...prev, opening_time: e.target.value }))} 
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" 
+          />
+          <input 
+            type="time" 
+            value={form.closing_time} 
+            onChange={(e) => setForm(prev => ({ ...prev, closing_time: e.target.value }))} 
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm" 
+          />
         </div>
       )}
       <label className="flex items-center gap-2 text-sm">
@@ -477,7 +499,11 @@ function HolidayForm({ locationId, onSave }) {
         />
         <span>Recurring Annually</span>
       </label>
-      <button type="submit" disabled={saving} className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium text-sm">
+      <button 
+        type="submit" 
+        disabled={saving} 
+        className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium text-sm"
+      >
         {saving ? 'Creating...' : 'Create Holiday'}
       </button>
     </form>
