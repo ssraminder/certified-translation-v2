@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../../components/admin/AdminLayout';
-import QuoteHeader from '../../../components/admin/QuoteHeader';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import ManualLineItemForm from '../../../components/admin/ManualLineItemForm';
 import AdditionalItemModal from '../../../components/admin/adjustments/AdditionalItemModal';
@@ -108,18 +107,6 @@ export default function Page({ initialAdmin }){
 
   return (
     <AdminLayout title="Quote Details" initialAdmin={initialAdmin}>
-      {/* Quote Header */}
-      <div className="-mx-4 sm:-mx-6 mb-6">
-        <QuoteHeader
-          quote={quote}
-          admin={initialAdmin}
-          onLogout={handleLogout}
-          onEdit={handleEdit}
-          onSend={sendToCustomer}
-          totals={totals}
-        />
-      </div>
-
       {/* Alert */}
       {showAlert && (
         <div className="my-4 mb-6 flex items-start gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50" role="alert" aria-live="polite">
