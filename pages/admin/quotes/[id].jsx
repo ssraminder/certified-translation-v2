@@ -11,6 +11,7 @@ import EditLineItemModal from '../../../components/admin/EditLineItemModal';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
 import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
+import SendMagicLinkModal from '../../../components/admin/SendMagicLinkModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -30,6 +31,7 @@ export default function Page({ initialAdmin }){
   const [showAlert, setShowAlert] = useState(true);
   const [editingItem, setEditingItem] = useState(null);
   const [showEditLine, setShowEditLine] = useState(false);
+  const [showSendMagicLink, setShowSendMagicLink] = useState(false);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
@@ -84,9 +86,24 @@ export default function Page({ initialAdmin }){
   }
 
   async function sendToCustomer(){
-    const resp = await fetch(`/api/admin/quotes/${quote.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: '' }) });
-    const json = await resp.json();
-    if (json?.success){ setQuote(q => ({ ...q, quote_state: 'sent' })); }
+    try {
+      const resp = await fetch(`/api/admin/quotes/send-magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quote_id: quote.id, recipient_email: quote.customer_email })
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        alert(`Error: ${json.error || 'Failed to send quote'}`);
+        return;
+      }
+      if (json?.success){
+        setQuote(q => ({ ...q, quote_state: 'sent' }));
+        alert('Quote sent successfully with magic link!');
+      }
+    } catch (err) {
+      alert(`Error sending quote: ${err.message}`);
+    }
   }
 
   async function editAndResend(){
@@ -519,14 +536,17 @@ export default function Page({ initialAdmin }){
                     <button onClick={editAndResend} className="w-full rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-white text-sm font-medium">
                       Edit Quote
                     </button>
-                    <p className="text-xs text-gray-500 text-center">Puts quote back into edit mode. You can then make changes and resend.</p>
+                    <button onClick={() => setShowSendMagicLink(true)} className="w-full rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50">
+                      Copy & Send Link
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">Edit quote to make changes. Use copy link to share with customer.</p>
                   </>
                 ) : (
                   <>
                     <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
                       Confirm and Update Summary
                     </button>
-                    <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50">
+                    <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium disabled:opacity-50">
                       Send to Customer
                     </button>
                   </>
@@ -579,6 +599,13 @@ export default function Page({ initialAdmin }){
         onClose={()=> { setShowEditLine(false); setEditingItem(null); }}
         lineItem={editingItem}
         onSave={async (patch)=> { if (editingItem) await updateLineItem(editingItem.id, patch); }}
+      />
+      <SendMagicLinkModal
+        open={showSendMagicLink}
+        onClose={()=> setShowSendMagicLink(false)}
+        quoteId={quote?.id}
+        customerEmail={quote?.customer_email}
+        customerName={quote?.customer_name}
       />
     </AdminLayout>
   );
