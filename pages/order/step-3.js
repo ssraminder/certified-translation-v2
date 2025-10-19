@@ -524,7 +524,7 @@ function HitlFallback({ jobId, quoteMeta }) {
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Source language</dt>
-          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.source_lang || '—'}</dd>
+          <dd className="text-sm font-semibold text-gray-900">{quoteMeta?.source_lang || '���'}</dd>
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Target language</dt>
@@ -1072,7 +1072,7 @@ export default function Step3() {
           .order('id'),
         supabase
           .from('quote_files')
-          .select('filename, country_of_issue')
+          .select('id, filename, country_of_issue, file_url, signed_url, file_url_expires_at, storage_path')
           .eq('quote_id', targetQuoteId),
         supabase
           .from('delivery_options')
