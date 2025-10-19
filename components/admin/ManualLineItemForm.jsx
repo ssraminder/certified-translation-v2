@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 
 export default function ManualLineItemForm({ open, onClose, quoteId, files, onCreated }){
   const [fileId, setFileId] = useState('');
@@ -6,14 +6,20 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
   const [billablePages, setBillablePages] = useState('');
   const [unitRate, setUnitRate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef(null);
 
-  useEffect(()=> { 
-    if (!open){ 
-      setFileId(''); 
-      setTotalPages(''); 
-      setBillablePages(''); 
-      setUnitRate(''); 
-    } 
+  useEffect(()=> {
+    if (!open){
+      setFileId('');
+      setTotalPages('');
+      setBillablePages('');
+      setUnitRate('');
+      setUploadedFiles([]);
+      setUploadError('');
+    }
   }, [open]);
 
   const total = useMemo(() => {
@@ -22,41 +28,81 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
     return (pages * rate).toFixed(2);
   }, [billablePages, unitRate]);
 
+  const allAvailableFiles = [...(files || []), ...uploadedFiles];
+
+  async function handleFileUpload(e) {
+    const uploadedFilesList = e.target.files;
+    if (!uploadedFilesList || uploadedFilesList.length === 0) return;
+
+    setUploading(true);
+    setUploadError('');
+    try {
+      const form = new FormData();
+      for (const file of uploadedFilesList) {
+        form.append('files', file);
+      }
+
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/files`, {
+        method: 'POST',
+        body: form
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json?.error || 'Upload failed');
+      }
+
+      if (json?.success && json.uploaded_files) {
+        const newFiles = json.uploaded_files;
+        setUploadedFiles(prev => [...prev, ...newFiles]);
+        if (newFiles.length === 1) {
+          setFileId(newFiles[0].file_id || newFiles[0].id);
+        }
+      }
+    } catch (err) {
+      setUploadError(err?.message || 'Failed to upload files');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   async function submit(e){
-    e.preventDefault(); 
-    if (submitting) return; 
+    e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     try {
+      const selectedFile = allAvailableFiles.find(f => (f.file_id || f.id) === fileId);
       const payload = {
         file_id: fileId || null,
-        filename: (files||[]).find(f=> (f.file_id||f.id)===fileId)?.filename || null,
+        filename: selectedFile?.filename || null,
         billable_pages: Number(billablePages),
         unit_rate: Number(unitRate),
         total_pages: Number(totalPages) || Number(billablePages)
       };
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/manual`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
-      if (json?.success){ 
-        onCreated && onCreated(json.line_item, json.totals); 
-        onClose && onClose(); 
+      if (json?.success){
+        onCreated && onCreated(json.line_item, json.totals);
+        onClose && onClose();
       }
-    } finally { 
-      setSubmitting(false); 
+    } finally {
+      setSubmitting(false);
     }
   }
 
   if (!open) return null;
-  
-  const hasFiles = Array.isArray(files) && files.length > 0;
+
+  const hasFiles = Array.isArray(allAvailableFiles) && allAvailableFiles.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-lg border bg-white shadow-lg">
+      <div className="w-full max-w-md rounded-lg border bg-white shadow-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b">
+        <div className="flex items-center justify-between px-6 py-5 border-b sticky top-0 bg-white">
           <h2 className="text-lg font-semibold">Add Manual Line Item</h2>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-1 rounded hover:bg-gray-100 opacity-70 hover:opacity-100"
             type="button"
           >
@@ -69,6 +115,49 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
         {/* Form */}
         <form onSubmit={submit} className="px-6 py-4">
           <div className="space-y-4">
+            {/* Upload File Section */}
+            <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4">
+              <div className="text-center">
+                <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <p className="text-sm font-medium text-gray-900">Upload a file</p>
+                <p className="text-xs text-gray-600 mt-1">or select from existing files below</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xlsx,.xls"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="mt-3 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading...' : 'Choose Files'}
+                </button>
+              </div>
+              {uploadError && (
+                <div className="mt-3 p-2 rounded bg-red-50 border border-red-200">
+                  <p className="text-xs text-red-700">{uploadError}</p>
+                </div>
+              )}
+              {uploadedFiles.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs font-medium text-gray-700">Recently uploaded:</p>
+                  {uploadedFiles.map(f => (
+                    <div key={f.file_id || f.id} className="text-xs text-gray-600 p-1 bg-white rounded border border-gray-200">
+                      ✓ {f.filename}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Select File */}
             <div>
               <label className="block text-sm font-medium mb-2">Select File {hasFiles ? '*' : '(optional)'}</label>
@@ -81,7 +170,7 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
                   disabled={!hasFiles}
                 >
                   <option value="">{hasFiles ? 'Choose a file...' : 'No files available'}</option>
-                  {(files||[]).map(f => (
+                  {allAvailableFiles.map(f => (
                     <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
                   ))}
                 </select>
