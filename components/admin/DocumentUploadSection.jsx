@@ -290,6 +290,17 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
     .file-meta {
       font-size: 12px;
       color: #6b7280;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pending-badge {
+      color: #f59e0b;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .document-type-select {
