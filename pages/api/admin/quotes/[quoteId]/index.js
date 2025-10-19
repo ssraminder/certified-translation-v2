@@ -65,28 +65,11 @@ async function handler(req, res){
     .maybeSingle();
   if (!q) return res.status(404).json({ error: 'Quote not found' });
 
-  // Determine effective run id for scoping
-  let effectiveRunId = q?.active_run_id || null;
-  if (!effectiveRunId){
-    try {
-      const { data: latestQso } = await supabase
-        .from('quote_sub_orders')
-        .select('run_id')
-        .eq('quote_id', quoteId)
-        .not('run_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      effectiveRunId = Array.isArray(latestQso) && latestQso[0]?.run_id ? latestQso[0].run_id : null;
-    } catch {}
-  }
-
-  const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id');
-  // If no analyzed quotes exist, filter for manual quotes only
-  const scopedItemsQuery = effectiveRunId ? itemsQuery.eq('run_id', effectiveRunId) : itemsQuery.eq('source', 'manual');
+  const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).eq('source', 'manual').order('id');
 
   // Fetch items and other collections
   const [ { data: items }, { data: adjustments }, { data: files }, { data: certs }, { data: resultsRows } ] = await Promise.all([
-    scopedItemsQuery,
+    itemsQuery,
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_files').select('*').eq('quote_id', quoteId),
     supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order'),
