@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import Spinner from '../components/dashboard/Spinner';
+import Spinner from '../../components/dashboard/Spinner';
 
 export default function QuoteViewPage() {
   const router = useRouter();
