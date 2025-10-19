@@ -33,7 +33,7 @@ export default function CustomerInformationSection({ order, onUpdate }) {
     }
   };
 
-  const displayPhone = formData.customer_phone ? formatPhoneNumber(formData.customer_phone) : '—';
+  const displayPhone = formData.customer_phone ? formatForDisplay(toE164(formData.customer_phone, 'CA') || formData.customer_phone) : '—';
 
   return (
     <div className="bg-white rounded-lg p-6 border border-gray-200">
