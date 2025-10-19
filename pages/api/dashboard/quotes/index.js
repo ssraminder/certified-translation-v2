@@ -63,8 +63,8 @@ async function handleGetQuotes(req, res) {
         query = query.eq('quote_state', status);
       }
     } else {
-      // Hide converted quotes from user profile by default
-      query = query.neq('quote_state', 'converted');
+      // Hide converted and paid quotes from user profile by default (they appear in orders)
+      query = query.notIn('quote_state', ['converted', 'paid']);
     }
 
     if (search) {
