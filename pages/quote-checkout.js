@@ -319,13 +319,12 @@ export default function QuoteCheckoutPage() {
                   ) : (
                     <>
                       {shippingOptions.filter(o => o.is_always_selected).map((option) => (
-                        <label key={option.id} className="flex items-start gap-3 p-4 border border-gray-200 bg-gray-50 rounded-lg cursor-pointer">
+                        <label key={option.id} className="flex items-start gap-3 p-4 border border-gray-200 bg-gray-50 rounded-lg cursor-not-allowed">
                           <input
-                            type="radio"
-                            name="shipping"
-                            value={option.id}
-                            checked={String(selectedShipping) === String(option.id)}
-                            onChange={(e) => setSelectedShipping(e.target.value)}
+                            type="checkbox"
+                            name={`shipping-checkbox-${option.id}`}
+                            checked={true}
+                            disabled={true}
                             className="w-4 h-4 mt-1"
                           />
                           <div className="flex-1">
