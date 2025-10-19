@@ -43,11 +43,23 @@ export default async function handler(req, res) {
       .select('*')
       .eq('quote_id', quote.quote_id);
 
-    const { data: totals } = await supabase
+    let { data: totals } = await supabase
       .from('quote_results')
       .select('*')
       .eq('quote_id', quote.quote_id)
       .maybeSingle();
+
+    // If no totals exist, trigger calculation (will be saved to DB)
+    if (!totals) {
+      try {
+        const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../lib/quoteTotals');
+        await recalcAndUpsertUnifiedQuoteResults(quote.quote_id);
+        const { data: newTotals } = await supabase.from('quote_results').select('*').eq('quote_id', quote.quote_id).maybeSingle();
+        totals = newTotals || null;
+      } catch (calcErr) {
+        console.error('[quotes/quote-review] Failed to auto-calculate results:', calcErr);
+      }
+    }
 
     return res.status(200).json({
       quote_id: quote.quote_id,
