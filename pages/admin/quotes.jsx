@@ -165,18 +165,43 @@ export default function Page({ initialAdmin }){
   return (
     <AdminLayout title="All Quotes" initialAdmin={initialAdmin}>
       <div className="rounded-lg bg-white p-4 ring-1 ring-gray-100">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {STATUSES.map(s => (
-              <button key={s.key} onClick={() => { setStatus(s.key); setPage(1); }} className={`rounded-md border px-3 py-1 text-sm ${status===s.key? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{s.label}</button>
-            ))}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {STATUSES.map(s => (
+                <button key={s.key} onClick={() => { setStatus(s.key); setPage(1); }} className={`rounded-md border px-3 py-1 text-sm ${status===s.key? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{s.label}</button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Search order #, name, email" />
+              {allowCreate && (
+                <button onClick={()=> setShowCreate(true)} className="rounded bg-cyan-600 text-white px-3 py-2 text-sm">+ New Quote</button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Search order #, name, email" />
-            {allowCreate && (
-              <button onClick={()=> setShowCreate(true)} className="rounded bg-cyan-600 text-white px-3 py-2 text-sm">+ New Quote</button>
+
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Start Date:</label>
+              <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">End Date:</label>
+              <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            {(startDate || endDate) && (
+              <button onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }} className="text-sm text-gray-600 hover:text-gray-800 underline">Clear dates</button>
             )}
           </div>
+
+          {selected.size > 0 && (
+            <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded p-3">
+              <span className="text-sm font-medium">{selected.size} quote(s) selected</span>
+              <button onClick={handleDelete} disabled={deleting} className="rounded bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-50 hover:bg-red-700">
+                {deleting ? 'Deleting...' : 'Delete Selected'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 overflow-x-auto">
