@@ -10,7 +10,10 @@ export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE1
 
   // Parse incoming E.164 value (e.g., +14039666211) into digits
   useEffect(() => {
-    if (!valueE164) return; // don't clear while typing
+    if (!valueE164) {
+      setDigits(''); // Clear when valueE164 is empty/null
+      return;
+    }
     const m = String(valueE164).match(/^\+1(\d{10})$/);
     if (m) setDigits(m[1]);
   }, [valueE164]);
@@ -26,7 +29,6 @@ export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE1
   }
 
   function handleChange(val) {
-    const oldDigits = digits;
     const only = String(val || '').replace(/\D+/g, '');
     // If user types a leading 1 or country code, keep the last 10 digits
     const ten = only.length > 10 ? only.slice(-10) : (only.startsWith('1') && only.length === 11 ? only.slice(1) : only);
@@ -34,35 +36,10 @@ export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE1
     setDigits(clamped);
     const e = toE164Local(clamped);
     onChangeE164 && onChangeE164(e);
+  }
 
-    // Maintain cursor position based on digit count changes
-    if (inputRef.current) {
-      setTimeout(() => {
-        const newDisplayValue = formatDisplay(clamped);
-        const cursorPos = inputRef.current.selectionStart;
-
-        // Calculate digit position in the formatted string
-        let digitCount = 0;
-        let newPosition = 0;
-
-        for (let i = 0; i < newDisplayValue.length; i++) {
-          if (/\d/.test(newDisplayValue[i])) {
-            digitCount++;
-            if (digitCount <= clamped.length) {
-              newPosition = i + 1;
-            }
-          }
-        }
-
-        // If the user just deleted a digit, position cursor right after the last digit
-        if (clamped.length < oldDigits.length) {
-          inputRef.current.setSelectionRange(newPosition, newPosition);
-        } else {
-          // If the user added a digit, position cursor after the newly added digit
-          inputRef.current.setSelectionRange(newPosition, newPosition);
-        }
-      }, 0);
-    }
+  function handleBlur() {
+    setTouched(true);
   }
 
   const invalid = touched && required && digits.length !== 10;
@@ -75,10 +52,10 @@ export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE1
           ref={inputRef}
           type="tel"
           disabled={disabled}
-          value={formatDisplay(digits)}
+          value={touched ? formatDisplay(digits) : digits}
           onChange={(e) => handleChange(e.target.value)}
-          onBlur={() => setTouched(true)}
-          placeholder={'+1 ___-___-____'}
+          onBlur={handleBlur}
+          placeholder={'4039666211'}
           className={`flex-1 h-full px-4 text-base outline-none bg-transparent ${disabled ? 'cursor-not-allowed' : ''}`}
         />
       </div>
