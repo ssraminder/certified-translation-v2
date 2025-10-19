@@ -31,6 +31,7 @@ export default function Page({ initialAdmin }){
   const [showAlert, setShowAlert] = useState(true);
   const [editingItem, setEditingItem] = useState(null);
   const [showEditLine, setShowEditLine] = useState(false);
+  const [showSendMagicLink, setShowSendMagicLink] = useState(false);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
