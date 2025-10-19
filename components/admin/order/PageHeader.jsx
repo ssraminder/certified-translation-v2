@@ -32,9 +32,9 @@ export default function PageHeader({ order }) {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 60) return `${minutes} minutes ago`;
-    if (hours < 24) return `${hours} hours ago`;
-    if (days < 7) return `${days} days ago`;
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
     return formatDate(date);
   };
 
@@ -45,22 +45,23 @@ export default function PageHeader({ order }) {
 
   return (
     <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-      <div className="mx-auto max-w-5xl px-8">
-        <div className="flex items-center justify-between py-4">
+      <div className="mx-auto max-w-5xl px-4 md:px-8">
+        <div className="py-4 space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
           {/* Left Side */}
-          <div className="flex-1">
-            <p className="text-sm text-gray-500 mb-1">
-              Dashboard {'>'} Orders {'>'} Order #{order.order_number}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs md:text-sm text-gray-500 mb-1 truncate">
+              <span className="hidden sm:inline">Dashboard {'>'} Orders {'>'} </span>
+              Order #{order.order_number}
             </p>
-            <h1 className="text-2xl font-bold text-gray-900">{order.order_number}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 truncate">{order.order_number}</h1>
           </div>
 
           {/* Center - Status Badges */}
-          <div className="flex gap-2 mx-8">
+          <div className="flex flex-wrap gap-2">
             {statuses.map((status) => (
               <span
                 key={status}
-                className={`inline-flex items-center rounded px-2 py-1 text-xs font-semibold uppercase ${
+                className={`inline-flex items-center rounded px-2 py-1 text-xs font-semibold uppercase whitespace-nowrap ${
                   statusColorMap[status.toLowerCase()] || 'bg-gray-100 text-gray-800'
                 }`}
               >
@@ -69,22 +70,19 @@ export default function PageHeader({ order }) {
             ))}
           </div>
 
-          {/* Right Side - Dates */}
-          <div className="text-right">
-            <p className="text-xs text-gray-500">
-              Created: {formatDate(order.created_at)}
-            </p>
-            <p className="text-xs text-gray-500">
-              Updated: {getTimeAgo(order.updated_at)}
-            </p>
+          {/* Right Side - Dates (hidden on mobile, shown on tablet+) */}
+          <div className="hidden md:block text-right text-xs text-gray-500">
+            <p>Created: {formatDate(order.created_at)}</p>
+            <p>Updated: {getTimeAgo(order.updated_at)}</p>
           </div>
 
           {/* Menu */}
-          <div className="relative ml-6">
+          <div className="relative md:ml-6">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               aria-label="Order menu"
+              aria-expanded={menuOpen}
             >
               <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
@@ -92,18 +90,18 @@ export default function PageHeader({ order }) {
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 animate-fadeIn">
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                   Print Order
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                   Download PDF
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                   Archive Order
                 </button>
                 <hr className="my-1" />
-                <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
                   Delete Order
                 </button>
               </div>
