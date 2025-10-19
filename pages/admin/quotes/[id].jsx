@@ -8,6 +8,8 @@ import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal
 import CertificationsManager from '../../../components/admin/CertificationsManager';
 import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
+import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
+import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -107,6 +109,12 @@ export default function Page({ initialAdmin }){
 
   return (
     <AdminLayout title="Quote Details" initialAdmin={initialAdmin}>
+      {/* Quote Number Card */}
+      <QuoteNumberCard quote={quote} />
+
+      {/* Customer Details Card */}
+      <CustomerDetailsCard quote={quote} onEdit={() => setShowEditHeader(true)} />
+
       {/* Alert */}
       {showAlert && (
         <div className="my-4 mb-6 flex items-start gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50" role="alert" aria-live="polite">
