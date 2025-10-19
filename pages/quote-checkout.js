@@ -323,38 +323,20 @@ export default function QuoteCheckoutPage() {
                 <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 px-6 py-4">
                   <h3 className="text-white font-semibold text-lg">Order Summary</h3>
                 </div>
-                <div className="p-6 space-y-4">
-                  <div className="space-y-2 pb-4 border-b border-gray-200">
+                <div className="p-6">
+                  <div className="space-y-2 pb-4 border-b border-gray-200 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Quote Subtotal</span>
                       <span className="text-gray-900 font-medium">${Number(results?.subtotal || 0).toFixed(2)}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2 pb-4 border-b border-gray-200">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-gray-900 font-medium">
-                        {selectedShippingOption ? `$${Number(selectedShippingOption.price || 0).toFixed(2)}` : '$0.00'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pb-4 border-b border-gray-200">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="text-gray-900 font-medium">${formatCurrency(grandSubtotal).replace('$', '')}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax (5% GST)</span>
-                      <span className="text-gray-900 font-medium">${formatCurrency(tax).replace('$', '')}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-lg font-bold text-gray-900">Total</span>
-                    <span className="text-2xl font-bold text-cyan-600">${formatCurrency(grandTotal).replace('$', '')} CAD</span>
-                  </div>
+                  <PricingBreakdown
+                    subtotal={results?.subtotal || 0}
+                    shipping={shippingTotal}
+                    taxRate={GST_RATE}
+                    showShipping={true}
+                  />
 
                   <button
                     onClick={handleCreateOrder}
