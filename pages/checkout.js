@@ -170,8 +170,8 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
                   <path d="M11.6667 15V4.99998C11.6667 4.55795 11.4911 4.13403 11.1785 3.82147C10.866 3.50891 10.442 3.33331 10 3.33331H3.33333C2.89131 3.33331 2.46738 3.50891 2.15482 3.82147C1.84226 4.13403 1.66667 4.55795 1.66667 4.99998V14.1666C1.66667 14.3877 1.75447 14.5996 1.91075 14.7559C2.06703 14.9122 2.27899 15 2.5 15H4.16667M12.5 15H7.5M15.8333 15H17.5C17.721 15 17.933 14.9122 18.0893 14.7559C18.2455 14.5997 18.3333 14.3877 18.3333 14.1667V11.125C18.333 10.9359 18.2683 10.7525 18.15 10.605L15.25 6.98002C15.1721 6.88242 15.0732 6.80359 14.9607 6.74935C14.8482 6.69512 14.7249 6.66687 14.6 6.66669H11.6667M14.1667 16.6666C15.0871 16.6666 15.8333 15.9205 15.8333 15C15.8333 14.0795 15.0871 13.3333 14.1667 13.3333C13.2462 13.3333 12.5 14.0795 12.5 15C12.5 15.9205 13.2462 16.6666 14.1667 16.6666ZM5.83333 16.6666C6.75381 16.6666 7.5 15.9205 7.5 15C7.5 14.0795 6.75381 13.3333 5.83333 13.3333C4.91286 13.3333 4.16667 14.0795 4.16667 15C4.16667 15.9205 4.91286 16.6666 5.83333 16.6666Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 <div className="flex-1">
-                  <div className="text-base font-normal text-gray-900">Courier (Trackable)</div>
-                  <div className="text-sm text-gray-600">2-3 business days</div>
+                  <div className="text-base font-normal text-gray-900">{order.shipping_options?.[0]?.name || 'Courier (Trackable)'}</div>
+                  <div className="text-sm text-gray-600">{order.shipping_options?.[0]?.delivery_time || '2-3 business days'}</div>
                   <div className="text-xs text-gray-500">Estimated delivery: {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}</div>
                 </div>
                 <div className="text-base text-gray-900">${Number(order.shipping_total || 0).toFixed(2)}</div>
