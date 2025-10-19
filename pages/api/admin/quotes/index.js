@@ -130,6 +130,15 @@ async function deleteQuotes(req, res){
   if (!quoteIds.length) return res.status(400).json({ error: 'No quotes specified' });
 
   try {
+    for (const quoteId of quoteIds) {
+      await supabase.from('quote_sub_orders').delete().eq('quote_id', quoteId);
+      await supabase.from('quote_files').delete().eq('quote_id', quoteId);
+      await supabase.from('quote_adjustments').delete().eq('quote_id', quoteId);
+      await supabase.from('quote_certifications').delete().eq('quote_id', quoteId);
+      await supabase.from('quote_results').delete().eq('quote_id', quoteId);
+      await supabase.from('ocr_analysis').delete().eq('quote_id', quoteId);
+    }
+
     const { error } = await supabase.from('quote_submissions').delete().in('quote_id', quoteIds);
     if (error) throw error;
 
