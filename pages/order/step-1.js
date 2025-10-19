@@ -42,6 +42,7 @@ function classNames(...arr) { return arr.filter(Boolean).join(' '); }
 
 export default function Step1() {
   const [rawFiles, setRawFiles] = useState([]); // File[]
+  const [referenceFiles, setReferenceFiles] = useState([]); // Reference files
   const [errors, setErrors] = useState({});
   const [processing, setProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
@@ -58,8 +59,10 @@ export default function Step1() {
   });
   const [customLanguage, setCustomLanguage] = useState('');
   const [showCustomLanguage, setShowCustomLanguage] = useState(false);
+  const [notes, setNotes] = useState('');
 
   const totalBytes = useMemo(() => rawFiles.reduce((sum, f) => sum + (f.size || 0), 0), [rawFiles]);
+  const totalReferenceBytes = useMemo(() => referenceFiles.reduce((sum, f) => sum + (f.size || 0), 0), [referenceFiles]);
 
   useEffect(() => {
     const fetchData = async () => {
