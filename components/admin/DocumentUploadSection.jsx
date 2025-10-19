@@ -344,6 +344,75 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
       background: #fecaca;
     }
 
+    .upload-footer {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pending-count {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .pending-count strong {
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    .btn-finish-upload {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 160px;
+    }
+
+    .btn-finish-upload:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    .btn-finish-upload:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-finish-upload.loading {
+      opacity: 0.8;
+    }
+
+    .success-message {
+      padding: 12px 16px;
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      border-radius: 6px;
+      color: #166534;
+      font-size: 14px;
+      margin-top: 16px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @media (max-width: 768px) {
       .file-item {
         flex-direction: column;
