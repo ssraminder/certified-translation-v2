@@ -28,26 +28,66 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
     return (pages * rate).toFixed(2);
   }, [billablePages, unitRate]);
 
+  const allAvailableFiles = [...(files || []), ...uploadedFiles];
+
+  async function handleFileUpload(e) {
+    const uploadedFilesList = e.target.files;
+    if (!uploadedFilesList || uploadedFilesList.length === 0) return;
+
+    setUploading(true);
+    setUploadError('');
+    try {
+      const form = new FormData();
+      for (const file of uploadedFilesList) {
+        form.append('files', file);
+      }
+
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/files`, {
+        method: 'POST',
+        body: form
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json?.error || 'Upload failed');
+      }
+
+      if (json?.success && json.uploaded_files) {
+        const newFiles = json.uploaded_files;
+        setUploadedFiles(prev => [...prev, ...newFiles]);
+        if (newFiles.length === 1) {
+          setFileId(newFiles[0].file_id || newFiles[0].id);
+        }
+      }
+    } catch (err) {
+      setUploadError(err?.message || 'Failed to upload files');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   async function submit(e){
-    e.preventDefault(); 
-    if (submitting) return; 
+    e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     try {
+      const selectedFile = allAvailableFiles.find(f => (f.file_id || f.id) === fileId);
       const payload = {
         file_id: fileId || null,
-        filename: (files||[]).find(f=> (f.file_id||f.id)===fileId)?.filename || null,
+        filename: selectedFile?.filename || null,
         billable_pages: Number(billablePages),
         unit_rate: Number(unitRate),
         total_pages: Number(totalPages) || Number(billablePages)
       };
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/manual`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
-      if (json?.success){ 
-        onCreated && onCreated(json.line_item, json.totals); 
-        onClose && onClose(); 
+      if (json?.success){
+        onCreated && onCreated(json.line_item, json.totals);
+        onClose && onClose();
       }
-    } finally { 
-      setSubmitting(false); 
+    } finally {
+      setSubmitting(false);
     }
   }
 
