@@ -109,6 +109,12 @@ export default function Page({ initialAdmin }){
 
   return (
     <AdminLayout title="Quote Details" initialAdmin={initialAdmin}>
+      {/* Quote Number Card */}
+      <QuoteNumberCard quote={quote} />
+
+      {/* Customer Details Card */}
+      <CustomerDetailsCard quote={quote} onEdit={() => setShowEditHeader(true)} />
+
       {/* Alert */}
       {showAlert && (
         <div className="my-4 mb-6 flex items-start gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50" role="alert" aria-live="polite">
