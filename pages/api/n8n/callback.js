@@ -55,7 +55,8 @@ async function handler(req, res) {
       .eq('quote_id', effectiveQuoteId);
 
     if (updateSubErr) {
-      return res.status(500).json({ error: 'Failed to update status' });
+      console.error('[n8n/callback] Failed to update quote_submissions:', updateSubErr);
+      return res.status(500).json({ error: 'Failed to update status', details: updateSubErr.message });
     }
 
     if (effectiveRunId) {
@@ -65,12 +66,19 @@ async function handler(req, res) {
         .eq('id', effectiveRunId);
 
       if (updateRunErr) {
-        return res.status(500).json({ error: 'Failed to update run status' });
+        console.error('[n8n/callback] Failed to update analysis_runs:', updateRunErr);
+        console.error('[n8n/callback] Request details:', { quote_id: effectiveQuoteId, run_id: effectiveRunId, status: normalizedStatus });
+        return res.status(500).json({
+          error: 'Failed to update run status',
+          details: updateRunErr.message,
+          code: updateRunErr.code
+        });
       }
     }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
+    console.error('[n8n/callback] Exception:', err);
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
 }
