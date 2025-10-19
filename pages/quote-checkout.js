@@ -1,8 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Spinner from '../components/dashboard/Spinner';
-import AddressFormModal from '../components/dashboard/AddressFormModal';
+import PhoneInput from '../components/form/PhoneInput';
+import CountrySelect from '../components/form/CountrySelect';
+import RegionSelect from '../components/form/RegionSelect';
+import { formatPostal, labelForPostal } from '../lib/formatters/postal';
+import { isValid as isPhoneValid } from '../lib/formatters/phone';
+
+const GST_RATE = 0.05;
+
+function classNames(...v) { return v.filter(Boolean).join(' '); }
+function round2(n){ const x = Number(n); return Math.round((Number.isFinite(x)?x:0)*100)/100; }
+function formatCurrency(v){ return new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD'}).format(round2(v)); }
+function emailOk(v){ return /.+@.+\..+/.test(String(v||'')); }
 
 export default function QuoteCheckoutPage() {
   const router = useRouter();
@@ -11,14 +22,34 @@ export default function QuoteCheckoutPage() {
   const [quote, setQuote] = useState(null);
   const [shippingOptions, setShippingOptions] = useState([]);
   const [selectedShipping, setSelectedShipping] = useState(null);
-  const [billingAddress, setBillingAddress] = useState(null);
-  const [shippingAddress, setShippingAddress] = useState(null);
-  const [sameAsShipping, setSameAsShipping] = useState(true);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
-  const [showBillingForm, setShowBillingForm] = useState(false);
-  const [showShippingForm, setShowShippingForm] = useState(false);
+
+  const [billing, setBilling] = useState({
+    full_name: '', email: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
+  });
+  const [shipSame, setShipSame] = useState(true);
+  const [shipping, setShipping] = useState({
+    full_name: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
+  });
+
+  const requiresShippingAddress = useMemo(() => {
+    return shippingOptions.some(o => selectedShipping && selectedShipping.toString() === o.id.toString() && o.require_shipping_address);
+  }, [shippingOptions, selectedShipping]);
+
+  const shippingTotal = useMemo(() => {
+    const opt = shippingOptions.find(o => selectedShipping && selectedShipping.toString() === o.id.toString());
+    return round2(opt ? Number(opt.price || 0) : 0);
+  }, [shippingOptions, selectedShipping]);
+
+  const grandSubtotal = useMemo(() => {
+    const results = quote?.quoteResults || {};
+    return round2((results.subtotal || 0) + shippingTotal);
+  }, [quote?.quoteResults, shippingTotal]);
+
+  const tax = useMemo(() => round2(grandSubtotal * GST_RATE), [grandSubtotal]);
+  const grandTotal = useMemo(() => round2(grandSubtotal + tax), [grandSubtotal, tax]);
 
   // Load quote details
   useEffect(() => {
@@ -34,19 +65,24 @@ export default function QuoteCheckoutPage() {
         }
 
         setQuote(data);
+        const quoteData = data.quote || {};
+        setBilling(prev => ({
+          ...prev,
+          full_name: quoteData.customer_first_name || '',
+          email: quoteData.customer_email || '',
+          phone: quoteData.customer_phone || ''
+        }));
 
         // Fetch available shipping options
         const shippingRes = await fetch('/api/shipping-options');
         const shippingData = await shippingRes.json();
         if (shippingData.options) {
           setShippingOptions(shippingData.options);
-          // Auto-select always-selected option (Scanned Copy)
           if (shippingData.options.length > 0) {
             const alwaysSelected = shippingData.options.find(o => o.is_always_selected);
             if (alwaysSelected) {
               setSelectedShipping(String(alwaysSelected.id));
             } else {
-              // Fallback to first active option if no always-selected
               const firstActive = shippingData.options.find(o => o.is_active);
               if (firstActive) {
                 setSelectedShipping(String(firstActive.id));
@@ -63,19 +99,39 @@ export default function QuoteCheckoutPage() {
     fetchQuote();
   }, [token]);
 
-  const handleCreateOrder = async () => {
-    if (!billingAddress) {
-      setError('Please provide a billing address');
-      return;
-    }
-    if (!selectedShipping) {
-      setError('Please select a shipping option');
-      return;
-    }
+  function updateField(setter, key, value) { setter(prev => ({ ...prev, [key]: value })); }
 
+  const handleCreateOrder = async () => {
     try {
+      setError('');
+
+      if (!emailOk(billing.email)) throw new Error('Please enter a valid email');
+      if (!isPhoneValid(billing.phone, billing.country)) throw new Error('Please enter a valid phone');
+      
+      const requiredBilling = ['full_name', 'address_line1', 'city', 'province_state', 'postal_code', 'country'];
+      for (const k of requiredBilling) {
+        if (!String(billing[k] || '').trim()) throw new Error('Please complete all required billing fields');
+      }
+
+      if (!selectedShipping) {
+        throw new Error('Please select a shipping option');
+      }
+
+      let shippingPayload = null;
+      if (requiresShippingAddress) {
+        if (shipSame) {
+          const { email: _e, ...copyBill } = billing;
+          shippingPayload = copyBill;
+        } else {
+          const requiredShip = ['full_name', 'phone', 'address_line1', 'city', 'province_state', 'postal_code', 'country'];
+          for (const k of requiredShip) {
+            if (!String(shipping[k] || '').trim()) throw new Error('Please complete all required shipping fields');
+          }
+          shippingPayload = shipping;
+        }
+      }
+
       setProcessing(true);
-      setError(null);
 
       // Create order from quote
       const response = await fetch('/api/orders/create-from-quote', {
@@ -83,8 +139,8 @@ export default function QuoteCheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           quote_id: quote.quote.quote_id,
-          billing_address: billingAddress,
-          shipping_address: sameAsShipping ? billingAddress : shippingAddress,
+          billing_address: billing,
+          shipping_address: shippingPayload || billing,
           shipping_option_ids: [selectedShipping],
           user_id: quote.quote.user_id || null
         })
@@ -139,15 +195,15 @@ export default function QuoteCheckoutPage() {
 
   const quoteData = quote.quote;
   const results = quote.quoteResults;
-  const selectedShippingOption = shippingOptions.find(o => o.id === selectedShipping);
+  const selectedShippingOption = shippingOptions.find(o => o.id === parseInt(selectedShipping));
 
   return (
     <>
       <Head>
-        <title>Checkout - Quote #{quoteData?.quote_number}</title>
+        <title>Billing & Shipping - Quote #{quoteData?.quote_number}</title>
       </Head>
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-6xl mx-auto px-4 py-6">
@@ -171,180 +227,166 @@ export default function QuoteCheckoutPage() {
             {/* Left Column - Forms */}
             <div className="lg:col-span-2 space-y-6">
               {/* Billing Address Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                  <h2 className="text-white font-semibold text-lg">Billing Address</h2>
+              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Billing Address</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="text-sm text-gray-700">Full Name *</span>
+                    <input value={billing.full_name} onChange={e=>updateField(setBilling,'full_name',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm text-gray-700">Email *</span>
+                    <input type="email" value={billing.email} onChange={e=>updateField(setBilling,'email',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                  </label>
+                  <div>
+                    <PhoneInput required valueE164={billing.phone} onChangeE164={v=>updateField(setBilling,'phone',v||'')} defaultCountry={billing.country} />
+                  </div>
+                  <div />
+                  <label className="block md:col-span-2">
+                    <span className="text-sm text-gray-700">Address Line 1 *</span>
+                    <input value={billing.address_line1} onChange={e=>updateField(setBilling,'address_line1',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                  </label>
+                  <label className="block md:col-span-2">
+                    <span className="text-sm text-gray-700">Address Line 2</span>
+                    <input value={billing.address_line2} onChange={e=>updateField(setBilling,'address_line2',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm text-gray-700">City *</span>
+                    <input value={billing.city} onChange={e=>updateField(setBilling,'city',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                  </label>
+                  <div>
+                    <RegionSelect required country={billing.country} value={billing.province_state} onChange={v=>updateField(setBilling,'province_state',v)} />
+                  </div>
+                  <label className="block">
+                    <span className="text-sm text-gray-700">{labelForPostal(billing.country)} *</span>
+                    <input value={billing.postal_code} onChange={e=>updateField(setBilling,'postal_code', formatPostal(billing.country, e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                  </label>
+                  <div>
+                    <CountrySelect required autoDetect value={billing.country} onChange={v=>updateField(setBilling,'country',v)} />
+                  </div>
                 </div>
-                <div className="p-6">
-                  {billingAddress ? (
-                    <div className="space-y-3">
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <p className="font-medium text-gray-900">{billingAddress.full_name}</p>
-                        <p className="text-sm text-gray-600">{billingAddress.email}</p>
-                        <p className="text-sm text-gray-600">{billingAddress.phone}</p>
-                        <p className="text-sm text-gray-600">{billingAddress.address_line1}</p>
-                        {billingAddress.address_line2 && <p className="text-sm text-gray-600">{billingAddress.address_line2}</p>}
-                        <p className="text-sm text-gray-600">{billingAddress.city}, {billingAddress.province_state} {billingAddress.postal_code}</p>
-                        <p className="text-sm text-gray-600">{billingAddress.country}</p>
-                      </div>
-                      <button
-                        onClick={() => setShowBillingForm(true)}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
-                      >
-                        Change Address
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowBillingForm(true)}
-                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                    >
-                      + Add Billing Address
-                    </button>
-                  )}
-                </div>
-              </div>
+              </section>
 
               {/* Shipping Address Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                  <h2 className="text-white font-semibold text-lg">Shipping Address</h2>
-                </div>
-                <div className="p-6">
-                  <div className="mb-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={sameAsShipping}
-                        onChange={(e) => setSameAsShipping(e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-gray-700">Same as billing address</span>
-                    </label>
-                  </div>
+              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Shipping Address</h2>
+                <label className="flex items-center gap-2 mb-4">
+                  <input type="checkbox" checked={shipSame} onChange={e=>setShipSame(e.target.checked)} className="w-4 h-4" />
+                  <span className="text-gray-700">Same as billing address</span>
+                </label>
 
-                  {!sameAsShipping && (
-                    <>
-                      {shippingAddress ? (
-                        <div className="space-y-3">
-                          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <p className="font-medium text-gray-900">{shippingAddress.full_name}</p>
-                            <p className="text-sm text-gray-600">{shippingAddress.email}</p>
-                            <p className="text-sm text-gray-600">{shippingAddress.phone}</p>
-                            <p className="text-sm text-gray-600">{shippingAddress.address_line1}</p>
-                            {shippingAddress.address_line2 && <p className="text-sm text-gray-600">{shippingAddress.address_line2}</p>}
-                            <p className="text-sm text-gray-600">{shippingAddress.city}, {shippingAddress.province_state} {shippingAddress.postal_code}</p>
-                            <p className="text-sm text-gray-600">{shippingAddress.country}</p>
-                          </div>
-                          <button
-                            onClick={() => setShowShippingForm(true)}
-                            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
-                          >
-                            Change Address
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setShowShippingForm(true)}
-                          className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                        >
-                          + Add Shipping Address
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Scanned Copy Option - Separated */}
-              {shippingOptions.find(o => o.is_always_selected) && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  <div className="p-6">
-                    <label className="flex items-start gap-3 p-4 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value={shippingOptions.find(o => o.is_always_selected)?.id}
-                        checked={String(selectedShipping) === String(shippingOptions.find(o => o.is_always_selected)?.id)}
-                        onChange={(e) => {
-                          setSelectedShipping(e.target.value);
-                        }}
-                        className="w-4 h-4 mt-1"
-                      />
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">Scanned Copy in your Dashboard</p>
-                        {shippingOptions.find(o => o.is_always_selected)?.description && (
-                          <p className="text-sm text-gray-600 mt-1">{shippingOptions.find(o => o.is_always_selected).description}</p>
-                        )}
-                        {shippingOptions.find(o => o.is_always_selected)?.delivery_time && (
-                          <p className="text-sm text-gray-600">Delivery: {shippingOptions.find(o => o.is_always_selected).delivery_time}</p>
-                        )}
-                      </div>
-                      <p className="font-semibold whitespace-nowrap text-gray-900">Always free</p>
+                {!shipSame && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="text-sm text-gray-700">Full Name *</span>
+                      <input value={shipping.full_name} onChange={e=>updateField(setShipping,'full_name',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
                     </label>
+                    <div>
+                      <PhoneInput required valueE164={shipping.phone} onChangeE164={v=>updateField(setShipping,'phone',v||'')} defaultCountry={shipping.country} />
+                    </div>
+                    <label className="block md:col-span-2">
+                      <span className="text-sm text-gray-700">Address Line 1 *</span>
+                      <input value={shipping.address_line1} onChange={e=>updateField(setShipping,'address_line1',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                    </label>
+                    <label className="block md:col-span-2">
+                      <span className="text-sm text-gray-700">Address Line 2</span>
+                      <input value={shipping.address_line2} onChange={e=>updateField(setShipping,'address_line2',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm text-gray-700">City *</span>
+                      <input value={shipping.city} onChange={e=>updateField(setShipping,'city',e.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                    </label>
+                    <div>
+                      <RegionSelect required country={shipping.country} value={shipping.province_state} onChange={v=>updateField(setShipping,'province_state',v)} />
+                    </div>
+                    <label className="block">
+                      <span className="text-sm text-gray-700">{labelForPostal(shipping.country)} *</span>
+                      <input value={shipping.postal_code} onChange={e=>updateField(setShipping,'postal_code', formatPostal(shipping.country, e.target.value))} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500" />
+                    </label>
+                    <div>
+                      <CountrySelect required autoDetect value={shipping.country} onChange={v=>updateField(setShipping,'country',v)} />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </section>
 
               {/* Shipping Options Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                  <h2 className="text-white font-semibold text-lg">Shipping Options</h2>
-                </div>
-                <div className="p-6 space-y-3">
-                  {shippingOptions.filter(o => !o.is_always_selected).length === 0 ? (
-                    <p className="text-gray-600 text-sm">No additional shipping options available</p>
+              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Shipping Options</h2>
+                <div className="space-y-3">
+                  {shippingOptions.filter(o => !o.is_always_selected).length === 0 && shippingOptions.filter(o => o.is_always_selected).length === 0 ? (
+                    <p className="text-gray-600 text-sm">No shipping options available</p>
                   ) : (
-                    shippingOptions.filter(o => !o.is_always_selected).map((option) => {
-                      const isDisabledOption = !option.is_active;
-                      const isChecked = String(selectedShipping) === String(option.id);
-                      return (
-                        <label
-                          key={option.id}
-                          className={`flex items-start gap-3 p-4 border rounded-lg transition ${
-                            isDisabledOption ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                          } ${
-                            isChecked
-                              ? 'border-blue-300 bg-blue-50'
-                              : 'border-gray-200 bg-white hover:bg-gray-50'
-                          }`}
-                        >
+                    <>
+                      {shippingOptions.filter(o => o.is_always_selected).map((option) => (
+                        <label key={option.id} className="flex items-start gap-3 p-4 border border-gray-200 bg-gray-50 rounded-lg cursor-pointer">
                           <input
                             type="radio"
                             name="shipping"
                             value={option.id}
-                            checked={isChecked}
-                            disabled={isDisabledOption}
-                            onChange={(e) => {
-                              if (!isDisabledOption) {
-                                setSelectedShipping(e.target.value);
-                              }
-                            }}
+                            checked={String(selectedShipping) === String(option.id)}
+                            onChange={(e) => setSelectedShipping(e.target.value)}
                             className="w-4 h-4 mt-1"
                           />
                           <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className={`font-medium ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>{option.name}</p>
-                              {isDisabledOption && <span className="text-xs text-red-600">(Disabled)</span>}
-                            </div>
-                            {option.description && <p className="text-sm text-gray-600">{option.description}</p>}
+                            <p className="font-semibold text-gray-900">{option.name}</p>
+                            {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
                             {option.delivery_time && <p className="text-sm text-gray-600">Delivery: {option.delivery_time}</p>}
                           </div>
-                          <p className={`font-semibold whitespace-nowrap ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>
-                            {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
-                          </p>
+                          <p className="font-semibold whitespace-nowrap text-gray-900">Always free</p>
                         </label>
-                      );
-                    })
+                      ))}
+                      {shippingOptions.filter(o => !o.is_always_selected).map((option) => {
+                        const isDisabledOption = !option.is_active;
+                        const isChecked = String(selectedShipping) === String(option.id);
+                        return (
+                          <label
+                            key={option.id}
+                            className={`flex items-start gap-3 p-4 border rounded-lg transition ${
+                              isDisabledOption ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                            } ${
+                              isChecked
+                                ? 'border-cyan-300 bg-cyan-50'
+                                : 'border-gray-200 bg-white hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="shipping"
+                              value={option.id}
+                              checked={isChecked}
+                              disabled={isDisabledOption}
+                              onChange={(e) => {
+                                if (!isDisabledOption) {
+                                  setSelectedShipping(e.target.value);
+                                }
+                              }}
+                              className="w-4 h-4 mt-1"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className={`font-medium ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>{option.name}</p>
+                                {isDisabledOption && <span className="text-xs text-red-600">(Disabled)</span>}
+                              </div>
+                              {option.description && <p className="text-sm text-gray-600">{option.description}</p>}
+                              {option.delivery_time && <p className="text-sm text-gray-600">Delivery: {option.delivery_time}</p>}
+                            </div>
+                            <p className={`font-semibold whitespace-nowrap ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>
+                              {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
+                            </p>
+                          </label>
+                        );
+                      })}
+                    </>
                   )}
                 </div>
-              </div>
+              </section>
             </div>
 
             {/* Right Column - Summary */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden sticky top-6">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
+                <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 px-6 py-4">
                   <h3 className="text-white font-semibold text-lg">Order Summary</h3>
                 </div>
                 <div className="p-6 space-y-4">
@@ -367,29 +409,23 @@ export default function QuoteCheckoutPage() {
                   <div className="space-y-2 pb-4 border-b border-gray-200">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Subtotal</span>
-                      <span className="text-gray-900 font-medium">
-                        ${(Number(results?.subtotal || 0) + Number(selectedShippingOption?.price || 0)).toFixed(2)}
-                      </span>
+                      <span className="text-gray-900 font-medium">${formatCurrency(grandSubtotal).replace('$', '')}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Tax (5% GST)</span>
-                      <span className="text-gray-900 font-medium">
-                        ${((Number(results?.subtotal || 0) + Number(selectedShippingOption?.price || 0)) * 0.05).toFixed(2)}
-                      </span>
+                      <span className="text-gray-900 font-medium">${formatCurrency(tax).replace('$', '')}</span>
                     </div>
                   </div>
 
                   <div className="flex justify-between items-center py-2">
                     <span className="text-lg font-bold text-gray-900">Total</span>
-                    <span className="text-2xl font-bold text-blue-600">
-                      ${((Number(results?.subtotal || 0) + Number(selectedShippingOption?.price || 0)) * 1.05).toFixed(2)} CAD
-                    </span>
+                    <span className="text-2xl font-bold text-cyan-600">${formatCurrency(grandTotal).replace('$', '')} CAD</span>
                   </div>
 
                   <button
                     onClick={handleCreateOrder}
-                    disabled={!billingAddress || !selectedShipping || processing}
-                    className="w-full mt-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold"
+                    disabled={processing}
+                    className="w-full mt-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 font-semibold"
                   >
                     {processing ? 'Processing...' : 'Proceed to Payment'}
                   </button>
@@ -399,25 +435,6 @@ export default function QuoteCheckoutPage() {
           </div>
         </div>
       </div>
-
-      {/* Modals */}
-      <AddressFormModal
-        isOpen={showBillingForm}
-        onClose={() => setShowBillingForm(false)}
-        onSave={(address) => {
-          setBillingAddress(address);
-          setShowBillingForm(false);
-        }}
-      />
-
-      <AddressFormModal
-        isOpen={showShippingForm}
-        onClose={() => setShowShippingForm(false)}
-        onSave={(address) => {
-          setShippingAddress(address);
-          setShowShippingForm(false);
-        }}
-      />
     </>
   );
 }
