@@ -48,7 +48,7 @@ function CheckoutSteps({ currentStep = 2 }) {
   );
 }
 
-function CheckoutForm({ order, onPaymentSuccess }) {
+function CheckoutForm({ order }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -181,6 +181,14 @@ function CheckoutForm({ order, onPaymentSuccess }) {
           {errorMessage}
         </div>
       )}
+
+      <button
+        type="submit"
+        disabled={!stripe || !elements || isProcessing || !termsAccepted}
+        className="hidden"
+      >
+        {isProcessing ? 'Processing...' : `Pay Now`}
+      </button>
     </form>
   );
 }
@@ -192,57 +200,10 @@ function formatBytes(bytes) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function CheckoutPage() {
+function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing, termsAccepted, setIsProcessing, setTermsAccepted }) {
   const router = useRouter();
-  const { order: orderId } = router.query;
-
-  const [order, setOrder] = useState(null);
-  const [clientSecret, setClientSecret] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-
   const stripe = useStripe();
   const elements = useElements();
-
-  useEffect(() => {
-    const run = async () => {
-      if (!orderId) return;
-      try {
-        const resp = await fetch(`/api/orders/${orderId}`);
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Failed to load order');
-        setOrder(data.order);
-
-        const pay = await fetch('/api/payment/create-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_id: orderId, amount: data.order.total, currency: 'cad' })
-        });
-        const payJson = await pay.json();
-        if (!pay.ok) throw new Error(payJson.error || 'Failed to initialize payment');
-        setClientSecret(payJson.clientSecret);
-      } catch (err) {
-        console.error(err);
-        alert('Failed to load checkout. Please try again.');
-        router.push('/');
-      } finally {
-        setLoading(false);
-      }
-    };
-    run();
-  }, [orderId, router]);
-
-  const stripeOptions = useMemo(
-    () => ({
-      clientSecret,
-      appearance: {
-        theme: 'stripe',
-        variables: { colorPrimary: '#155DFC' }
-      }
-    }),
-    [clientSecret]
-  );
 
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -265,17 +226,6 @@ export default function CheckoutPage() {
       setIsProcessing(false);
     }
   };
-
-  if (loading || !order) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Loading checkout...</p>
-        </div>
-      </div>
-    );
-  }
 
   const quote = order.quote || {};
   const totalService = Number(order.translation_total || 0) + Number(order.certification_total || 0);
@@ -515,5 +465,80 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  const router = useRouter();
+  const { order: orderId } = router.query;
+
+  const [order, setOrder] = useState(null);
+  const [clientSecret, setClientSecret] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!orderId) return;
+      try {
+        const resp = await fetch(`/api/orders/${orderId}`);
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed to load order');
+        setOrder(data.order);
+
+        const pay = await fetch('/api/payment/create-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: orderId, amount: data.order.total, currency: 'cad' })
+        });
+        const payJson = await pay.json();
+        if (!pay.ok) throw new Error(payJson.error || 'Failed to initialize payment');
+        setClientSecret(payJson.clientSecret);
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load checkout. Please try again.');
+        router.push('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [orderId, router]);
+
+  const stripeOptions = useMemo(
+    () => ({
+      clientSecret,
+      appearance: {
+        theme: 'stripe',
+        variables: { colorPrimary: '#155DFC' }
+      }
+    }),
+    [clientSecret]
+  );
+
+  if (loading || !order) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Elements stripe={stripePromise} options={stripeOptions}>
+      <CheckoutPageContent
+        order={order}
+        clientSecret={clientSecret}
+        stripeOptions={stripeOptions}
+        isProcessing={isProcessing}
+        termsAccepted={termsAccepted}
+        setIsProcessing={setIsProcessing}
+        setTermsAccepted={setTermsAccepted}
+      />
+    </Elements>
   );
 }
