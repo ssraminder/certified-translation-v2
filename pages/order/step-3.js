@@ -1234,7 +1234,7 @@ export default function Step3() {
         if (elapsed >= maxWaitMs) {
           clearInterval(timerId);
           setError('Analysis is taking longer than expected. A human specialist will finish this quote.');
-          await triggerHitlReview(quoteId);
+          await triggerHitlReview(quoteId, HITL_REASONS.N8N_TIMEOUT);
           setIsPolling(false);
           setIsLoading(false);
           setShowHITL(true);
