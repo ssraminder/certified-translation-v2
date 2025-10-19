@@ -87,12 +87,12 @@ export default function OrderDetailsPage({ initialAdmin }) {
 
   return (
     <AdminLayout title="" initialAdmin={initialAdmin}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 pb-24">
         {/* Sticky Header */}
         <PageHeader order={order} />
 
         {/* Main Content */}
-        <div className="mx-auto max-w-5xl px-8 py-8 space-y-6">
+        <div className="mx-auto max-w-5xl px-4 md:px-8 py-6 md:py-8 space-y-6">
           {/* Timeline */}
           <OrderTimelineSection order={order} />
 
