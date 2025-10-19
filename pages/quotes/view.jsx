@@ -243,7 +243,7 @@ export default function QuoteViewPage() {
             {/* Action Buttons */}
             <div className="flex gap-4 justify-center py-6">
               <button
-                onClick={() => router.push('/order/step-1')}
+                onClick={() => router.push(`/quote-checkout?token=${encodeURIComponent(token)}`)}
                 className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-lg"
               >
                 Proceed to Payment
