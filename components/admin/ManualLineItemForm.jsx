@@ -1,4 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 export default function ManualLineItemForm({ open, onClose, quoteId, files, onCreated }){
   const [fileId, setFileId] = useState('');
@@ -6,6 +9,7 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
   const [billablePages, setBillablePages] = useState('');
   const [unitRate, setUnitRate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPages, setLoadingPages] = useState(false);
 
   useEffect(()=> {
     if (!open){
@@ -13,6 +17,7 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
       setTotalPages('');
       setBillablePages('');
       setUnitRate('');
+      setLoadingPages(false);
     }
   }, [open]);
 
@@ -22,15 +27,47 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
     return (pages * rate).toFixed(2);
   }, [billablePages, unitRate]);
 
-  const handleFileChange = (e) => {
+  async function getPageCount(fileUrl, filename) {
+    try {
+      const fileExt = filename.split('.').pop().toLowerCase();
+
+      if (fileExt === 'pdf') {
+        const response = await fetch(fileUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        return pdf.numPages;
+      } else if (['jpg', 'jpeg', 'png'].includes(fileExt)) {
+        return 1;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error calculating page count:', error);
+      return null;
+    }
+  }
+
+  const handleFileChange = async (e) => {
     const selectedFileId = e.target.value;
     setFileId(selectedFileId);
 
     if (selectedFileId) {
       const selectedFile = files.find(f => (f.file_id || f.id) === selectedFileId);
-      if (selectedFile && selectedFile.page_count) {
-        setTotalPages(String(selectedFile.page_count));
-        setBillablePages(String(selectedFile.page_count));
+      if (selectedFile) {
+        if (selectedFile.page_count) {
+          setTotalPages(String(selectedFile.page_count));
+          setBillablePages(String(selectedFile.page_count));
+        } else if (selectedFile.file_url) {
+          setLoadingPages(true);
+          try {
+            const pageCount = await getPageCount(selectedFile.file_url, selectedFile.filename);
+            if (pageCount !== null) {
+              setTotalPages(String(pageCount));
+              setBillablePages(String(pageCount));
+            }
+          } finally {
+            setLoadingPages(false);
+          }
+        }
       }
     } else {
       setTotalPages('');
