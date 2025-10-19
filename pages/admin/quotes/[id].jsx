@@ -8,6 +8,7 @@ import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal
 import CertificationsManager from '../../../components/admin/CertificationsManager';
 import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
+import DocumentUploadSection from '../../../components/admin/DocumentUploadSection';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
 import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
