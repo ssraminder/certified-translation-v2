@@ -40,7 +40,11 @@ export default function FileManager({ quoteId, initialFiles, canEdit = true, onC
         .from('quote_sub_orders')
         .select('filename, billable_pages, total_pages, unit_rate, certification_amount, run_id')
         .eq('quote_id', quoteId);
-      if (currentRunId) qso = qso.eq('run_id', currentRunId);
+      if (currentRunId) {
+        qso = qso.eq('run_id', currentRunId);
+      } else {
+        qso = qso.eq('source', 'manual');
+      }
       const { data: items } = await qso;
       if (Array.isArray(items) && items.length){
         const lineItems = items.length;
