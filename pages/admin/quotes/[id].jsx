@@ -48,6 +48,19 @@ export default function Page({ initialAdmin }){
   const canEdit = quote?.can_edit;
   const isSent = quote?.quote_state === 'sent';
 
+  async function refetchFiles(){
+    const id = quote.id;
+    try {
+      const resp = await fetch(`/api/admin/quotes/${id}`);
+      const json = await resp.json();
+      if (json?.documents){
+        setFiles(json.documents);
+      }
+    } catch (err) {
+      console.error('Error refetching files:', err);
+    }
+  }
+
   async function updateLineItem(id, patch){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/line-items`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ line_item_id: id, updates: patch }) });
     const json = await resp.json();
@@ -163,8 +176,9 @@ export default function Page({ initialAdmin }){
           {/* Document Upload Section */}
           <DocumentUploadSection
             quoteId={quote?.id}
-            initialFiles={uploadedFiles}
+            initialFiles={files}
             onFilesChange={setUploadedFiles}
+            onUploadComplete={refetchFiles}
             canEdit={canEdit}
           />
 

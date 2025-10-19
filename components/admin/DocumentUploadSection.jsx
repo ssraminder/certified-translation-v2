@@ -3,9 +3,11 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-export default function DocumentUploadSection({ quoteId, initialFiles = [], onFilesChange, canEdit = true }) {
+export default function DocumentUploadSection({ quoteId, initialFiles = [], onFilesChange, onUploadComplete, canEdit = true }) {
   const [uploadedFiles, setUploadedFiles] = useState(initialFiles);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -108,6 +110,50 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
   function removeFile(fileId) {
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
+  }
+
+  async function handleFinishUpload() {
+    const pendingFiles = uploadedFiles.filter(f => f.source === 'upload' && f.file_object);
+    if (pendingFiles.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      const purposes = [];
+
+      for (const file of pendingFiles) {
+        form.append('files', file.file_object);
+        purposes.push(file.document_type);
+      }
+
+      form.append('file_purposes', JSON.stringify(purposes));
+
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/files`, {
+        method: 'POST',
+        body: form
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json?.error || 'Upload failed');
+      }
+
+      if (json?.success && json.uploaded_files) {
+        setSuccessMessage(`Successfully uploaded ${json.uploaded_files.length} file(s)`);
+        setTimeout(() => setSuccessMessage(''), 3000);
+
+        setUploadedFiles(prev => prev.filter(f => f.source !== 'upload'));
+
+        if (onUploadComplete) {
+          onUploadComplete();
+        }
+      }
+    } catch (err) {
+      alert('Upload failed: ' + (err?.message || 'Unknown error'));
+      console.error('Upload error:', err);
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   function handleDragOver(e) {
@@ -298,6 +344,75 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
       background: #fecaca;
     }
 
+    .upload-footer {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pending-count {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .pending-count strong {
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    .btn-finish-upload {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 160px;
+    }
+
+    .btn-finish-upload:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    .btn-finish-upload:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-finish-upload.loading {
+      opacity: 0.8;
+    }
+
+    .success-message {
+      padding: 12px 16px;
+      background: #dcfce7;
+      border: 1px solid #86efac;
+      border-radius: 6px;
+      color: #166534;
+      font-size: 14px;
+      margin-top: 16px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @media (max-width: 768px) {
       .file-item {
         flex-direction: column;
@@ -348,6 +463,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
           </div>
         )}
 
+        {successMessage && (
+          <div className="success-message">✓ {successMessage}</div>
+        )}
+
         <div className="uploaded-files-list">
           {uploadedFiles.length === 0 ? (
             <p className="empty-state">No documents uploaded yet</p>
@@ -360,7 +479,11 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
                     <div className="filename">{file.filename}</div>
                     <div className="file-meta">
                       {file.page_count ? file.page_count + ' pages' : '— pages'} • {formatFileSize(file.file_size)} •{' '}
-                      Uploaded {formatTimeAgo(file.uploaded_at)}
+                      {file.source === 'upload' ? (
+                        <span style={{ color: '#f59e0b', fontWeight: '500' }}>⚠️ Pending Upload</span>
+                      ) : (
+                        `Uploaded ${formatTimeAgo(file.uploaded_at)}`
+                      )}
                     </div>
                   </div>
                 </div>
@@ -396,6 +519,25 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
             ))
           )}
         </div>
+
+        {uploadedFiles.length > 0 && canEdit && (
+          <>
+            {uploadedFiles.some(f => f.source === 'upload') && (
+              <div className="upload-footer">
+                <div className="pending-count">
+                  <strong>{uploadedFiles.filter(f => f.source === 'upload').length}</strong> pending file(s)
+                </div>
+                <button
+                  className={`btn-finish-upload ${isUploading ? 'loading' : ''}`}
+                  onClick={handleFinishUpload}
+                  disabled={isUploading || uploadedFiles.filter(f => f.source === 'upload').length === 0}
+                >
+                  {isUploading ? 'Uploading...' : 'Finish Upload'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </>
   );
