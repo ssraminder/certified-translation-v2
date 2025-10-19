@@ -482,18 +482,71 @@ export default function Step1() {
           {errors.files && <p className="text-sm text-red-600 mb-4">{errors.files}</p>}
 
           {rawFiles.length > 0 && (
-            <ul className="mb-6 divide-y divide-gray-200 border border-gray-200 rounded-lg">
-              {rawFiles.map((f, idx) => (
-                <li key={idx} className="flex items-center justify-between p-3">
-                  <div>
-                    <p className="text-sm text-gray-900">{f.name}</p>
-                    <p className="text-xs text-gray-500">{bytesToMB(f.size)}MB</p>
-                  </div>
-                  <button className="text-sm text-red-600 hover:underline" onClick={() => removeFile(idx)}>Remove</button>
-                </li>
-              ))}
-            </ul>
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Documents to translate</h3>
+              <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                {rawFiles.map((f, idx) => (
+                  <li key={idx} className="flex items-center justify-between p-3">
+                    <div>
+                      <p className="text-sm text-gray-900">{f.name}</p>
+                      <p className="text-xs text-gray-500">{bytesToMB(f.size)}MB</p>
+                    </div>
+                    <button className="text-sm text-red-600 hover:underline" onClick={() => removeFile(idx)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
+
+          {/* Reference Files Section */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Reference files (optional)</h3>
+            <p className="text-xs text-gray-600 mb-3">Upload any reference materials, glossaries, or previous translations that can help with context (not included in translation analysis)</p>
+
+            {referenceFiles.length > 0 && (
+              <ul className="mb-3 divide-y divide-blue-200 border border-blue-200 rounded-lg bg-white">
+                {referenceFiles.map((f, idx) => (
+                  <li key={idx} className="flex items-center justify-between p-3">
+                    <div>
+                      <p className="text-sm text-gray-900">{f.name}</p>
+                      <p className="text-xs text-gray-500">{bytesToMB(f.size)}MB</p>
+                    </div>
+                    <button className="text-sm text-red-600 hover:underline" onClick={() => removeReferenceFile(idx)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex gap-3">
+              <label className="inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                <input suppressHydrationWarning type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden" onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const accepted = files.filter(f => {
+                    const ext = (f.name.split('.').pop() || '').toLowerCase();
+                    return ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].includes(ext);
+                  });
+                  setReferenceFiles(prev => [...prev, ...accepted]);
+                  if (e.target) e.target.value = '';
+                }} />
+                📎 Add reference files
+              </label>
+              {referenceFiles.length > 0 && (
+                <p className="text-xs text-gray-600 flex items-center">{bytesToMB(totalReferenceBytes)}MB</p>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Instructions (optional)</label>
+              <textarea
+                suppressHydrationWarning
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+                rows="3"
+                placeholder="Any notes, special instructions, or context for the translator..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
 
           {/* Form */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
