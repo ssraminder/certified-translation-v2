@@ -11,7 +11,7 @@ async function handler(req, res){
 
     const { data: quote } = await supabase.from('quote_submissions').select('quote_id, quote_number, name, email, quote_state').eq('quote_id', quoteId).maybeSingle();
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
-    if (['sent','accepted','converted'].includes(String(quote?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
+    if (['accepted','converted'].includes(String(quote?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
 
     const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
 
