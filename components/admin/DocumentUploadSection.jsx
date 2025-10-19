@@ -21,6 +21,8 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
   }, [uploadedFiles]);
 
   async function getPageCount(file) {
+    if (!file) return null;
+
     const fileType = file.type;
 
     if (fileType === 'application/pdf') {
@@ -32,7 +34,7 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
         console.error('PDF page count error:', error);
         return null;
       }
-    } else if (fileType.startsWith('image/')) {
+    } else if (fileType?.startsWith('image/')) {
       return 1;
     } else {
       return null;
@@ -44,7 +46,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
   }
 
   function formatTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
+    if (!date) return 'recently';
+
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const seconds = Math.floor((new Date() - dateObj) / 1000);
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return minutes + ' min ago';
@@ -54,10 +59,12 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
     return days + ' day' + (days > 1 ? 's' : '') + ' ago';
   }
 
-  function getFileIcon(fileType) {
-    if (fileType === 'application/pdf') return '📄';
-    if (fileType.startsWith('image/')) return '🖼️';
-    if (fileType.includes('word') || fileType.includes('document')) return '📝';
+  function getFileIcon(fileType, filename) {
+    if (!fileType && !filename) return '📎';
+
+    if (fileType === 'application/pdf' || filename?.endsWith('.pdf')) return '📄';
+    if (fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif)$/i.test(filename)) return '🖼️';
+    if (fileType?.includes('word') || fileType?.includes('document') || /\.(doc|docx)$/i.test(filename)) return '📝';
     return '📎';
   }
 
@@ -114,7 +121,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
   async function handleFinishUpload() {
     const pendingFiles = uploadedFiles.filter(f => f.source === 'upload' && f.file_object);
-    if (pendingFiles.length === 0) return;
+    if (pendingFiles.length === 0) {
+      alert('No pending files to upload');
+      return;
+    }
 
     setIsUploading(true);
     try {
@@ -123,7 +133,7 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
       for (const file of pendingFiles) {
         form.append('files', file.file_object);
-        purposes.push(file.document_type);
+        purposes.push(file.document_type || 'translate');
       }
 
       form.append('file_purposes', JSON.stringify(purposes));
@@ -142,8 +152,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
         setSuccessMessage(`Successfully uploaded ${json.uploaded_files.length} file(s)`);
         setTimeout(() => setSuccessMessage(''), 3000);
 
+        // Remove pending files from local state
         setUploadedFiles(prev => prev.filter(f => f.source !== 'upload'));
 
+        // Trigger parent refetch to get updated file list from server
         if (onUploadComplete) {
           onUploadComplete();
         }
@@ -290,6 +302,17 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
     .file-meta {
       font-size: 12px;
       color: #6b7280;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pending-badge {
+      color: #f59e0b;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .document-type-select {
@@ -474,15 +497,15 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
             uploadedFiles.map(file => (
               <div key={file.id} className="file-item">
                 <div className="file-info">
-                  <div className="file-icon">{getFileIcon(file.file_type)}</div>
+                  <div className="file-icon">{getFileIcon(file.file_type, file.filename)}</div>
                   <div className="file-details">
                     <div className="filename">{file.filename}</div>
                     <div className="file-meta">
-                      {file.page_count ? file.page_count + ' pages' : '— pages'} • {formatFileSize(file.file_size)} •{' '}
+                      {file.page_count ? file.page_count + ' pages' : '— pages'} • {formatFileSize(file.file_size || 0)} •{' '}
                       {file.source === 'upload' ? (
-                        <span style={{ color: '#f59e0b', fontWeight: '500' }}>⚠️ Pending Upload</span>
+                        <span className="pending-badge">⚠️ Pending Upload</span>
                       ) : (
-                        `Uploaded ${formatTimeAgo(file.uploaded_at)}`
+                        `Uploaded ${file.uploaded_at ? formatTimeAgo(file.uploaded_at) : 'recently'}`
                       )}
                     </div>
                   </div>
@@ -522,15 +545,15 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
         {uploadedFiles.length > 0 && canEdit && (
           <>
-            {uploadedFiles.some(f => f.source === 'upload') && (
+            {uploadedFiles.some(f => f.source === 'upload' && f.file_object) && (
               <div className="upload-footer">
                 <div className="pending-count">
-                  <strong>{uploadedFiles.filter(f => f.source === 'upload').length}</strong> pending file(s)
+                  <strong>{uploadedFiles.filter(f => f.source === 'upload' && f.file_object).length}</strong> pending file(s)
                 </div>
                 <button
                   className={`btn-finish-upload ${isUploading ? 'loading' : ''}`}
                   onClick={handleFinishUpload}
-                  disabled={isUploading || uploadedFiles.filter(f => f.source === 'upload').length === 0}
+                  disabled={isUploading || uploadedFiles.filter(f => f.source === 'upload' && f.file_object).length === 0}
                 >
                   {isUploading ? 'Uploading...' : 'Finish Upload'}
                 </button>
