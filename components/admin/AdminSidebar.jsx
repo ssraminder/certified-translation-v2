@@ -79,6 +79,7 @@ export default function AdminSidebar({ collapsed, pendingCounts = {} , onClose, 
         )}
         {(!collapsed && openSettings) && (
           <div className="mt-1 space-y-1 pl-8">
+            {canViewSettings(role) && <Link href="/admin/shipping-options" className={`block rounded-md px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/50 ${isActive('/admin/shipping-options') ? 'bg-slate-800' : ''}`}>Shipping Options</Link>}
             {canViewSettings(role) && <Link href="/admin/settings/languages" className={`block rounded-md px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/50 ${isActive('/admin/settings/languages') ? 'bg-slate-800' : ''}`}>Languages</Link>}
             {canViewSettings(role) && <Link href="/admin/settings/tiers" className={`block rounded-md px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/50 ${isActive('/admin/settings/tiers') ? 'bg-slate-800' : ''}`}>Language Tiers</Link>}
             {canViewSettings(role) && <Link href="/admin/settings/certifications" className={`block rounded-md px-3 py-2 text-sm text-slate-200 hover:bg-slate-700/50 ${isActive('/admin/settings/certifications') ? 'bg-slate-800' : ''}`}>Certifications</Link>}
