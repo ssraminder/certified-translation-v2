@@ -5,32 +5,41 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
   const [discountType, setDiscountType] = useState('percentage');
   const [discountValue, setDiscountValue] = useState('');
   const [reason, setReason] = useState('');
-  
-  useEffect(()=>{ 
-    if (!open){ 
-      setDescription(''); 
-      setDiscountType('percentage'); 
-      setDiscountValue(''); 
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(()=>{
+    if (!open){
+      setDescription('');
+      setDiscountType('percentage');
+      setDiscountValue('');
       setReason('');
-    } 
+      setSubmitting(false);
+    }
   }, [open]);
-  
+
   if (!open) return null;
-  
+
   const computed = useMemo(()=>{
     const v = Number(discountValue || 0);
     if (discountType === 'percentage') return Math.max(0, subtotal * (v/100));
     return Math.max(0, v);
   }, [discountType, discountValue, subtotal]);
 
-  const handleSubmit = () => {
-    if (onSubmit) {
-      onSubmit({ 
-        description: description.trim(), 
-        discount_type: discountType, 
-        discount_value: Number(discountValue || 0),
-        notes: reason.trim() || null
-      });
+  const handleSubmit = async () => {
+    if (onSubmit && !submitting) {
+      setSubmitting(true);
+      try {
+        await onSubmit({
+          description: description.trim(),
+          discount_type: discountType,
+          discount_value: Number(discountValue || 0),
+          notes: reason.trim() || null
+        });
+      } catch (error) {
+        console.error('Error submitting discount:', error);
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -173,18 +182,19 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
 
           {/* Buttons */}
           <div className="flex justify-end gap-2">
-            <button 
+            <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 transition-colors"
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
-            <button 
+            <button
               onClick={handleSubmit}
-              disabled={!description.trim() || !(Number(discountValue) > 0)}
+              disabled={!description.trim() || !(Number(discountValue) > 0) || submitting}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
             >
-              {confirmText}
+              {submitting ? 'Processing...' : confirmText}
             </button>
           </div>
         </div>
