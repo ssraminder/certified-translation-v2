@@ -72,7 +72,10 @@ export default function QuoteDetailPage() {
         <div>
           <Link href="/dashboard/quotes" className="text-sm text-cyan-600">← Back to Quotes</Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">Quote {quote.quote_number || String(quote.id).slice(0,8)}</h1>
-          <div className="text-gray-600 mt-1">{formatDate(quote.created_at)} • <StatusBadge state={quote.quote_state} /></div>
+          <div className="text-gray-600 mt-1 flex items-center gap-2">
+            <span>{formatDate(quote.created_at)} • <StatusBadge state={quote.quote_state} /></span>
+            {quote.hitl_required && <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">HITL</span>}
+          </div>
         </div>
         <div className="flex gap-2">
           {quote.quote_state === 'expired' && (
