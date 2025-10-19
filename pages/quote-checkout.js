@@ -40,9 +40,12 @@ export default function QuoteCheckoutPage() {
         const shippingData = await shippingRes.json();
         if (shippingData.options) {
           setShippingOptions(shippingData.options);
-          // Auto-select first option if available
+          // Auto-select always-selected option, or first available option
           if (shippingData.options.length > 0) {
-            setSelectedShipping(shippingData.options[0].id);
+            const alwaysSelected = shippingData.options.find(o => o.is_always_selected);
+            const firstActive = shippingData.options.find(o => o.is_active);
+            const defaultOption = alwaysSelected || firstActive || shippingData.options[0];
+            setSelectedShipping(defaultOption.id);
           }
         }
       } catch (err) {
