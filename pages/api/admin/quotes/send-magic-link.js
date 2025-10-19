@@ -19,7 +19,7 @@ async function handler(req, res) {
     // Get quote details
     const { data: quote, error: quoteError } = await supabase
       .from('quote_submissions')
-      .select('quote_id, quote_number, source_lang, target_lang, certification_type_name, customer_first_name')
+      .select('quote_id, quote_number, source_lang, target_lang, name')
       .eq('quote_id', quote_id)
       .maybeSingle();
 
@@ -146,7 +146,7 @@ async function handler(req, res) {
       languages: `${quote.source_lang} to ${quote.target_lang}`,
       document_count: files?.length || 0,
       page_count: totalPages,
-      certification_type: quote.certification_type_name || '',
+      certification_type: '',
       lineItems: (lineItems || []).map(item => ({
         description: item.filename,
         pages: item.billable_pages,
@@ -164,7 +164,7 @@ async function handler(req, res) {
     // Send email
     const emailResult = await sendQuoteReadyEmail({
       email: recipient_email,
-      first_name: quote.customer_first_name || 'Customer',
+      first_name: quote.name || 'Customer',
       quote_number: quote.quote_number,
       quoteData: quoteEmailData,
       viewQuoteUrl,
