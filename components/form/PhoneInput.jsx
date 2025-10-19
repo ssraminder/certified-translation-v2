@@ -10,7 +10,10 @@ export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE1
 
   // Parse incoming E.164 value (e.g., +14039666211) into digits
   useEffect(() => {
-    if (!valueE164) return; // don't clear while typing
+    if (!valueE164) {
+      setDigits(''); // Clear when valueE164 is empty/null
+      return;
+    }
     const m = String(valueE164).match(/^\+1(\d{10})$/);
     if (m) setDigits(m[1]);
   }, [valueE164]);
