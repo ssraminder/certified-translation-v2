@@ -51,13 +51,10 @@ function CheckoutSteps({ currentStep = 2 }) {
   );
 }
 
-function CheckoutForm({ order }) {
+function CheckoutForm({ order, termsAccepted, setTermsAccepted, isProcessing, setIsProcessing }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('card');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,79 +80,13 @@ function CheckoutForm({ order }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form id="checkout-form" onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Method</h2>
-        
-        <div className="space-y-3">
-          <div
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              paymentMethod === 'card'
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setPaymentMethod('card')}
-          >
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'card' ? 'bg-gray-900' : ''}`}></div>
-            </div>
-            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-              <path d="M26.6667 6.66663H5.33333C3.86057 6.66663 2.66666 7.86053 2.66666 9.33329V22.6666C2.66666 24.1394 3.86057 25.3333 5.33333 25.3333H26.6667C28.1394 25.3333 29.3333 24.1394 29.3333 22.6666V9.33329C29.3333 7.86053 28.1394 6.66663 26.6667 6.66663Z" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M2.66666 13.3334H29.3333" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="flex-1">
-              <div className="text-sm font-normal text-gray-900">Credit / Debit Card</div>
-              <div className="flex items-center gap-2 mt-2">
-                {['VISA', 'MC', 'AMEX'].map((brand) => (
-                  <div key={brand} className="px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded bg-white">
-                    {brand}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          <div
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              paymentMethod === 'debit'
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setPaymentMethod('debit')}
-          >
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'debit' ? 'bg-gray-900' : ''}`}></div>
-            </div>
-            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-              <path d="M16 13.3334H16.0133M16 18.6666H16.0133M16 8H16.0133M21.3333 13.3334H21.3467M21.3333 18.6666H21.3467M21.3333 8H21.3467M10.6667 13.3334H10.68M10.6667 18.6666H10.68M10.6667 8H10.68" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 29.3333V25.3333C12 24.9797 12.1405 24.6406 12.3905 24.3905C12.6406 24.1405 12.9797 24 13.3333 24H18.6667C19.0203 24 19.3594 24.1405 19.6095 24.3905C19.8595 24.6406 20 24.9797 20 25.3333V29.3333M24 2.66663H8C6.52724 2.66663 5.33334 3.86053 5.33334 5.33329V26.6666C5.33334 28.1394 6.52724 29.3333 8 29.3333H24C25.4728 29.3333 26.6667 28.1394 26.6667 26.6666V5.33329C26.6667 3.86053 25.4728 2.66663 24 2.66663Z" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="text-sm font-normal text-gray-900">Pre-authorized Debit</div>
-          </div>
-
-          <div
-            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              paymentMethod === 'alipay'
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setPaymentMethod('alipay')}
-          >
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'alipay' ? 'bg-gray-900' : ''}`}></div>
-            </div>
-            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-              <path d="M16 2.66663V29.3333M22.6667 6.66663H12.6667C11.429 6.66663 10.242 7.15829 9.36684 8.03346C8.49167 8.90863 8 10.0956 8 11.3333C8 12.571 8.49167 13.758 9.36684 14.6331C10.242 15.5083 11.429 16 12.6667 16H19.3333C20.571 16 21.758 16.4916 22.6332 17.3668C23.5083 18.242 24 19.4289 24 20.6666C24 21.9043 23.5083 23.0913 22.6332 23.9665C21.758 24.8416 20.571 25.3333 19.3333 25.3333H8" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="text-sm font-normal text-gray-900">Alipay</div>
-          </div>
+        <div className="mt-6">
+          <PaymentElement />
         </div>
-
-        {paymentMethod === 'card' && (
-          <div className="mt-6">
-            <PaymentElement />
-          </div>
-        )}
 
         <div className="mt-6 pt-6 border-t border-gray-200">
           <label className="flex items-start gap-3 cursor-pointer">
@@ -202,28 +133,6 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
   const stripe = useStripe();
   const elements = useElements();
 
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    if (!termsAccepted) {
-      alert('Please accept the terms and conditions');
-      return;
-    }
-    setIsProcessing(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation?order_id=${order.id}`,
-      },
-    });
-
-    if (error) {
-      alert(error.message || 'Payment failed');
-      setIsProcessing(false);
-    }
-  };
-
   const quote = order.quote || {};
   const totalService = Number(order.translation_total || 0) + Number(order.certification_total || 0);
 
@@ -261,8 +170,8 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
                   <path d="M11.6667 15V4.99998C11.6667 4.55795 11.4911 4.13403 11.1785 3.82147C10.866 3.50891 10.442 3.33331 10 3.33331H3.33333C2.89131 3.33331 2.46738 3.50891 2.15482 3.82147C1.84226 4.13403 1.66667 4.55795 1.66667 4.99998V14.1666C1.66667 14.3877 1.75447 14.5996 1.91075 14.7559C2.06703 14.9122 2.27899 15 2.5 15H4.16667M12.5 15H7.5M15.8333 15H17.5C17.721 15 17.933 14.9122 18.0893 14.7559C18.2455 14.5997 18.3333 14.3877 18.3333 14.1667V11.125C18.333 10.9359 18.2683 10.7525 18.15 10.605L15.25 6.98002C15.1721 6.88242 15.0732 6.80359 14.9607 6.74935C14.8482 6.69512 14.7249 6.66687 14.6 6.66669H11.6667M14.1667 16.6666C15.0871 16.6666 15.8333 15.9205 15.8333 15C15.8333 14.0795 15.0871 13.3333 14.1667 13.3333C13.2462 13.3333 12.5 14.0795 12.5 15C12.5 15.9205 13.2462 16.6666 14.1667 16.6666ZM5.83333 16.6666C6.75381 16.6666 7.5 15.9205 7.5 15C7.5 14.0795 6.75381 13.3333 5.83333 13.3333C4.91286 13.3333 4.16667 14.0795 4.16667 15C4.16667 15.9205 4.91286 16.6666 5.83333 16.6666Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
                 <div className="flex-1">
-                  <div className="text-base font-normal text-gray-900">Courier (Trackable)</div>
-                  <div className="text-sm text-gray-600">2-3 business days</div>
+                  <div className="text-base font-normal text-gray-900">{order.shipping_options?.[0]?.name || 'Courier (Trackable)'}</div>
+                  <div className="text-sm text-gray-600">{order.shipping_options?.[0]?.delivery_time || '2-3 business days'}</div>
                   <div className="text-xs text-gray-500">Estimated delivery: {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}</div>
                 </div>
                 <div className="text-base text-gray-900">${Number(order.shipping_total || 0).toFixed(2)}</div>
@@ -326,7 +235,7 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
 
             {clientSecret && (
               <Elements stripe={stripePromise} options={stripeOptions}>
-                <CheckoutForm order={order} />
+                <CheckoutForm order={order} termsAccepted={termsAccepted} setTermsAccepted={setTermsAccepted} isProcessing={isProcessing} setIsProcessing={setIsProcessing} />
               </Elements>
             )}
           </div>
@@ -353,7 +262,8 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
               </div>
 
               <button
-                onClick={handlePayment}
+                type="submit"
+                form="checkout-form"
                 disabled={!stripe || !elements || isProcessing || !termsAccepted}
                 className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
