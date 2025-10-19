@@ -614,7 +614,10 @@ function ReferenceFilesAndNotes({ files, quoteMeta }) {
   const [downloadingFileId, setDownloadingFileId] = useState(null);
   const [fileErrors, setFileErrors] = useState({});
   const referenceFiles = (files || []).filter(f => f.file_purpose === 'reference');
-  const notes = quoteMeta?.customer_notes;
+
+  // Extract notes from reference materials (file_purpose = 'notes')
+  const notesRecord = (files || []).find(f => f.file_purpose === 'notes');
+  const notes = notesRecord?.notes || quoteMeta?.customer_notes;
 
   if (referenceFiles.length === 0 && !notes) {
     return null;
