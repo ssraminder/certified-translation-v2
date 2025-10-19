@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 
 export default function ManualLineItemForm({ open, onClose, quoteId, files, onCreated }){
   const [fileId, setFileId] = useState('');
@@ -6,14 +6,20 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
   const [billablePages, setBillablePages] = useState('');
   const [unitRate, setUnitRate] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef(null);
 
-  useEffect(()=> { 
-    if (!open){ 
-      setFileId(''); 
-      setTotalPages(''); 
-      setBillablePages(''); 
-      setUnitRate(''); 
-    } 
+  useEffect(()=> {
+    if (!open){
+      setFileId('');
+      setTotalPages('');
+      setBillablePages('');
+      setUnitRate('');
+      setUploadedFiles([]);
+      setUploadError('');
+    }
   }, [open]);
 
   const total = useMemo(() => {
