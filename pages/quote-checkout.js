@@ -44,12 +44,12 @@ export default function QuoteCheckoutPage() {
           if (shippingData.options.length > 0) {
             const alwaysSelected = shippingData.options.find(o => o.is_always_selected);
             if (alwaysSelected) {
-              setSelectedShipping(alwaysSelected.id);
+              setSelectedShipping(String(alwaysSelected.id));
             } else {
               // Fallback to first active option if no always-selected
               const firstActive = shippingData.options.find(o => o.is_active);
               if (firstActive) {
-                setSelectedShipping(firstActive.id);
+                setSelectedShipping(String(firstActive.id));
               }
             }
           }
@@ -268,7 +268,7 @@ export default function QuoteCheckoutPage() {
                     shippingOptions.map((option) => {
                       const isAlwaysSelected = option.is_always_selected;
                       const isDisabledOption = !option.is_active;
-                      const isChecked = selectedShipping === option.id;
+                      const isChecked = String(selectedShipping) === String(option.id);
                       return (
                         <label
                           key={option.id}
