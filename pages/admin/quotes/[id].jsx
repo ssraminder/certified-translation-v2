@@ -176,8 +176,9 @@ export default function Page({ initialAdmin }){
           {/* Document Upload Section */}
           <DocumentUploadSection
             quoteId={quote?.id}
-            initialFiles={uploadedFiles}
+            initialFiles={files}
             onFilesChange={setUploadedFiles}
+            onUploadComplete={refetchFiles}
             canEdit={canEdit}
           />
 
