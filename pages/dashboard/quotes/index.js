@@ -120,7 +120,10 @@ export default function QuotesListPage() {
                   <div className="font-semibold text-gray-900">{q.quote_number || String(q.id).slice(0, 8)}</div>
                   <div className="text-sm text-gray-600">{formatDate(q.created_at)}</div>
                 </div>
-                <StatusBadge state={q.quote_state} />
+                <div className="flex flex-col items-end gap-1">
+                  {q.hitl_required && <span className="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">HITL</span>}
+                  <StatusBadge state={q.quote_state} />
+                </div>
               </div>
               <div className="mt-3 text-sm text-gray-700 space-y-1">
                 <div>🌐 {q.source_language} → {q.target_language}</div>
