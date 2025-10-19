@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabase } from '../../lib/supabaseClient';
 import { getErrorMessage } from '../../lib/errorMessage';
+import { invokeHitlForQuote, requestHitlReview, HITL_REASONS } from '../../lib/hitlManagement';
 
 const GST_RATE = 0.05;
 const DEFAULT_TIMEZONE = 'America/Edmonton';
@@ -279,13 +280,10 @@ async function saveQuoteResults(quoteId, totals, currentLineItems, { currency = 
   if (error) throw error;
 }
 
-async function triggerHitlReview(quoteId) {
+async function triggerHitlReview(quoteId, reason = HITL_REASONS.UNKNOWN_ERROR) {
   try {
     if (!supabase) return;
-    await supabase
-      .from('quote_submissions')
-      .update({ hitl_required: true, status: 'awaiting_review' })
-      .eq('quote_id', quoteId);
+    await invokeHitlForQuote(supabase, quoteId, reason);
   } catch (err) {
     console.error('Failed to flag quote for HITL review', err);
   }
@@ -1100,7 +1098,7 @@ export default function Step3() {
       const submission = submissionRes.data;
       if (!submission) {
         setError('We could not find your quote details.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.MISSING_QUOTE_DATA);
         setShowHITL(true);
         return;
       }
@@ -1111,7 +1109,7 @@ export default function Step3() {
       const normalizedItems = normalizeLineItems(lineItemsRes.data || []);
       if (normalizedItems.length === 0) {
         setError('No billable documents were returned. Our team will prepare a manual quote.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.NO_DOCUMENTS);
         setShowHITL(true);
         return;
       }
@@ -1119,7 +1117,7 @@ export default function Step3() {
       const totals = calculateTotals(normalizedItems);
       if (totals.total <= 0) {
         setError('The automated calculation returned $0. Our team will review this manually.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.ZERO_TOTAL);
         setShowHITL(true);
         return;
       }
@@ -1129,7 +1127,7 @@ export default function Step3() {
       if (totals.subtotal < baseRate) {
         setMinimumOrder(baseRate);
         setError('Your order is below our minimum. A human specialist will provide a custom quote.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.BELOW_MINIMUM);
         setShowHITL(true);
         return;
       }
@@ -1236,7 +1234,7 @@ export default function Step3() {
         if (elapsed >= maxWaitMs) {
           clearInterval(timerId);
           setError('Analysis is taking longer than expected. A human specialist will finish this quote.');
-          await triggerHitlReview(quoteId);
+          await triggerHitlReview(quoteId, HITL_REASONS.N8N_TIMEOUT);
           setIsPolling(false);
           setIsLoading(false);
           setShowHITL(true);
@@ -1302,7 +1300,7 @@ export default function Step3() {
         setPricing({ subtotal: 0, estimatedTax: 0, total: 0 });
         setDeliveryEstimates(null);
         setError('All documents were removed. A human specialist will follow up with you.');
-        await triggerHitlReview(quoteId);
+        await triggerHitlReview(quoteId, HITL_REASONS.NO_DOCUMENTS);
         setShowHITL(true);
         return;
       }
@@ -1315,7 +1313,7 @@ export default function Step3() {
         setPricing(newTotals);
         setDeliveryEstimates(null);
         setError('Quote total dropped to $0. Our human team will finish this quote.');
-        await triggerHitlReview(quoteId);
+        await triggerHitlReview(quoteId, HITL_REASONS.ZERO_TOTAL);
         setShowHITL(true);
         return;
       }
@@ -1326,7 +1324,7 @@ export default function Step3() {
         if (typeof window !== 'undefined') {
           window.alert(`Removing this document brings your order below the ${formatCurrency(minimumOrder)} minimum. Requesting human review.`);
         }
-        await triggerHitlReview(quoteId);
+        await triggerHitlReview(quoteId, HITL_REASONS.BELOW_MINIMUM);
         setShowHITL(true);
         return;
       }
@@ -1384,7 +1382,7 @@ export default function Step3() {
     setIsSaving(true);
     setError('');
     try {
-      await triggerHitlReview(quoteId);
+      await requestHitlReview(supabase, quoteId);
       setShowHITL(true);
       setInfoMessage('Our certified team has been notified. We will send a manual quote shortly.');
     } catch (err) {

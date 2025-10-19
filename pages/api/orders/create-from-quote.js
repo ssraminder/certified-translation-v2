@@ -1,5 +1,6 @@
 import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
+import { invokeHitlForQuote, HITL_REASONS } from '../../../lib/hitlManagement';
 
 const GST_RATE = 0.05;
 
@@ -235,6 +236,18 @@ async function handler(req, res){
 
     return res.status(201).json({ success: true, order: full });
   } catch (err) {
+    // Invoke HITL as fallback for any order creation errors
+    try {
+      const supabase = getSupabaseServerClient();
+      const { quote_id } = req.body || {};
+      if (quote_id) {
+        console.log(`[create-from-quote] Order creation failed, invoking HITL for quote ${quote_id}: ${err.message}`);
+        await invokeHitlForQuote(supabase, quote_id, HITL_REASONS.ORDER_CREATION_FALLBACK);
+      }
+    } catch (hitlErr) {
+      console.error('[create-from-quote] Failed to invoke HITL on error:', hitlErr);
+    }
+
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
 }
