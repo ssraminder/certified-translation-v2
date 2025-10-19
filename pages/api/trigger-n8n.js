@@ -38,41 +38,10 @@ async function handler(req, res) {
     const originalPayload = typeof req.body === 'object' && req.body !== null ? req.body : {};
     const payload = { ...originalPayload };
 
-    // If a quote_id is present, create a fresh analysis run and generate fresh signed URLs for its files
+    // Generate fresh signed URLs for each file associated with this quote
     const quoteId = payload.quote_id || payload.quoteId || null;
     if (quoteId) {
       const supabase = getSupabaseServerClient();
-
-      // Create a new analysis run version for this quote
-      const { data: lastRun, error: versionErr } = await supabase
-        .from('analysis_runs')
-        .select('version')
-        .eq('quote_id', quoteId)
-        .order('version', { ascending: false })
-        .limit(1);
-
-      if (versionErr) {
-        console.error('[trigger-n8n] Error fetching last run version:', versionErr);
-      }
-
-      const nextVersion = (Array.isArray(lastRun) && lastRun[0]?.version ? Number(lastRun[0].version) : 0) + 1;
-      const runInsert = {
-        quote_id: quoteId,
-        run_type: 'auto',
-        version: nextVersion,
-        status: 'requested',
-        is_active: false,
-        discarded: false
-      };
-      const { data: runRow, error: insertErr } = await supabase.from('analysis_runs').insert([runInsert]).select('*').maybeSingle();
-
-      if (insertErr) {
-        console.error('[trigger-n8n] Error creating analysis_runs record:', insertErr, 'with payload:', runInsert);
-      }
-
-      const runId = runRow?.id || null;
-
-      // Generate fresh signed URLs for each file associated with this quote
       const BUCKET = 'orders';
       const { data: files } = await supabase
         .from('quote_files')
@@ -90,14 +59,6 @@ async function handler(req, res) {
         return { file_id: f.file_id, filename: f.filename, file_url: url, expires_at: expiresAt };
       }));
 
-      if (runId) {
-        payload.run_id = runId;
-        payload.run_type = (runRow && runRow.run_type) || runInsert.run_type || 'auto';
-        payload.version = (runRow && runRow.version != null) ? runRow.version : nextVersion;
-        payload.status = (runRow && runRow.status) || 'requested';
-        payload.is_active = Boolean((runRow && runRow.is_active) ?? false);
-        payload.discarded = Boolean((runRow && runRow.discarded) ?? false);
-      }
       if ((signedFiles || []).length) payload.files = signedFiles;
       payload.batch_mode = payload.batch_mode || 'single';
       payload.replace_existing = Boolean(payload.replace_existing);

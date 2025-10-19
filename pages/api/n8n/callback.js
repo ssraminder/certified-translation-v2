@@ -37,9 +37,8 @@ async function handler(req, res) {
     }
   }
 
-  const { quote_id, quoteId, run_id, runId, status } = req.body || {};
+  const { quote_id, quoteId, status } = req.body || {};
   const effectiveQuoteId = quote_id || quoteId;
-  const effectiveRunId = run_id || runId;
   const normalizedStatus = normalizeStatus(status);
 
   if (!effectiveQuoteId) {
@@ -57,23 +56,6 @@ async function handler(req, res) {
     if (updateSubErr) {
       console.error('[n8n/callback] Failed to update quote_submissions:', updateSubErr);
       return res.status(500).json({ error: 'Failed to update status', details: updateSubErr.message });
-    }
-
-    if (effectiveRunId) {
-      const { error: updateRunErr } = await supabase
-        .from('analysis_runs')
-        .update({ status: normalizedStatus, updated_at: new Date().toISOString() })
-        .eq('id', effectiveRunId);
-
-      if (updateRunErr) {
-        console.error('[n8n/callback] Failed to update analysis_runs:', updateRunErr);
-        console.error('[n8n/callback] Request details:', { quote_id: effectiveQuoteId, run_id: effectiveRunId, status: normalizedStatus });
-        return res.status(500).json({
-          error: 'Failed to update run status',
-          details: updateRunErr.message,
-          code: updateRunErr.code
-        });
-      }
     }
 
     return res.status(200).json({ ok: true });
