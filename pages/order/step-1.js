@@ -269,20 +269,21 @@ export default function Step1() {
   async function triggerWebhook(quoteId) {
     const payload = JSON.stringify({ quote_id: quoteId });
     try {
-      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function' && payload.length <= 64000) {
-        const blob = new Blob([payload], { type: 'application/json' });
-        const sent = navigator.sendBeacon('/api/trigger-n8n', blob);
-        if (sent) return;
-      }
-
-      await fetch('/api/trigger-n8n', {
+      console.log('[Step1] Triggering webhook for quoteId:', quoteId);
+      const response = await fetch('/api/trigger-n8n', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
         keepalive: true,
       });
+
+      if (!response.ok) {
+        console.error('[Step1] Webhook request failed with status:', response.status);
+      } else {
+        console.log('[Step1] Webhook triggered successfully');
+      }
     } catch (e) {
-      console.warn('Webhook trigger failed:', e);
+      console.error('[Step1] Webhook trigger error:', e);
     }
   }
 
