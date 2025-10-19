@@ -68,7 +68,8 @@ export default function Step4() {
         const nextSel = new Set();
         opts.forEach(o => { if (o.is_always_selected) nextSel.add(o.id); });
         if (nextSel.size === 0 && opts.length > 0) {
-          const def = opts.find(o => o.is_default) || opts[0];
+          const courierTrackable = opts.find(o => o.name?.toLowerCase().includes('courier') && o.name?.toLowerCase().includes('trackable'));
+          const def = opts.find(o => o.is_default) || courierTrackable || opts[0];
           if (def) nextSel.add(def.id);
         }
         if (!isMounted) return;
