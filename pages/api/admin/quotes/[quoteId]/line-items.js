@@ -40,7 +40,7 @@ async function handler(req, res){
     .eq('quote_id', quoteId);
 
     const { data: updated } = await supabase.from('quote_sub_orders').select('*').eq('id', line_item_id).maybeSingle();
-    const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId, updated?.run_id || null);
+    const totals = await recalcAndUpsertUnifiedQuoteResults(quoteId);
     await logActivity({ adminUserId: req.admin?.id, actionType: 'quote_line_item_updated', targetType: 'quote', targetId: quoteId, details: { line_item_id, updates: patch } });
 
     return res.status(200).json({ success: true, line_item: updated, totals });
