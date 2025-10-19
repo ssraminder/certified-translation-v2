@@ -256,26 +256,44 @@ export default function QuoteCheckoutPage() {
                   {shippingOptions.length === 0 ? (
                     <p className="text-gray-600 text-sm">No shipping options available</p>
                   ) : (
-                    shippingOptions.map((option) => (
-                      <label key={option.id} className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="shipping"
-                          value={option.id}
-                          checked={selectedShipping === option.id}
-                          onChange={(e) => setSelectedShipping(e.target.value)}
-                          className="w-4 h-4 mt-1"
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900">{option.name}</p>
-                          {option.description && <p className="text-sm text-gray-600">{option.description}</p>}
-                          {option.delivery_time && <p className="text-sm text-gray-600">Delivery: {option.delivery_time}</p>}
-                        </div>
-                        <p className="font-semibold text-gray-900 whitespace-nowrap">
-                          {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
-                        </p>
-                      </label>
-                    ))
+                    shippingOptions.map((option) => {
+                      const isAlwaysSelected = option.is_always_selected;
+                      const isDisabledOption = !option.is_active;
+                      return (
+                        <label
+                          key={option.id}
+                          className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition ${
+                            isAlwaysSelected || isDisabledOption ? 'opacity-75' : ''
+                          } ${
+                            selectedShipping === option.id
+                              ? 'border-blue-300 bg-blue-50'
+                              : 'border-gray-200 bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="shipping"
+                            value={option.id}
+                            checked={selectedShipping === option.id}
+                            disabled={isAlwaysSelected || isDisabledOption}
+                            onChange={(e) => !isAlwaysSelected && !isDisabledOption && setSelectedShipping(e.target.value)}
+                            className="w-4 h-4 mt-1"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={`font-medium ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>{option.name}</p>
+                              {isAlwaysSelected && <span className="text-xs text-gray-500">(Always included)</span>}
+                              {isDisabledOption && <span className="text-xs text-red-600">(Disabled)</span>}
+                            </div>
+                            {option.description && <p className="text-sm text-gray-600">{option.description}</p>}
+                            {option.delivery_time && <p className="text-sm text-gray-600">Delivery: {option.delivery_time}</p>}
+                          </div>
+                          <p className={`font-semibold whitespace-nowrap ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>
+                            {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
+                          </p>
+                        </label>
+                      );
+                    })
                   )}
                 </div>
               </div>
