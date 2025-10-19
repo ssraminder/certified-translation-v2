@@ -1,67 +1,176 @@
 import { useEffect, useRef, useState } from 'react';
+import { toE164, formatForDisplay, isValid } from '../../lib/formatters/phone';
+import { detectCountryFromIP, COUNTRY_CODE_TO_NAME } from '../../lib/geolocation';
 
-// Single-field North America phone input
-// Displays and accepts numbers in the form +1 XXX-XXX-XXXX
-// Emits E.164 value (+1XXXXXXXXXX) via onChangeE164 when 10 digits are present, otherwise ''
-export default function PhoneInput({ label = 'Phone', valueE164 = '', onChangeE164, defaultCountry = 'Canada', disabled = false, required = false, error = '' }) {
-  const [digits, setDigits] = useState(''); // 10 national digits only
+const ALL_COUNTRIES = Object.entries(COUNTRY_CODE_TO_NAME)
+  .map(([code, name]) => ({ code, name }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+export default function PhoneInput({ 
+  label = 'Phone', 
+  valueE164 = '', 
+  onChangeE164, 
+  disabled = false, 
+  required = false, 
+  error = '',
+  onCountryChange
+}) {
+  const [input, setInput] = useState(''); // Raw input from user
+  const [countryCode, setCountryCode] = useState('US'); // Selected country code
   const [touched, setTouched] = useState(false);
+  const [loading, setLoading] = useState(true);
   const inputRef = useRef(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // Parse incoming E.164 value (e.g., +14039666211) into digits
+  // Detect country from IP on mount
+  useEffect(() => {
+    (async () => {
+      const detected = await detectCountryFromIP();
+      setCountryCode(detected);
+      setLoading(false);
+    })();
+  }, []);
+
+  // Parse incoming E.164 value (e.g., +14039666211) and extract country
   useEffect(() => {
     if (!valueE164) {
-      setDigits(''); // Clear when valueE164 is empty/null
+      setInput('');
       return;
     }
-    const m = String(valueE164).match(/^\+1(\d{10})$/);
-    if (m) setDigits(m[1]);
+    
+    try {
+      const parsed = parsePhoneNumber(valueE164);
+      if (parsed) {
+        // Extract just the national number (without country code)
+        const nationalNumber = parsed.nationalNumber.toString();
+        setInput(nationalNumber);
+        if (parsed.country) {
+          setCountryCode(parsed.country);
+        }
+      }
+    } catch (e) {
+      // Fallback: extract digits
+      const digits = String(valueE164).replace(/\D+/g, '');
+      setInput(digits);
+    }
   }, [valueE164]);
 
-  function toE164Local(d) { return d.length === 10 ? `+1${d}` : ''; }
+  // Import at component level to avoid issues
+  const { parsePhoneNumber } = require('libphonenumber-js');
 
-  function formatDisplay(d) {
-    const s = d.slice(0, 10);
-    if (s.length === 0) return '';
-    if (s.length <= 3) return `+1 ${s}`;
-    if (s.length <= 6) return `+1 ${s.slice(0,3)}-${s.slice(3)}`;
-    return `+1 ${s.slice(0,3)}-${s.slice(3,6)}-${s.slice(6)}`;
+  function handleInputChange(e) {
+    const val = String(e.target.value || '').replace(/\D+/g, ''); // Only digits
+    setInput(val);
+    
+    // Convert to E.164 and emit
+    if (val) {
+      const e164 = toE164(val, countryCode);
+      onChangeE164 && onChangeE164(e164 || '');
+    } else {
+      onChangeE164 && onChangeE164('');
+    }
   }
 
-  function handleChange(val) {
-    const only = String(val || '').replace(/\D+/g, '');
-    // If user types a leading 1 or country code, keep the last 10 digits
-    const ten = only.length > 10 ? only.slice(-10) : (only.startsWith('1') && only.length === 11 ? only.slice(1) : only);
-    const clamped = ten.slice(0, 10);
-    setDigits(clamped);
-    const e = toE164Local(clamped);
-    onChangeE164 && onChangeE164(e);
+  function handleCountryChange(code) {
+    setCountryCode(code);
+    setShowDropdown(false);
+    onCountryChange && onCountryChange(code);
+    
+    // Re-validate and reformat with new country
+    if (input) {
+      const e164 = toE164(input, code);
+      onChangeE164 && onChangeE164(e164 || '');
+    }
   }
 
   function handleBlur() {
     setTouched(true);
+    setShowDropdown(false);
   }
 
-  const invalid = touched && required && digits.length !== 10;
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedCountry = ALL_COUNTRIES.find(c => c.code === countryCode);
+  const isValidNumber = input && isValid(input, countryCode);
+  const invalid = touched && required && !isValidNumber;
+  const displayValue = input ? (touched ? formatForDisplay(toE164(input, countryCode) || '', countryCode) : input) : '';
 
   return (
-    <label className="block">
-      <span className="text-sm text-gray-700">{label}{required && ' *'}</span>
-      <div className={`mt-1 flex h-12 items-center rounded-lg border ${invalid ? 'border-red-500' : 'border-gray-300'} bg-white overflow-hidden ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}>
-        <input
-          ref={inputRef}
-          type="tel"
-          disabled={disabled}
-          value={touched ? formatDisplay(digits) : digits}
-          onChange={(e) => handleChange(e.target.value)}
-          onBlur={handleBlur}
-          placeholder={'4039666211'}
-          className={`flex-1 h-full px-4 text-base outline-none bg-transparent ${disabled ? 'cursor-not-allowed' : ''}`}
-        />
+    <div className="block">
+      <label className="block text-sm text-gray-700 mb-1">
+        {label}{required && ' *'}
+      </label>
+      
+      <div className="flex gap-2">
+        {/* Country Dropdown */}
+        <div className="relative w-32" ref={dropdownRef}>
+          <button
+            type="button"
+            disabled={disabled || loading}
+            onClick={() => !disabled && !loading && setShowDropdown(!showDropdown)}
+            className={`w-full h-12 px-3 py-2 border rounded-lg bg-white text-left flex items-center justify-between ${
+              invalid ? 'border-red-500' : 'border-gray-300'
+            } ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''} ${loading ? 'bg-gray-50' : ''}`}
+          >
+            <span className="text-sm font-medium">
+              {loading ? '...' : selectedCountry?.code || 'US'}
+            </span>
+            <svg className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </button>
+          
+          {showDropdown && !disabled && !loading && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+              {ALL_COUNTRIES.map(country => (
+                <button
+                  key={country.code}
+                  type="button"
+                  onClick={() => handleCountryChange(country.code)}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                    countryCode === country.code ? 'bg-blue-50 font-semibold' : ''
+                  }`}
+                >
+                  {country.code} - {country.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Phone Input */}
+        <div className={`flex-1 flex h-12 items-center rounded-lg border ${
+          invalid ? 'border-red-500' : 'border-gray-300'
+        } bg-white overflow-hidden ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}>
+          <span className="px-3 text-gray-500 text-sm font-medium">+{require('libphonenumber-js').getCountryCallingCode(countryCode) || '1'}</span>
+          <input
+            ref={inputRef}
+            type="tel"
+            disabled={disabled}
+            value={displayValue}
+            onChange={handleInputChange}
+            onBlur={handleBlur}
+            placeholder="Enter phone number"
+            className={`flex-1 h-full px-2 text-base outline-none bg-transparent ${disabled ? 'cursor-not-allowed' : ''}`}
+          />
+        </div>
       </div>
+
       {(invalid || error) && (
-        <div className="text-xs text-red-600 mt-1">{error || 'Please enter a 10-digit phone number'}</div>
+        <div className="text-xs text-red-600 mt-1">
+          {error || 'Please enter a valid phone number'}
+        </div>
       )}
-    </label>
+    </div>
   );
 }
