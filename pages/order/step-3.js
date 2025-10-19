@@ -1262,7 +1262,13 @@ export default function Step3() {
       setSettings(settingsData);
       setDeliveryOptions(deliveryOptionsList);
       setQualifiers(qualifiersList);
-      setFiles(filesList);
+      // Combine main files with reference materials for display
+      // Add file_purpose to main files for consistency
+      const allFiles = [
+        ...filesList.map(f => ({ ...f, file_purpose: 'translate' })),
+        ...refMaterialsList
+      ];
+      setFiles(allFiles);
       setHolidays(holidaysSet);
       setMinimumOrder(baseRate);
       setShowHITL(false);
