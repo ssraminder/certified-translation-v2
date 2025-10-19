@@ -187,6 +187,7 @@ async function handler(req, res){
     ocr_analysis: q.n8n_analysis_result || null,
     adjustments: adjustments || [],
     documents,
+    reference_materials: referenceMaterials || [],
     certifications: certs || [],
     totals
   });
