@@ -157,7 +157,14 @@ export default function QuoteDetailPage() {
         </div>
 
         <aside className="space-y-6">
-          {quote.quote_state === 'draft' && !['converted', 'paid'].includes(quote.quote_state) && (
+          {['converted', 'paid'].includes(quote.quote_state) && (
+            <section className="bg-white rounded-lg border border-green-200 p-4 bg-green-50">
+              <h2 className="font-semibold text-green-900 mb-2">Order Created</h2>
+              <p className="text-sm text-green-800">This quote has been converted to an order. View your order in the <Link href="/dashboard/orders" className="underline font-semibold">Orders</Link> section.</p>
+            </section>
+          )}
+
+          {quote.quote_state === 'draft' && (
             <section className="bg-white rounded-lg border border-gray-200 p-4">
               <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
               <Link href={`/order/step-3?quote=${quote.id}`}>
