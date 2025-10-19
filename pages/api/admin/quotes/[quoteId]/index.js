@@ -92,9 +92,26 @@ async function handler(req, res){
       bytes: f.bytes || 0,
       content_type: f.content_type || null,
       doc_type: f.doc_type || null,
-      file_purpose: f.file_purpose || 'translate',
+      file_purpose: 'translate',
       analyzed: !!f.analyzed,
       analysis_requested_at: f.analysis_requested_at || null
+    };
+  }));
+
+  const referenceMaterials = await Promise.all((refMaterials||[]).map(async (m) => {
+    let url = m.file_url || null;
+    if (!url && m.storage_path){
+      try { const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(m.storage_path, 3600); if (signed?.signedUrl) url = signed.signedUrl; } catch {}
+    }
+    if (!url && m.signed_url) url = m.signed_url;
+    return {
+      id: m.id,
+      filename: m.filename,
+      file_url: url,
+      bytes: m.bytes || 0,
+      content_type: m.content_type || null,
+      file_purpose: m.file_purpose || 'reference',
+      notes: m.notes || null
     };
   }));
 
