@@ -5,6 +5,7 @@ import { getErrorMessage } from '../../lib/errorMessage';
 import PhoneInput from '../../components/form/PhoneInput';
 import CountrySelect from '../../components/form/CountrySelect';
 import RegionSelect from '../../components/form/RegionSelect';
+import ShippingMethodSection from '../../components/order/ShippingMethodSection';
 import { formatPostal, labelForPostal } from '../../lib/formatters/postal';
 import { isValid as isPhoneValid } from '../../lib/formatters/phone';
 
