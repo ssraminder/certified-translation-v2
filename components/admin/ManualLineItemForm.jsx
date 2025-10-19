@@ -86,64 +86,26 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
         {/* Form */}
         <form onSubmit={submit} className="px-6 py-4">
           <div className="space-y-4">
-            {/* Upload File Section */}
-            <div className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-4">
-              <div className="text-center">
-                <svg className="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                </svg>
-                <p className="text-sm font-medium text-gray-900">Upload a file</p>
-                <p className="text-xs text-gray-600 mt-1">or select from existing files below</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xlsx,.xls"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="mt-3 px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {uploading ? 'Uploading...' : 'Choose Files'}
-                </button>
-              </div>
-              {uploadError && (
-                <div className="mt-3 p-2 rounded bg-red-50 border border-red-200">
-                  <p className="text-xs text-red-700">{uploadError}</p>
-                </div>
-              )}
-              {uploadedFiles.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  <p className="text-xs font-medium text-gray-700">Recently uploaded:</p>
-                  {uploadedFiles.map(f => (
-                    <div key={f.file_id || f.id} className="text-xs text-gray-600 p-1 bg-white rounded border border-gray-200">
-                      ✓ {f.filename}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Select File */}
             <div>
-              <label className="block text-sm font-medium mb-2">Select File {hasFiles ? '*' : '(optional)'}</label>
+              <label className="block text-sm font-medium mb-2">Select File *</label>
               <div className="relative">
                 <select
                   value={fileId}
-                  onChange={e=> setFileId(e.target.value)}
+                  onChange={handleFileChange}
                   className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm appearance-none pr-8"
-                  required={hasFiles}
+                  required
                   disabled={!hasFiles}
                 >
-                  <option value="">{hasFiles ? 'Choose a file...' : 'No files available'}</option>
-                  {allAvailableFiles.map(f => (
-                    <option key={f.file_id||f.id} value={f.file_id||f.id}>{f.filename}</option>
-                  ))}
+                  <option value="">{hasFiles ? 'Choose a file...' : 'No files uploaded yet'}</option>
+                  {hasFiles && files.map(f => {
+                    const pageCountText = f.page_count ? ` (${f.page_count} page${f.page_count !== 1 ? 's' : ''})` : '';
+                    return (
+                      <option key={f.file_id || f.id} value={f.file_id || f.id}>
+                        {f.filename}{pageCountText}
+                      </option>
+                    );
+                  })}
                 </select>
                 <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 16 16">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4 6l4 4 4-4"/>
@@ -154,28 +116,27 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
             {/* Total Pages */}
             <div>
               <label className="block text-sm font-medium mb-2">Total Pages *</label>
-              <input 
-                type="number" 
-                step="1" 
-                min="1" 
-                value={totalPages} 
-                onChange={e=> setTotalPages(e.target.value)} 
-                className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm"
-                required 
+              <input
+                type="number"
+                step="1"
+                min="1"
+                value={totalPages}
+                readOnly
+                className="w-full rounded-lg border-0 bg-gray-200 px-3 py-2 text-sm text-gray-700 cursor-not-allowed"
               />
             </div>
 
             {/* Billable Pages */}
             <div>
               <label className="block text-sm font-medium mb-2">Billable Pages *</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                min="0.1" 
-                value={billablePages} 
-                onChange={e=> setBillablePages(e.target.value)} 
-                className="w-full rounded-lg border-0 bg-gray-100 px-3 py-2 text-sm"
-                required 
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={billablePages}
+                onChange={e=> setBillablePages(e.target.value)}
+                className="w-full rounded-lg border-0 bg-white px-3 py-2 text-sm border border-gray-300"
+                required
               />
             </div>
 
@@ -184,14 +145,14 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
               <label className="block text-sm font-medium mb-2">Unit Rate *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">$</span>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  min="0.01" 
-                  value={unitRate} 
-                  onChange={e=> setUnitRate(e.target.value)} 
-                  className="w-full rounded-lg border-0 bg-gray-100 pl-7 pr-3 py-2 text-sm"
-                  required 
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={unitRate}
+                  onChange={e=> setUnitRate(e.target.value)}
+                  className="w-full rounded-lg border-0 bg-white pl-7 pr-3 py-2 text-sm border border-gray-300"
+                  required
                 />
               </div>
               <p className="mt-1 text-sm text-gray-600">per page</p>
@@ -207,16 +168,16 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
 
             {/* Action Buttons */}
             <div className="flex items-center justify-end gap-2 pt-2">
-              <button 
-                type="button" 
-                onClick={onClose} 
+              <button
+                type="button"
+                onClick={onClose}
                 className="px-4 py-2 rounded-lg border text-sm font-medium"
               >
                 Cancel
               </button>
-              <button 
-                type="submit" 
-                disabled={submitting} 
+              <button
+                type="submit"
+                disabled={submitting}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50"
               >
                 Add Line Item
