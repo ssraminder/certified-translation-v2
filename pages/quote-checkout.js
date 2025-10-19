@@ -31,11 +31,11 @@ export default function QuoteCheckoutPage() {
   const [error, setError] = useState(null);
 
   const [billing, setBilling] = useState({
-    full_name: '', email: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
+    full_name: '', email: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: DEFAULT_COUNTRY
   });
   const [shipSame, setShipSame] = useState(true);
   const [shipping, setShipping] = useState({
-    full_name: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: 'Canada'
+    full_name: '', phone: '', address_line1: '', address_line2: '', city: '', province_state: '', postal_code: '', country: DEFAULT_COUNTRY
   });
 
   const requiresShippingAddress = useMemo(() => {
