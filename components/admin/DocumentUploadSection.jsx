@@ -297,6 +297,9 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
       font-weight: 600;
       font-size: 14px;
       color: #111827;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      max-width: 400px;
     }
 
     .file-meta {

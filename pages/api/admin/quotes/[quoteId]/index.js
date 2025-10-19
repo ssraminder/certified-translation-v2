@@ -88,6 +88,8 @@ async function handler(req, res){
       file_id: f.file_id,
       filename: f.filename,
       file_url: url,
+      bytes: f.bytes || 0,
+      content_type: f.content_type || null,
       doc_type: f.doc_type || null,
       file_purpose: f.file_purpose || 'translate',
       analyzed: !!f.analyzed,

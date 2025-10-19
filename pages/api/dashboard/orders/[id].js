@@ -41,16 +41,34 @@ async function handler(req, res){
 
     const [quote, documents, billing, shipping] = await Promise.all([
       order.quote_id ? supabase.from('quote_submissions').select('*').eq('quote_id', order.quote_id).maybeSingle() : Promise.resolve({ data: null }),
-      supabase.from('quote_files').select('*').eq('order_id', order.id),
+      supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', order.id),
       order.billing_address_id ? supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle() : Promise.resolve({ data: null }),
       order.shipping_address_id ? supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle() : Promise.resolve({ data: null })
     ]);
+
+    // Regenerate signed URLs for files if expired
+    const BUCKET = 'orders';
+    const filesWithUrls = await Promise.all((documents.data || []).map(async (f) => {
+      let url = f.file_url || f.signed_url || null;
+      // Check if URL is expired or missing
+      if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
+        try {
+          const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+          if (signed?.signedUrl) {
+            url = signed.signedUrl;
+          }
+        } catch (err) {
+          console.error('Failed to generate signed URL:', err);
+        }
+      }
+      return { ...f, file_url: url };
+    }));
 
     return res.status(200).json({
       order: {
         ...order,
         quote: quote.data || null,
-        documents: documents.data || [],
+        documents: filesWithUrls,
         billing_address: billing.data || null,
         shipping_address: shipping.data || null,
       }

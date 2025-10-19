@@ -265,15 +265,33 @@ async function getOrderWithDetails(supabase, orderId){
     supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle(),
     supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle(),
     supabase.from('order_shipping_options').select('*').eq('order_id', orderId),
-    supabase.from('quote_files').select('*').eq('order_id', orderId)
+    supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', orderId)
   ]);
+
+  // Regenerate signed URLs for files if expired
+  const BUCKET = 'orders';
+  const filesWithUrls = await Promise.all((files.data || []).map(async (f) => {
+    let url = f.file_url || f.signed_url || null;
+    // Check if URL is expired or missing
+    if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
+      try {
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+        if (signed?.signedUrl) {
+          url = signed.signedUrl;
+        }
+      } catch (err) {
+        console.error('Failed to generate signed URL:', err);
+      }
+    }
+    return { ...f, file_url: url };
+  }));
 
   return {
     ...order,
     billing_address: billing.data || null,
     shipping_address: shipping.data || null,
     shipping_options: shippingOptions.data || [],
-    documents: files.data || []
+    documents: filesWithUrls
   };
 }
 
