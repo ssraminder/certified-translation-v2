@@ -1103,6 +1103,7 @@ export default function Step3() {
         submissionRes,
         lineItemsRes,
         filesRes,
+        refMaterialsRes,
         deliveryOptionsRes,
         settingsRes,
         qualifiersRes,
@@ -1121,6 +1122,10 @@ export default function Step3() {
         supabase
           .from('quote_files')
           .select('id, filename, country_of_issue, file_url, signed_url, file_url_expires_at, storage_path')
+          .eq('quote_id', targetQuoteId),
+        supabase
+          .from('quote_reference_materials')
+          .select('id, filename, file_url, signed_url, file_url_expires_at, storage_path, file_purpose, notes')
           .eq('quote_id', targetQuoteId),
         supabase
           .from('delivery_options')
