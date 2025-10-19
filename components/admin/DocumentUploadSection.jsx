@@ -112,6 +112,50 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
     setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   }
 
+  async function handleFinishUpload() {
+    const pendingFiles = uploadedFiles.filter(f => f.source === 'upload' && f.file_object);
+    if (pendingFiles.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const form = new FormData();
+      const purposes = [];
+
+      for (const file of pendingFiles) {
+        form.append('files', file.file_object);
+        purposes.push(file.document_type);
+      }
+
+      form.append('file_purposes', JSON.stringify(purposes));
+
+      const resp = await fetch(`/api/admin/quotes/${quoteId}/files`, {
+        method: 'POST',
+        body: form
+      });
+
+      const json = await resp.json();
+      if (!resp.ok) {
+        throw new Error(json?.error || 'Upload failed');
+      }
+
+      if (json?.success && json.uploaded_files) {
+        setSuccessMessage(`Successfully uploaded ${json.uploaded_files.length} file(s)`);
+        setTimeout(() => setSuccessMessage(''), 3000);
+
+        setUploadedFiles(prev => prev.filter(f => f.source !== 'upload'));
+
+        if (onUploadComplete) {
+          onUploadComplete();
+        }
+      }
+    } catch (err) {
+      alert('Upload failed: ' + (err?.message || 'Unknown error'));
+      console.error('Upload error:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   function handleDragOver(e) {
     e.preventDefault();
     e.stopPropagation();
