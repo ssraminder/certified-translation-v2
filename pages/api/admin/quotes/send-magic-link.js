@@ -175,6 +175,20 @@ async function handler(req, res) {
       throw new Error(emailResult.error?.message || 'Failed to send email');
     }
 
+    // Update quote state to 'sent' if not already sent
+    const { data: currentQuote } = await supabase
+      .from('quote_submissions')
+      .select('quote_state')
+      .eq('quote_id', quote_id)
+      .maybeSingle();
+
+    if (currentQuote?.quote_state !== 'sent') {
+      await supabase
+        .from('quote_submissions')
+        .update({ quote_state: 'sent', sent_at: new Date().toISOString() })
+        .eq('quote_id', quote_id);
+    }
+
     // Log activity
     await supabase.from('quote_activity_log').insert([{
       quote_id,
