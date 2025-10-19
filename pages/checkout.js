@@ -133,28 +133,6 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
   const stripe = useStripe();
   const elements = useElements();
 
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    if (!termsAccepted) {
-      alert('Please accept the terms and conditions');
-      return;
-    }
-    setIsProcessing(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation?order_id=${order.id}`,
-      },
-    });
-
-    if (error) {
-      alert(error.message || 'Payment failed');
-      setIsProcessing(false);
-    }
-  };
-
   const quote = order.quote || {};
   const totalService = Number(order.translation_total || 0) + Number(order.certification_total || 0);
 
