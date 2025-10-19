@@ -68,10 +68,11 @@ async function handler(req, res){
   const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).eq('source', 'manual').order('id');
 
   // Fetch items and other collections
-  const [ { data: items }, { data: adjustments }, { data: files }, { data: certs }, { data: resultsRows } ] = await Promise.all([
+  const [ { data: items }, { data: adjustments }, { data: files }, { data: refMaterials }, { data: certs }, { data: resultsRows } ] = await Promise.all([
     itemsQuery,
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_files').select('*').eq('quote_id', quoteId),
+    supabase.from('quote_reference_materials').select('*').eq('quote_id', quoteId),
     supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_results').select('*').eq('quote_id', quoteId).order('updated_at', { ascending: false })
   ]);
