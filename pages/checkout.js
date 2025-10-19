@@ -80,7 +80,7 @@ function CheckoutForm({ order, termsAccepted, setTermsAccepted, isProcessing, se
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form id="checkout-form" onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Method</h2>
 
