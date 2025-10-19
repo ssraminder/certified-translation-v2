@@ -44,12 +44,17 @@ async function handler(req, res) {
       const supabase = getSupabaseServerClient();
 
       // Create a new analysis run version for this quote
-      const { data: lastRun } = await supabase
+      const { data: lastRun, error: versionErr } = await supabase
         .from('analysis_runs')
         .select('version')
         .eq('quote_id', quoteId)
         .order('version', { ascending: false })
         .limit(1);
+
+      if (versionErr) {
+        console.error('[trigger-n8n] Error fetching last run version:', versionErr);
+      }
+
       const nextVersion = (Array.isArray(lastRun) && lastRun[0]?.version ? Number(lastRun[0].version) : 0) + 1;
       const runInsert = {
         quote_id: quoteId,
@@ -59,7 +64,12 @@ async function handler(req, res) {
         is_active: false,
         discarded: false
       };
-      const { data: runRow } = await supabase.from('analysis_runs').insert([runInsert]).select('*').maybeSingle();
+      const { data: runRow, error: insertErr } = await supabase.from('analysis_runs').insert([runInsert]).select('*').maybeSingle();
+
+      if (insertErr) {
+        console.error('[trigger-n8n] Error creating analysis_runs record:', insertErr, 'with payload:', runInsert);
+      }
+
       const runId = runRow?.id || null;
 
       // Generate fresh signed URLs for each file associated with this quote
