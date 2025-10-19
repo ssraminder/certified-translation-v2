@@ -280,13 +280,10 @@ async function saveQuoteResults(quoteId, totals, currentLineItems, { currency = 
   if (error) throw error;
 }
 
-async function triggerHitlReview(quoteId) {
+async function triggerHitlReview(quoteId, reason = HITL_REASONS.UNKNOWN_ERROR) {
   try {
     if (!supabase) return;
-    await supabase
-      .from('quote_submissions')
-      .update({ hitl_required: true, status: 'awaiting_review' })
-      .eq('quote_id', quoteId);
+    await invokeHitlForQuote(supabase, quoteId, reason);
   } catch (err) {
     console.error('Failed to flag quote for HITL review', err);
   }
