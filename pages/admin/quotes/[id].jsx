@@ -529,18 +529,18 @@ export default function Page({ initialAdmin }){
         open={showDiscount}
         onClose={()=> setShowDiscount(false)}
         subtotal={Number(totals?.subtotal||0)}
-        onSubmit={async ({ description, discount_type, discount_value, notes }) => {
+        onSubmit={async ({ description, discount_type, discount_value }) => {
           setShowDiscount(false);
-          await addAdjustment({ type:'discount', description, discount_type, discount_value, notes, is_taxable:false });
+          await addAdjustment({ type:'discount', description, discount_type, discount_value, is_taxable:false });
         }}
       />
       <SurchargeModal
         open={showSurcharge}
         onClose={()=> setShowSurcharge(false)}
         subtotal={Number(totals?.subtotal||0)}
-        onSubmit={async ({ description, discount_type, discount_value, notes }) => {
+        onSubmit={async ({ description, discount_type, discount_value }) => {
           setShowSurcharge(false);
-          await addAdjustment({ type:'surcharge', description, discount_type, discount_value, notes, is_taxable:true });
+          await addAdjustment({ type:'surcharge', description, discount_type, discount_value, is_taxable:true });
         }}
       />
       <EditLineItemModal
