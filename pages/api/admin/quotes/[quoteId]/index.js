@@ -81,7 +81,8 @@ async function handler(req, res){
   }
 
   const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).order('id');
-  const scopedItemsQuery = effectiveRunId ? itemsQuery.eq('run_id', effectiveRunId) : itemsQuery;
+  // If no analyzed quotes exist, filter for manual quotes only
+  const scopedItemsQuery = effectiveRunId ? itemsQuery.eq('run_id', effectiveRunId) : itemsQuery.eq('source', 'manual');
 
   // Fetch items and other collections
   const [ { data: items }, { data: adjustments }, { data: files }, { data: certs }, { data: resultsRows } ] = await Promise.all([
