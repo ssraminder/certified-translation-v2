@@ -10,6 +10,7 @@ import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
+import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
