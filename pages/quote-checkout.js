@@ -342,23 +342,21 @@ export default function QuoteCheckoutPage() {
 
       {/* Modals */}
       <AddressFormModal
-        open={showBillingForm}
+        isOpen={showBillingForm}
         onClose={() => setShowBillingForm(false)}
         onSave={(address) => {
           setBillingAddress(address);
           setShowBillingForm(false);
         }}
-        title="Billing Address"
       />
 
       <AddressFormModal
-        open={showShippingForm}
+        isOpen={showShippingForm}
         onClose={() => setShowShippingForm(false)}
         onSave={(address) => {
           setShippingAddress(address);
           setShowShippingForm(false);
         }}
-        title="Shipping Address"
       />
     </>
   );
