@@ -182,18 +182,19 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
 
           {/* Buttons */}
           <div className="flex justify-end gap-2">
-            <button 
+            <button
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 transition-colors"
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
-            <button 
+            <button
               onClick={handleSubmit}
-              disabled={!description.trim() || !(Number(discountValue) > 0)}
+              disabled={!description.trim() || !(Number(discountValue) > 0) || submitting}
               className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
             >
-              {confirmText}
+              {submitting ? 'Processing...' : confirmText}
             </button>
           </div>
         </div>
