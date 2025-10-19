@@ -120,7 +120,7 @@ async function handler(req, res){
   // If no results exist but there are line items, recalculate
   if (items && items.length > 0 && !results) {
     try {
-      await recalcAndUpsertUnifiedQuoteResults(quoteId);
+      await recalcAndUpsertUnifiedQuoteResults(quoteId, effectiveRunId);
       // Refetch results after recalculation
       const { data: newResults } = await supabase
         .from('quote_results')
