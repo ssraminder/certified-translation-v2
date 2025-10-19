@@ -585,6 +585,13 @@ export default function Page({ initialAdmin }){
         lineItem={editingItem}
         onSave={async (patch)=> { if (editingItem) await updateLineItem(editingItem.id, patch); }}
       />
+      <SendMagicLinkModal
+        open={showSendMagicLink}
+        onClose={()=> setShowSendMagicLink(false)}
+        quoteId={quote?.id}
+        customerEmail={quote?.customer_email}
+        customerName={quote?.customer_name}
+      />
     </AdminLayout>
   );
 }
