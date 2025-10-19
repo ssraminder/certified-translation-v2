@@ -133,8 +133,11 @@ export default function QuotesListPage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <Link href={`/dashboard/quotes/${q.id}`} className="px-3 py-2 bg-gray-100 rounded-lg text-sm">View</Link>
-                {q.quote_state === 'draft' && (
+                {q.quote_state === 'draft' && !q.hitl_required && (
                   <Link href={`/order/step-3?quote=${q.id}`} className="px-3 py-2 bg-cyan-500 text-white rounded-lg text-sm">Resume Quote</Link>
+                )}
+                {q.hitl_required && (
+                  <button disabled className="px-3 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm cursor-not-allowed" title="Cannot resume - quote is under human review">Resume Quote</button>
                 )}
                 {q.quote_state === 'expired' && (
                   <button onClick={() => handleRegenerate(q.id)} className="px-3 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm">Regenerate</button>
