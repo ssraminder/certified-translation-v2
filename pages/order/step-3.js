@@ -1324,7 +1324,7 @@ export default function Step3() {
         if (typeof window !== 'undefined') {
           window.alert(`Removing this document brings your order below the ${formatCurrency(minimumOrder)} minimum. Requesting human review.`);
         }
-        await triggerHitlReview(quoteId);
+        await triggerHitlReview(quoteId, HITL_REASONS.BELOW_MINIMUM);
         setShowHITL(true);
         return;
       }
