@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { parsePhoneNumber, getCountryCallingCode } from 'libphonenumber-js';
 import { toE164, formatForDisplay, isValid } from '../../lib/formatters/phone';
 import { detectCountryFromIP, COUNTRY_CODE_TO_NAME } from '../../lib/geolocation';
 
@@ -15,8 +16,8 @@ export default function PhoneInput({
   error = '',
   onCountryChange
 }) {
-  const [input, setInput] = useState(''); // Raw input from user
-  const [countryCode, setCountryCode] = useState('US'); // Selected country code
+  const [input, setInput] = useState('');
+  const [countryCode, setCountryCode] = useState('US');
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const inputRef = useRef(null);
@@ -32,7 +33,7 @@ export default function PhoneInput({
     })();
   }, []);
 
-  // Parse incoming E.164 value (e.g., +14039666211) and extract country
+  // Parse incoming E.164 value and extract country
   useEffect(() => {
     if (!valueE164) {
       setInput('');
@@ -42,7 +43,6 @@ export default function PhoneInput({
     try {
       const parsed = parsePhoneNumber(valueE164);
       if (parsed) {
-        // Extract just the national number (without country code)
         const nationalNumber = parsed.nationalNumber.toString();
         setInput(nationalNumber);
         if (parsed.country) {
@@ -50,20 +50,15 @@ export default function PhoneInput({
         }
       }
     } catch (e) {
-      // Fallback: extract digits
       const digits = String(valueE164).replace(/\D+/g, '');
       setInput(digits);
     }
   }, [valueE164]);
 
-  // Import at component level to avoid issues
-  const { parsePhoneNumber } = require('libphonenumber-js');
-
   function handleInputChange(e) {
-    const val = String(e.target.value || '').replace(/\D+/g, ''); // Only digits
+    const val = String(e.target.value || '').replace(/\D+/g, '');
     setInput(val);
     
-    // Convert to E.164 and emit
     if (val) {
       const e164 = toE164(val, countryCode);
       onChangeE164 && onChangeE164(e164 || '');
@@ -77,7 +72,6 @@ export default function PhoneInput({
     setShowDropdown(false);
     onCountryChange && onCountryChange(code);
     
-    // Re-validate and reformat with new country
     if (input) {
       const e164 = toE164(input, code);
       onChangeE164 && onChangeE164(e164 || '');
@@ -102,8 +96,23 @@ export default function PhoneInput({
 
   const selectedCountry = ALL_COUNTRIES.find(c => c.code === countryCode);
   const isValidNumber = input && isValid(input, countryCode);
+  let displayValue = input;
+  
+  if (touched && input) {
+    const e164 = toE164(input, countryCode);
+    if (e164) {
+      displayValue = formatForDisplay(e164, countryCode);
+    }
+  }
+  
   const invalid = touched && required && !isValidNumber;
-  const displayValue = input ? (touched ? formatForDisplay(toE164(input, countryCode) || '', countryCode) : input) : '';
+  
+  let callingCode = '1';
+  try {
+    callingCode = getCountryCallingCode(countryCode) || '1';
+  } catch (e) {
+    callingCode = '1';
+  }
 
   return (
     <div className="block">
@@ -152,7 +161,7 @@ export default function PhoneInput({
         <div className={`flex-1 flex h-12 items-center rounded-lg border ${
           invalid ? 'border-red-500' : 'border-gray-300'
         } bg-white overflow-hidden ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}>
-          <span className="px-3 text-gray-500 text-sm font-medium">+{require('libphonenumber-js').getCountryCallingCode(countryCode) || '1'}</span>
+          <span className="px-3 text-gray-500 text-sm font-medium">+{callingCode}</span>
           <input
             ref={inputRef}
             type="tel"
