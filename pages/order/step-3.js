@@ -1313,7 +1313,7 @@ export default function Step3() {
         setPricing(newTotals);
         setDeliveryEstimates(null);
         setError('Quote total dropped to $0. Our human team will finish this quote.');
-        await triggerHitlReview(quoteId);
+        await triggerHitlReview(quoteId, HITL_REASONS.ZERO_TOTAL);
         setShowHITL(true);
         return;
       }
