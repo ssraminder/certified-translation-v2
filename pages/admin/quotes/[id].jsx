@@ -40,12 +40,48 @@ export default function Page({ initialAdmin }){
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
-    fetch(`/api/admin/quotes/${id}`)
-      .then(r => r.json())
-      .then(json => {
-        setQuote(json.quote); setLineItems(json.line_items||[]); setAdjustments(json.adjustments||[]); setTotals(json.totals||null); setFiles(json.documents||[]); setCertifications(json.certifications||[]);
-      })
-      .finally(()=> setLoading(false));
+    if (!id) return;
+    let isMounted = true;
+
+    const fetchQuote = async () => {
+      try {
+        const resp = await fetch(`/api/admin/quotes/${id}`);
+        const json = await resp.json();
+        if (!isMounted) return;
+        setQuote(json.quote);
+        setLineItems(json.line_items || []);
+        setAdjustments(json.adjustments || []);
+        setTotals(json.totals || null);
+        setFiles(json.documents || []);
+        setCertifications(json.certifications || []);
+      } catch (err) {
+        console.error('Error fetching quote:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchQuote();
+
+    // Set up real-time polling for totals
+    const pollInterval = setInterval(() => {
+      if (isMounted && quote?.id) {
+        fetch(`/api/admin/quotes/${id}`)
+          .then(r => r.json())
+          .then(json => {
+            if (!isMounted) return;
+            if (json?.totals) {
+              setTotals(json.totals);
+            }
+          })
+          .catch(err => console.error('Polling error:', err));
+      }
+    }, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const canEdit = quote?.can_edit;
