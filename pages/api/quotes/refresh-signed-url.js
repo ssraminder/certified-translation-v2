@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from '../../lib/supabaseServer';
+import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
