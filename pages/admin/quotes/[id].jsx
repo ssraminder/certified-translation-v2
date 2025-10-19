@@ -87,6 +87,27 @@ export default function Page({ initialAdmin }){
   const canEdit = quote?.can_edit;
   const isSent = quote?.quote_state === 'sent';
 
+  const additionalItems = adjustments.filter(a => a.type === 'additional_item');
+  const discounts = adjustments.filter(a => a.type === 'discount');
+  const surcharges = adjustments.filter(a => a.type === 'surcharge');
+
+  const computedTotals = useMemo(() => {
+    return {
+      translation: round2(lineItems.reduce((s, it) => {
+        const rate = Number((it.unit_rate_override ?? it.unit_rate) || 0);
+        const pages = Number(it.billable_pages || 0);
+        return s + (rate * pages);
+      }, 0)),
+      certification: round2(certifications.reduce((s, c) => s + Number((c.override_rate ?? c.default_rate) || 0), 0)),
+      additionalItems: round2(additionalItems.reduce((s, a) => s + Number(a.total_amount || 0), 0)),
+      discounts: round2(discounts.reduce((s, a) => s + Number(a.total_amount || 0), 0)),
+      surcharges: round2(surcharges.reduce((s, a) => s + Number(a.total_amount || 0), 0)),
+      subtotal: round2((totals?.subtotal || 0)),
+      tax: round2((totals?.tax || 0)),
+      total: round2((totals?.total || 0))
+    };
+  }, [lineItems, certifications, additionalItems, discounts, surcharges, totals]);
+
   async function refetchFiles(){
     const id = quote.id;
     try {
