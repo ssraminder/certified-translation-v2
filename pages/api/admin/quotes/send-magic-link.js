@@ -27,13 +27,26 @@ async function handler(req, res) {
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
 
     // Get quote results and pricing
-    const { data: quoteResults, error: resultsError } = await supabase
+    let { data: quoteResults, error: resultsError } = await supabase
       .from('quote_results')
       .select('*')
       .eq('quote_id', quote_id)
       .maybeSingle();
 
     if (resultsError) throw resultsError;
+
+    // If no results exist, trigger calculation (will be saved to DB)
+    if (!quoteResults) {
+      try {
+        const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../../lib/quoteTotals');
+        await recalcAndUpsertUnifiedQuoteResults(quote_id);
+        const { data: newResults } = await supabase.from('quote_results').select('*').eq('quote_id', quote_id).maybeSingle();
+        quoteResults = newResults || null;
+      } catch (calcErr) {
+        console.error('[send-magic-link] Failed to auto-calculate results:', calcErr);
+      }
+    }
+
     if (!quoteResults) return res.status(404).json({ error: 'Quote results not found' });
 
     // Get line items
