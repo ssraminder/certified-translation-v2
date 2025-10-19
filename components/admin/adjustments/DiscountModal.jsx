@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 
 export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, title = 'Add Discount', confirmText = 'Add Discount', positive = false }){
+  if (!open) return null;
+
   const [description, setDescription] = useState('');
   const [discountType, setDiscountType] = useState('percentage');
   const [discountValue, setDiscountValue] = useState('');
@@ -16,8 +18,6 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
       setSubmitting(false);
     }
   }, [open]);
-
-  if (!open) return null;
 
   const computed = useMemo(()=>{
     const v = Number(discountValue || 0);
