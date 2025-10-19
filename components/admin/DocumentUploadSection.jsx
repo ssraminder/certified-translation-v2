@@ -463,6 +463,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
           </div>
         )}
 
+        {successMessage && (
+          <div className="success-message">✓ {successMessage}</div>
+        )}
+
         <div className="uploaded-files-list">
           {uploadedFiles.length === 0 ? (
             <p className="empty-state">No documents uploaded yet</p>
