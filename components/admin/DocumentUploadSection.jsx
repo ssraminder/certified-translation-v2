@@ -519,6 +519,25 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
             ))
           )}
         </div>
+
+        {uploadedFiles.length > 0 && canEdit && (
+          <>
+            {uploadedFiles.some(f => f.source === 'upload') && (
+              <div className="upload-footer">
+                <div className="pending-count">
+                  <strong>{uploadedFiles.filter(f => f.source === 'upload').length}</strong> pending file(s)
+                </div>
+                <button
+                  className={`btn-finish-upload ${isUploading ? 'loading' : ''}`}
+                  onClick={handleFinishUpload}
+                  disabled={isUploading || uploadedFiles.filter(f => f.source === 'upload').length === 0}
+                >
+                  {isUploading ? 'Uploading...' : 'Finish Upload'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </>
   );
