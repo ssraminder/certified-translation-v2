@@ -192,7 +192,7 @@ function formatBytes(bytes) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter();
   const { order: orderId } = router.query;
 
