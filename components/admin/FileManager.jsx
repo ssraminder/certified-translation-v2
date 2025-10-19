@@ -1,7 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-import { supabase } from '../../lib/supabaseClient';
-import AnalysisModal from './AnalysisModal';
+import { useEffect, useRef, useState } from 'react';
 
 async function parseJsonSafe(resp){
   const ct = resp.headers.get('content-type') || '';
