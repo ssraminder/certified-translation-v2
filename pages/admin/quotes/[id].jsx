@@ -76,6 +76,12 @@ export default function Page({ initialAdmin }){
     if (json?.success){ setQuote(q => ({ ...q, delivery_speed: speed, delivery_date: json.delivery_date })); setTotals(json.totals || totals); }
   }
 
+  async function updateDeliveryDate(dateString){
+    const resp = await fetch(`/api/admin/quotes/${quote.id}/delivery`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ delivery_date: new Date(dateString).toISOString() }) });
+    const json = await resp.json();
+    if (json?.success){ setQuote(q => ({ ...q, delivery_date: json.delivery_date })); setTotals(json.totals || totals); }
+  }
+
   async function sendToCustomer(){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: '' }) });
     const json = await resp.json();
@@ -480,14 +486,16 @@ export default function Page({ initialAdmin }){
 
               <div className="border-t my-4" />
 
-              {/* Delivery */}
+              {/* Delivery Date Selector */}
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Delivery</label>
-                <select disabled={!canEdit} className="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm" value={quote.delivery_speed || 'standard'} onChange={e=> changeDelivery(e.target.value)}>
-                  <option value="standard">Standard</option>
-                  <option value="rush">Rush</option>
-                </select>
-                <p className="mt-2 text-sm text-gray-600">• Estimated: {quote.delivery_date ? new Date(quote.delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Oct 10, 2025'}</p>
+                <label className="block text-sm font-medium mb-2">Delivery Date</label>
+                <input
+                  type="date"
+                  disabled={!canEdit}
+                  className="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm disabled:opacity-50"
+                  value={quote.delivery_date ? new Date(quote.delivery_date).toISOString().split('T')[0] : ''}
+                  onChange={e => updateDeliveryDate(e.target.value)}
+                />
               </div>
 
               <div className="border-t pt-4" />
