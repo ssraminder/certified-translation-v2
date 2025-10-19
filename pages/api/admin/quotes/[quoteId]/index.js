@@ -116,6 +116,24 @@ async function handler(req, res){
   if (Array.isArray(resultsRows)){
     results = (effectiveRunId ? resultsRows.find(r => r.run_id === effectiveRunId) : null) || resultsRows[0] || null;
   }
+
+  // If no results or totals are zero but there are line items, recalculate
+  if (items && items.length > 0 && (!results || (results.total === 0 || results.total === null))) {
+    try {
+      await recalcAndUpsertUnifiedQuoteResults(quoteId);
+      // Refetch results after recalculation
+      const { data: newResults } = await supabase
+        .from('quote_results')
+        .select('*')
+        .eq('quote_id', quoteId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      results = (Array.isArray(newResults) && newResults[0]) || results;
+    } catch (err) {
+      console.error('Error recalculating quote totals:', err);
+    }
+  }
+
   const can_edit = !['accepted','converted'].includes(String(q.quote_state||'').toLowerCase());
 
   const line_items = (items||[]).map(it => ({
