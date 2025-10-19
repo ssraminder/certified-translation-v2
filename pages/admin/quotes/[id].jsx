@@ -86,9 +86,24 @@ export default function Page({ initialAdmin }){
   }
 
   async function sendToCustomer(){
-    const resp = await fetch(`/api/admin/quotes/${quote.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: '' }) });
-    const json = await resp.json();
-    if (json?.success){ setQuote(q => ({ ...q, quote_state: 'sent' })); }
+    try {
+      const resp = await fetch(`/api/admin/quotes/send-magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quote_id: quote.id, recipient_email: quote.customer_email })
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        alert(`Error: ${json.error || 'Failed to send quote'}`);
+        return;
+      }
+      if (json?.success){
+        setQuote(q => ({ ...q, quote_state: 'sent' }));
+        alert('Quote sent successfully with magic link!');
+      }
+    } catch (err) {
+      alert(`Error sending quote: ${err.message}`);
+    }
   }
 
   async function editAndResend(){
