@@ -208,6 +208,14 @@ export default function Page({ initialAdmin }){
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>
+                <th className="px-3 py-2 w-12">
+                  <input
+                    type="checkbox"
+                    checked={data.quotes && data.quotes.length > 0 && selected.size === data.quotes.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded"
+                  />
+                </th>
                 <th className="px-3 py-2">Order ID</th>
                 <th className="px-3 py-2">Customer</th>
                 <th className="px-3 py-2">Status</th>
@@ -217,16 +225,24 @@ export default function Page({ initialAdmin }){
             </thead>
             <tbody>
               {(data.quotes||[]).map(q => (
-                <tr key={q.id} className="border-b last:border-0 hover:bg-gray-50 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>
-                  <td className="px-3 py-2 font-medium text-gray-900">{q.order_id}</td>
-                  <td className="px-3 py-2 text-gray-700">{q.customer_name || '—'}<div className="text-xs text-gray-500">{q.customer_email || ''}</div></td>
-                  <td className="px-3 py-2"><StatusBadge state={q.quote_state} /></td>
-                  <td className="px-3 py-2 text-right">{q.total != null ? `$${Number(q.total).toFixed(2)}` : '—'}</td>
-                  <td className="px-3 py-2 text-gray-600">{q.created_at ? new Date(q.created_at).toLocaleDateString() : ''}</td>
+                <tr key={q.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(q.id)}
+                      onChange={() => toggleSelect(q.id)}
+                      className="w-4 h-4 rounded"
+                    />
+                  </td>
+                  <td className="px-3 py-2 font-medium text-gray-900 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.order_id}</td>
+                  <td className="px-3 py-2 text-gray-700 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.customer_name || '—'}<div className="text-xs text-gray-500">{q.customer_email || ''}</div></td>
+                  <td className="px-3 py-2 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}><StatusBadge state={q.quote_state} /></td>
+                  <td className="px-3 py-2 text-right cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.total != null ? `$${Number(q.total).toFixed(2)}` : '—'}</td>
+                  <td className="px-3 py-2 text-gray-600 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.created_at ? new Date(q.created_at).toLocaleDateString() : ''}</td>
                 </tr>
               ))}
               {(!loading && (!data.quotes || data.quotes.length === 0)) && (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-500">No quotes found</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-500">No quotes found</td></tr>
               )}
             </tbody>
           </table>
