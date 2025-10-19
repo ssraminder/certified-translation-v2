@@ -12,12 +12,24 @@ async function handler(req, res) {
     const supabase = getSupabaseServerClient();
 
     // Fetch totals from quote_results
-    const { data: totalsRow, error: totalsErr } = await supabase
+    let { data: totalsRow, error: totalsErr } = await supabase
       .from('quote_results')
       .select('subtotal, tax, total, shipping_total')
       .eq('quote_id', quote)
       .maybeSingle();
     if (totalsErr) throw totalsErr;
+
+    // If no totals exist, trigger calculation (will be saved to DB)
+    if (!totalsRow) {
+      try {
+        const { recalcAndUpsertUnifiedQuoteResults } = await import('../../lib/quoteTotals');
+        await recalcAndUpsertUnifiedQuoteResults(quote);
+        const { data: newTotals } = await supabase.from('quote_results').select('subtotal, tax, total, shipping_total').eq('quote_id', quote).maybeSingle();
+        totalsRow = newTotals || null;
+      } catch (calcErr) {
+        console.error('[quote-results] Failed to auto-calculate results:', calcErr);
+      }
+    }
 
     // Fetch contact info from quote_submissions (Step 2)
     const { data: contactRow, error: contactErr } = await supabase
