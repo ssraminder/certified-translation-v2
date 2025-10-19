@@ -157,7 +157,7 @@ export default function QuoteDetailPage() {
         </div>
 
         <aside className="space-y-6">
-          {quote.quote_state === 'draft' && (
+          {quote.quote_state === 'draft' && !['converted', 'paid'].includes(quote.quote_state) && (
             <section className="bg-white rounded-lg border border-gray-200 p-4">
               <h2 className="font-semibold text-gray-900 mb-3">Actions</h2>
               <Link href={`/order/step-3?quote=${quote.id}`}>
