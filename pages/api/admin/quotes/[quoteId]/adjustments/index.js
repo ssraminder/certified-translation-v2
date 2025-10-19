@@ -31,7 +31,15 @@ async function handler(req, res){
   } else if (type === 'discount' || type === 'surcharge'){
     const discount_type = String(body.discount_type || '').toLowerCase();
     const discount_value = asNumber(body.discount_value) ?? 0;
-    insert = { ...insert, discount_type, discount_value, total_amount: 0 };
+    const subtotal = asNumber(body.subtotal) ?? 0;
+
+    if (discount_type === 'percentage') {
+      total_amount = Math.round((subtotal * (discount_value / 100)) * 100) / 100;
+    } else if (discount_type === 'fixed') {
+      total_amount = discount_value;
+    }
+
+    insert = { ...insert, discount_type, discount_value, total_amount };
   } else {
     return res.status(400).json({ error: 'Invalid type' });
   }
