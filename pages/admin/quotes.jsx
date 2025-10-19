@@ -93,6 +93,10 @@ export default function Page({ initialAdmin }){
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({ quotes: [], total_count: 0, pages: 1, page: 1 });
   const [showCreate, setShowCreate] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -100,6 +104,8 @@ export default function Page({ initialAdmin }){
       const params = new URLSearchParams();
       if (status) params.set('status', status);
       if (search) params.set('search', search);
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
       params.set('page', String(page));
       params.set('limit', '20');
       fetch(`/api/admin/quotes?${params.toString()}`)
@@ -108,31 +114,108 @@ export default function Page({ initialAdmin }){
         .finally(() => setLoading(false));
     }, 400);
     return () => clearTimeout(t);
-  }, [status, search, page]);
+  }, [status, search, page, startDate, endDate]);
+
+  function toggleSelect(quoteId) {
+    setSelected(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(quoteId)) {
+        newSet.delete(quoteId);
+      } else {
+        newSet.add(quoteId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === (data.quotes?.length || 0)) {
+      setSelected(new Set());
+    } else {
+      const newSet = new Set((data.quotes || []).map(q => q.id));
+      setSelected(newSet);
+    }
+  }
+
+  async function handleDelete() {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} quote(s)? This action cannot be undone.`)) return;
+
+    setDeleting(true);
+    try {
+      const resp = await fetch('/api/admin/quotes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quote_ids: Array.from(selected) })
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json?.error || 'Failed to delete quotes');
+      setSelected(new Set());
+      setPage(1);
+      window.location.reload();
+    } catch (e) {
+      alert(e.message || 'Error deleting quotes');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const allowCreate = canCreateQuote(initialAdmin?.role);
 
   return (
     <AdminLayout title="All Quotes" initialAdmin={initialAdmin}>
       <div className="rounded-lg bg-white p-4 ring-1 ring-gray-100">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {STATUSES.map(s => (
-              <button key={s.key} onClick={() => { setStatus(s.key); setPage(1); }} className={`rounded-md border px-3 py-1 text-sm ${status===s.key? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{s.label}</button>
-            ))}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {STATUSES.map(s => (
+                <button key={s.key} onClick={() => { setStatus(s.key); setPage(1); }} className={`rounded-md border px-3 py-1 text-sm ${status===s.key? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{s.label}</button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Search order #, name, email" />
+              {allowCreate && (
+                <button onClick={()=> setShowCreate(true)} className="rounded bg-cyan-600 text-white px-3 py-2 text-sm">+ New Quote</button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Search order #, name, email" />
-            {allowCreate && (
-              <button onClick={()=> setShowCreate(true)} className="rounded bg-cyan-600 text-white px-3 py-2 text-sm">+ New Quote</button>
+
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Start Date:</label>
+              <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">End Date:</label>
+              <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }} className="rounded-md border border-gray-300 px-3 py-2 text-sm" />
+            </div>
+            {(startDate || endDate) && (
+              <button onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }} className="text-sm text-gray-600 hover:text-gray-800 underline">Clear dates</button>
             )}
           </div>
+
+          {selected.size > 0 && (
+            <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded p-3">
+              <span className="text-sm font-medium">{selected.size} quote(s) selected</span>
+              <button onClick={handleDelete} disabled={deleting} className="rounded bg-red-600 text-white px-3 py-2 text-sm disabled:opacity-50 hover:bg-red-700">
+                {deleting ? 'Deleting...' : 'Delete Selected'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>
+                <th className="px-3 py-2 w-12">
+                  <input
+                    type="checkbox"
+                    checked={data.quotes && data.quotes.length > 0 && selected.size === data.quotes.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded"
+                  />
+                </th>
                 <th className="px-3 py-2">Order ID</th>
                 <th className="px-3 py-2">Customer</th>
                 <th className="px-3 py-2">Status</th>
@@ -142,16 +225,24 @@ export default function Page({ initialAdmin }){
             </thead>
             <tbody>
               {(data.quotes||[]).map(q => (
-                <tr key={q.id} className="border-b last:border-0 hover:bg-gray-50 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>
-                  <td className="px-3 py-2 font-medium text-gray-900">{q.order_id}</td>
-                  <td className="px-3 py-2 text-gray-700">{q.customer_name || '—'}<div className="text-xs text-gray-500">{q.customer_email || ''}</div></td>
-                  <td className="px-3 py-2"><StatusBadge state={q.quote_state} /></td>
-                  <td className="px-3 py-2 text-right">{q.total != null ? `$${Number(q.total).toFixed(2)}` : '—'}</td>
-                  <td className="px-3 py-2 text-gray-600">{q.created_at ? new Date(q.created_at).toLocaleDateString() : ''}</td>
+                <tr key={q.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(q.id)}
+                      onChange={() => toggleSelect(q.id)}
+                      className="w-4 h-4 rounded"
+                    />
+                  </td>
+                  <td className="px-3 py-2 font-medium text-gray-900 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.order_id}</td>
+                  <td className="px-3 py-2 text-gray-700 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.customer_name || '—'}<div className="text-xs text-gray-500">{q.customer_email || ''}</div></td>
+                  <td className="px-3 py-2 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}><StatusBadge state={q.quote_state} /></td>
+                  <td className="px-3 py-2 text-right cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.total != null ? `$${Number(q.total).toFixed(2)}` : '—'}</td>
+                  <td className="px-3 py-2 text-gray-600 cursor-pointer" onClick={()=>{ window.location.href = `/admin/quotes/${q.id}`; }}>{q.created_at ? new Date(q.created_at).toLocaleDateString() : ''}</td>
                 </tr>
               ))}
               {(!loading && (!data.quotes || data.quotes.length === 0)) && (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-500">No quotes found</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-500">No quotes found</td></tr>
               )}
             </tbody>
           </table>

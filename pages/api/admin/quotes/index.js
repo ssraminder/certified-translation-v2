@@ -9,13 +9,15 @@ function parseQuery(q){
   const limit = Math.min(100, Math.max(1, Number(q.limit || 20)));
   const search = (q.search || '').toString().trim();
   const status = (q.status || 'all').toString().trim().toLowerCase();
-  return { page, limit, search, status };
+  const startDate = (q.start_date || '').toString().trim() || null;
+  const endDate = (q.end_date || '').toString().trim() || null;
+  return { page, limit, search, status, startDate, endDate };
 }
 
 async function listQuotes(req, res){
   if (!hasPermission(req.admin?.role, 'quotes', 'view')) return res.status(403).json({ error: 'Forbidden' });
   const supabase = getSupabaseServerClient();
-  const { page, limit, search, status } = parseQuery(req.query || {});
+  const { page, limit, search, status, startDate, endDate } = parseQuery(req.query || {});
 
   let query = supabase
     .from('quote_submissions')
@@ -27,6 +29,8 @@ async function listQuotes(req, res){
     const like = `%${search}%`;
     query = query.or(`quote_number.ilike.${like},name.ilike.${like},email.ilike.${like}`);
   }
+  if (startDate) query = query.gte('created_at', startDate);
+  if (endDate) query = query.lte('created_at', endDate);
 
   const from = (page - 1) * limit;
   const to = from + limit - 1;
@@ -117,9 +121,39 @@ async function createQuote(req, res){
   return res.status(200).json({ success: true, quote_id, quote_number });
 }
 
+async function deleteQuotes(req, res){
+  if (!hasPermission(req.admin?.role, 'quotes', 'delete')) return res.status(403).json({ error: 'Forbidden' });
+  const supabase = getSupabaseServerClient();
+  const body = req.body || {};
+  const quoteIds = Array.isArray(body.quote_ids) ? body.quote_ids : [];
+
+  if (!quoteIds.length) return res.status(400).json({ error: 'No quotes specified' });
+
+  try {
+    const { error } = await supabase.from('quote_submissions').delete().in('quote_id', quoteIds);
+    if (error) throw error;
+
+    for (const quoteId of quoteIds) {
+      await logAdminActivity({
+        action: 'quote_deleted',
+        actor_id: req.admin.id,
+        actor_name: (req.admin.first_name && req.admin.last_name) ? `${req.admin.first_name} ${req.admin.last_name}` : (req.admin.first_name || req.admin.last_name || req.admin.email),
+        target_id: quoteId,
+        details: { deleted_count: 1 }
+      });
+    }
+
+    return res.status(200).json({ success: true, deleted_count: quoteIds.length });
+  } catch (err) {
+    console.error('Error deleting quotes:', err);
+    return res.status(500).json({ error: err?.message || 'Failed to delete quotes' });
+  }
+}
+
 async function handler(req, res){
   if (req.method === 'GET') return listQuotes(req, res);
   if (req.method === 'POST') return createQuote(req, res);
+  if (req.method === 'DELETE') return deleteQuotes(req, res);
   return res.status(405).json({ error: 'Method not allowed' });
 }
 
