@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { supabase } from '../../lib/supabaseClient';
 import { getErrorMessage } from '../../lib/errorMessage';
+import { invokeHitlForQuote, requestHitlReview, HITL_REASONS } from '../../lib/hitlManagement';
 
 const GST_RATE = 0.05;
 const DEFAULT_TIMEZONE = 'America/Edmonton';
