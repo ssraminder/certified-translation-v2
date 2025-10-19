@@ -541,9 +541,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
                   <button
                     className="btn-view"
                     onClick={() => viewFile(file.id)}
-                    disabled={!file.file_object}
+                    disabled={!file.file_object && !file.file_url}
+                    title={file.file_object || file.file_url ? 'View file' : 'File URL not available'}
                   >
-                    View
+                    {file.file_object && !file.file_url ? 'View' : (file.file_url ? 'Download' : 'View')}
                   </button>
                   {canEdit && (
                     <button className="btn-remove" onClick={() => removeFile(file.id)}>
