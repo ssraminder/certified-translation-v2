@@ -76,6 +76,12 @@ export default function Page({ initialAdmin }){
     if (json?.success){ setQuote(q => ({ ...q, delivery_speed: speed, delivery_date: json.delivery_date })); setTotals(json.totals || totals); }
   }
 
+  async function updateDeliveryDate(dateString){
+    const resp = await fetch(`/api/admin/quotes/${quote.id}/delivery`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ delivery_date: new Date(dateString).toISOString() }) });
+    const json = await resp.json();
+    if (json?.success){ setQuote(q => ({ ...q, delivery_date: json.delivery_date })); setTotals(json.totals || totals); }
+  }
+
   async function sendToCustomer(){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: '' }) });
     const json = await resp.json();
