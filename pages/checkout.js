@@ -120,8 +120,8 @@ function OrderSummary({ order, onEdit }) {
         <div className="section-content">
           {(order.documents||[]).map((doc, idx) => (
             <div key={doc.id || idx} className="document-item">
-              <div>
-                <div className="doc-name">{doc.filename || 'Document'}</div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="doc-name" title={doc.filename || 'Document'} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.filename || 'Document'}</div>
               </div>
             </div>
           ))}
