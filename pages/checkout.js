@@ -313,19 +313,13 @@ function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing,
                 <span>Same as billing address</span>
               </label>
               {order.shipping_address && order.shipping_address.id !== order.billing_address?.id && (
-                <div className="pl-6 border-l-2 border-gray-200 text-sm space-y-1 text-gray-600">
-                  <div className="text-base font-normal text-gray-900">{order.shipping_address.full_name}</div>
-                  <div>{order.shipping_address.address_line1}</div>
-                  {order.shipping_address.address_line2 && <div>{order.shipping_address.address_line2}</div>}
-                  <div>{order.shipping_address.city}, {order.shipping_address.province_state} {order.shipping_address.postal_code}</div>
+                <div className="pl-6 border-l-2 border-gray-200">
+                  <AddressDisplay address={order.shipping_address} />
                 </div>
               )}
               {(!order.shipping_address || order.shipping_address.id === order.billing_address?.id) && order.billing_address && (
-                <div className="pl-6 border-l-2 border-gray-200 text-sm space-y-1 text-gray-600">
-                  <div className="text-base font-normal text-gray-900">{order.billing_address.full_name}</div>
-                  <div>{order.billing_address.address_line1}</div>
-                  {order.billing_address.address_line2 && <div>{order.billing_address.address_line2}</div>}
-                  <div>{order.billing_address.city}, {order.billing_address.province_state} {order.billing_address.postal_code}</div>
+                <div className="pl-6 border-l-2 border-gray-200">
+                  <AddressDisplay address={order.billing_address} />
                 </div>
               )}
             </div>
