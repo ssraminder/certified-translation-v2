@@ -95,10 +95,22 @@ async function handler(req, res){
     };
   }));
 
-  // Get the most recent results (do not auto-recalculate)
+  // Get the most recent results, or trigger calculation if none exist
   let results = null;
   if (Array.isArray(resultsRows)){
     results = resultsRows[0] || null;
+  }
+
+  // If no results exist and there are line items or adjustments, calculate and save
+  if (!results && (Array.isArray(items) && items.length > 0 || Array.isArray(adjustments) && adjustments.length > 0 || Array.isArray(certs) && certs.length > 0)){
+    try {
+      const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../../../lib/quoteTotals');
+      await recalcAndUpsertUnifiedQuoteResults(quoteId);
+      const { data: newResults } = await supabase.from('quote_results').select('*').eq('quote_id', quoteId).maybeSingle();
+      results = newResults || null;
+    } catch (calcErr) {
+      console.error('[admin/quotes] Failed to auto-calculate results:', calcErr);
+    }
   }
 
   const can_edit = !['accepted','converted'].includes(String(q.quote_state||'').toLowerCase());
