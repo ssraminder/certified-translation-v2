@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export default function ManualLineItemForm({ open, onClose, quoteId, files, onCreated }){
   const [fileId, setFileId] = useState('');
@@ -6,10 +6,6 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
   const [billablePages, setBillablePages] = useState('');
   const [unitRate, setUnitRate] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  const fileInputRef = useRef(null);
 
   useEffect(()=> {
     if (!open){
@@ -17,8 +13,6 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
       setTotalPages('');
       setBillablePages('');
       setUnitRate('');
-      setUploadedFiles([]);
-      setUploadError('');
     }
   }, [open]);
 
@@ -28,57 +22,34 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
     return (pages * rate).toFixed(2);
   }, [billablePages, unitRate]);
 
-  const allAvailableFiles = [...(files || []), ...uploadedFiles];
+  const handleFileChange = (e) => {
+    const selectedFileId = e.target.value;
+    setFileId(selectedFileId);
 
-  async function handleFileUpload(e) {
-    const uploadedFilesList = e.target.files;
-    if (!uploadedFilesList || uploadedFilesList.length === 0) return;
-
-    setUploading(true);
-    setUploadError('');
-    try {
-      const form = new FormData();
-      for (const file of uploadedFilesList) {
-        form.append('files', file);
+    if (selectedFileId) {
+      const selectedFile = files.find(f => (f.file_id || f.id) === selectedFileId);
+      if (selectedFile && selectedFile.page_count) {
+        setTotalPages(String(selectedFile.page_count));
+        setBillablePages(String(selectedFile.page_count));
       }
-
-      const resp = await fetch(`/api/admin/quotes/${quoteId}/files`, {
-        method: 'POST',
-        body: form
-      });
-
-      const json = await resp.json();
-      if (!resp.ok) {
-        throw new Error(json?.error || 'Upload failed');
-      }
-
-      if (json?.success && json.uploaded_files) {
-        const newFiles = json.uploaded_files;
-        setUploadedFiles(prev => [...prev, ...newFiles]);
-        if (newFiles.length === 1) {
-          setFileId(newFiles[0].file_id || newFiles[0].id);
-        }
-      }
-    } catch (err) {
-      setUploadError(err?.message || 'Failed to upload files');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    } else {
+      setTotalPages('');
+      setBillablePages('');
     }
-  }
+  };
 
   async function submit(e){
     e.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     try {
-      const selectedFile = allAvailableFiles.find(f => (f.file_id || f.id) === fileId);
+      const selectedFile = files.find(f => (f.file_id || f.id) === fileId);
       const payload = {
         file_id: fileId || null,
         filename: selectedFile?.filename || null,
         billable_pages: Number(billablePages),
         unit_rate: Number(unitRate),
-        total_pages: Number(totalPages) || Number(billablePages)
+        total_pages: Number(totalPages)
       };
       const resp = await fetch(`/api/admin/quotes/${quoteId}/line-items/manual`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const json = await resp.json();
@@ -93,7 +64,7 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
 
   if (!open) return null;
 
-  const hasFiles = Array.isArray(allAvailableFiles) && allAvailableFiles.length > 0;
+  const hasFiles = Array.isArray(files) && files.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
