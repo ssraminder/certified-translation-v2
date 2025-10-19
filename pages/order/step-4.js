@@ -265,9 +265,9 @@ export default function Step4() {
                   <label
                     key={o.id}
                     className={classNames(
-                      'flex items-start justify-between rounded-xl border p-4 cursor-pointer',
-                      checked ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white',
-                      (isAlwaysSelected || isDisabledOption) && 'opacity-75'
+                      'flex items-start justify-between rounded-xl border p-4 transition',
+                      isDisabledOption ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                      checked ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
                     )}
                   >
                     <div className="flex-1">
@@ -277,8 +277,12 @@ export default function Step4() {
                           name="shipping-method"
                           className="h-4 w-4"
                           checked={checked}
-                          disabled={isAlwaysSelected || isDisabledOption}
-                          onChange={() => !isAlwaysSelected && !isDisabledOption && toggle(o.id)}
+                          disabled={isDisabledOption}
+                          onChange={() => {
+                            if (!isDisabledOption) {
+                              toggle(o.id);
+                            }
+                          }}
                         />
                         <span className={classNames('text-sm font-medium', isDisabledOption ? 'text-gray-500' : 'text-gray-900')}>
                           {o.name}
