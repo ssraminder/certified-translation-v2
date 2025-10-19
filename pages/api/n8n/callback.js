@@ -49,6 +49,30 @@ async function handler(req, res) {
   try {
     const supabase = getSupabaseServerClient();
 
+    // Handle error status from n8n - invoke HITL
+    if (normalizedStatus === 'error' || normalizedStatus === 'failed') {
+      console.log(`[n8n/callback] n8n analysis failed for quote ${effectiveQuoteId}, invoking HITL`);
+      await invokeHitlForQuote(supabase, effectiveQuoteId, HITL_REASONS.N8N_FAILURE);
+
+      const { error: updateSubErr } = await supabase
+        .from('quote_submissions')
+        .update({
+          status: 'error',
+          hitl_required: true,
+          hitl_reason: HITL_REASONS.N8N_FAILURE,
+          updated_at: new Date().toISOString()
+        })
+        .eq('quote_id', effectiveQuoteId);
+
+      if (updateSubErr) {
+        console.error('[n8n/callback] Failed to update quote_submissions:', updateSubErr);
+        return res.status(500).json({ error: 'Failed to update status', details: updateSubErr.message });
+      }
+
+      return res.status(200).json({ ok: true, hitl_invoked: true });
+    }
+
+    // Normal status update
     const { error: updateSubErr } = await supabase
       .from('quote_submissions')
       .update({ status: normalizedStatus, updated_at: new Date().toISOString() })
@@ -62,6 +86,15 @@ async function handler(req, res) {
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[n8n/callback] Exception:', err);
+
+    // On exception, invoke HITL as fallback
+    try {
+      const supabase = getSupabaseServerClient();
+      await invokeHitlForQuote(supabase, effectiveQuoteId, HITL_REASONS.API_FAILURE);
+    } catch (hitlErr) {
+      console.error('[n8n/callback] Failed to invoke HITL on exception:', hitlErr);
+    }
+
     return res.status(500).json({ error: err.message || 'Unexpected error' });
   }
 }
