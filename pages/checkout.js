@@ -196,12 +196,6 @@ function CheckoutForm({ order }) {
   );
 }
 
-function formatBytes(bytes) {
-  const b = Number(bytes || 0);
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function CheckoutPageContent({ order, clientSecret, stripeOptions, isProcessing, termsAccepted, setIsProcessing, setTermsAccepted }) {
   const router = useRouter();
