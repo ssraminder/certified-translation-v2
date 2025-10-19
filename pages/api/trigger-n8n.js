@@ -45,15 +45,14 @@ async function handler(req, res) {
     console.log('[trigger-n8n] Received webhook trigger for quoteId:', quoteId);
 
     // Generate fresh signed URLs for each file associated with this quote
-    // Exclude reference files from webhook analysis
+    // quote_files now only contains 'translate' documents (reference files are in quote_reference_materials)
     if (quoteId) {
       const supabase = getSupabaseServerClient();
       const BUCKET = 'orders';
       const { data: files, error: filesError } = await supabase
         .from('quote_files')
-        .select('file_id, filename, file_url, signed_url, storage_path, file_purpose')
-        .eq('quote_id', quoteId)
-        .neq('file_purpose', 'reference');
+        .select('file_id, filename, file_url, signed_url, storage_path')
+        .eq('quote_id', quoteId);
 
       if (filesError) {
         console.error('[trigger-n8n] Error fetching files:', filesError);

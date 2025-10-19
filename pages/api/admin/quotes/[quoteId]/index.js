@@ -68,10 +68,11 @@ async function handler(req, res){
   const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).eq('source', 'manual').order('id');
 
   // Fetch items and other collections
-  const [ { data: items }, { data: adjustments }, { data: files }, { data: certs }, { data: resultsRows } ] = await Promise.all([
+  const [ { data: items }, { data: adjustments }, { data: files }, { data: refMaterials }, { data: certs }, { data: resultsRows } ] = await Promise.all([
     itemsQuery,
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_files').select('*').eq('quote_id', quoteId),
+    supabase.from('quote_reference_materials').select('*').eq('quote_id', quoteId),
     supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_results').select('*').eq('quote_id', quoteId).order('updated_at', { ascending: false })
   ]);
@@ -91,9 +92,26 @@ async function handler(req, res){
       bytes: f.bytes || 0,
       content_type: f.content_type || null,
       doc_type: f.doc_type || null,
-      file_purpose: f.file_purpose || 'translate',
+      file_purpose: 'translate',
       analyzed: !!f.analyzed,
       analysis_requested_at: f.analysis_requested_at || null
+    };
+  }));
+
+  const referenceMaterials = await Promise.all((refMaterials||[]).map(async (m) => {
+    let url = m.file_url || null;
+    if (!url && m.storage_path){
+      try { const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(m.storage_path, 3600); if (signed?.signedUrl) url = signed.signedUrl; } catch {}
+    }
+    if (!url && m.signed_url) url = m.signed_url;
+    return {
+      id: m.id,
+      filename: m.filename,
+      file_url: url,
+      bytes: m.bytes || 0,
+      content_type: m.content_type || null,
+      file_purpose: m.file_purpose || 'reference',
+      notes: m.notes || null
     };
   }));
 
@@ -169,6 +187,7 @@ async function handler(req, res){
     ocr_analysis: q.n8n_analysis_result || null,
     adjustments: adjustments || [],
     documents,
+    reference_materials: referenceMaterials || [],
     certifications: certs || [],
     totals
   });

@@ -421,24 +421,32 @@ export default function Step1() {
             content_type: 'application/pdf',
             source_lang: formData.sourceLanguage,
             target_lang: customLanguage || formData.targetLanguage,
-            intended_use_id: intendedUse?.id || null,
             country_of_issue: formData.countryOfIssue,
             status: 'uploaded',
             upload_session_id: uploadSessionId,
             file_url_expires_at: new Date(Date.now() + 86400000).toISOString(),
             file_purpose: 'reference'
           }));
-          const { error: refErr } = await supabase.from('quote_files').insert(refFileInserts);
+          const { error: refErr } = await supabase.from('quote_reference_materials').insert(refFileInserts);
           if (refErr) throw refErr;
         }
       }
 
-      // Save notes if any
+      // Save notes if any (to reference materials table)
       if (notes.trim()) {
         const { error: notesErr } = await supabase
-          .from('quote_submissions')
-          .update({ customer_notes: notes })
-          .eq('quote_id', quoteId);
+          .from('quote_reference_materials')
+          .insert({
+            quote_id: quoteId,
+            job_id: jobId,
+            notes: notes,
+            file_purpose: 'notes',
+            status: 'uploaded',
+            upload_session_id: uploadSessionId,
+            source_lang: formData.sourceLanguage,
+            target_lang: customLanguage || formData.targetLanguage,
+            country_of_issue: formData.countryOfIssue
+          });
         if (notesErr) throw notesErr;
       }
 

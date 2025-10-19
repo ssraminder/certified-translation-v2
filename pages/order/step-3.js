@@ -614,7 +614,10 @@ function ReferenceFilesAndNotes({ files, quoteMeta }) {
   const [downloadingFileId, setDownloadingFileId] = useState(null);
   const [fileErrors, setFileErrors] = useState({});
   const referenceFiles = (files || []).filter(f => f.file_purpose === 'reference');
-  const notes = quoteMeta?.customer_notes;
+
+  // Extract notes from reference materials (file_purpose = 'notes')
+  const notesRecord = (files || []).find(f => f.file_purpose === 'notes');
+  const notes = notesRecord?.notes || quoteMeta?.customer_notes;
 
   if (referenceFiles.length === 0 && !notes) {
     return null;
@@ -1103,6 +1106,7 @@ export default function Step3() {
         submissionRes,
         lineItemsRes,
         filesRes,
+        refMaterialsRes,
         deliveryOptionsRes,
         settingsRes,
         qualifiersRes,
@@ -1121,6 +1125,10 @@ export default function Step3() {
         supabase
           .from('quote_files')
           .select('id, filename, country_of_issue, file_url, signed_url, file_url_expires_at, storage_path')
+          .eq('quote_id', targetQuoteId),
+        supabase
+          .from('quote_reference_materials')
+          .select('id, filename, file_url, signed_url, file_url_expires_at, storage_path, file_purpose, notes')
           .eq('quote_id', targetQuoteId),
         supabase
           .from('delivery_options')
@@ -1181,6 +1189,7 @@ export default function Step3() {
       }
 
       let filesList = filesRes.data || [];
+      let refMaterialsList = refMaterialsRes.data || [];
 
       // Regenerate signed URLs for files if expired
       const BUCKET = 'orders';
@@ -1198,6 +1207,23 @@ export default function Step3() {
           }
         }
         return { ...f, file_url: url };
+      }));
+
+      // Regenerate signed URLs for reference materials if expired
+      refMaterialsList = await Promise.all(refMaterialsList.map(async (m) => {
+        let url = m.file_url || m.signed_url || null;
+        // Check if URL is expired or missing
+        if ((!url || (m.file_url_expires_at && new Date(m.file_url_expires_at) < new Date())) && m.storage_path) {
+          try {
+            const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(m.storage_path, 3600);
+            if (signed?.signedUrl) {
+              url = signed.signedUrl;
+            }
+          } catch (err) {
+            console.error('Failed to generate signed URL for reference material:', m.filename, err);
+          }
+        }
+        return { ...m, file_url: url };
       }));
 
       const qualifiersList = qualifiersRes.data || [];
@@ -1239,7 +1265,13 @@ export default function Step3() {
       setSettings(settingsData);
       setDeliveryOptions(deliveryOptionsList);
       setQualifiers(qualifiersList);
-      setFiles(filesList);
+      // Combine main files with reference materials for display
+      // Add file_purpose to main files for consistency
+      const allFiles = [
+        ...filesList.map(f => ({ ...f, file_purpose: 'translate' })),
+        ...refMaterialsList
+      ];
+      setFiles(allFiles);
       setHolidays(holidaysSet);
       setMinimumOrder(baseRate);
       setShowHITL(false);
