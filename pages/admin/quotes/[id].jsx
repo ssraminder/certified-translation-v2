@@ -33,6 +33,7 @@ export default function Page({ initialAdmin }){
   const [editingItem, setEditingItem] = useState(null);
   const [showEditLine, setShowEditLine] = useState(false);
   const [showSendMagicLink, setShowSendMagicLink] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
