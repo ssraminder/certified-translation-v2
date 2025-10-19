@@ -42,6 +42,7 @@ export default function Page({ initialAdmin }){
   }, []);
 
   const canEdit = quote?.can_edit;
+  const isSent = quote?.quote_state === 'sent';
 
   async function updateLineItem(id, patch){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/line-items`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ line_item_id: id, updates: patch }) });
@@ -86,6 +87,17 @@ export default function Page({ initialAdmin }){
     const resp = await fetch(`/api/admin/quotes/${quote.id}/send`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: '' }) });
     const json = await resp.json();
     if (json?.success){ setQuote(q => ({ ...q, quote_state: 'sent' })); }
+  }
+
+  async function editAndResend(){
+    try {
+      const stateResp = await fetch(`/api/admin/quotes/${quote.id}/state`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_state: 'under_review' }) });
+      const stateJson = await stateResp.json();
+      if (!stateResp.ok) throw new Error(stateJson?.error || 'Failed to change state');
+      setQuote(q => ({ ...q, quote_state: 'under_review', can_edit: true }));
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+    }
   }
 
   if (loading) return (
@@ -502,12 +514,23 @@ export default function Page({ initialAdmin }){
 
               {/* Action Buttons */}
               <div className="space-y-2">
-                <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
-                  Confirm and Update Summary
-                </button>
-                <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50">
-                  Send to Customer
-                </button>
+                {isSent ? (
+                  <>
+                    <button onClick={editAndResend} className="w-full rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-white text-sm font-medium">
+                      Edit Quote
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">Puts quote back into edit mode. You can then make changes and resend.</p>
+                  </>
+                ) : (
+                  <>
+                    <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
+                      Confirm and Update Summary
+                    </button>
+                    <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50">
+                      Send to Customer
+                    </button>
+                  </>
+                )}
                 <a href={`/quote-review?id=${encodeURIComponent(quote.order_id)}`} target="_blank" rel="noreferrer" className="block w-full rounded-lg border px-4 py-2 text-center text-sm font-medium">
                   View as Customer
                 </a>
