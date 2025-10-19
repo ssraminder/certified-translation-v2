@@ -487,15 +487,15 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
             uploadedFiles.map(file => (
               <div key={file.id} className="file-item">
                 <div className="file-info">
-                  <div className="file-icon">{getFileIcon(file.file_type)}</div>
+                  <div className="file-icon">{getFileIcon(file.file_type, file.filename)}</div>
                   <div className="file-details">
                     <div className="filename">{file.filename}</div>
                     <div className="file-meta">
-                      {file.page_count ? file.page_count + ' pages' : '— pages'} • {formatFileSize(file.file_size)} •{' '}
+                      {file.page_count ? file.page_count + ' pages' : '— pages'} • {formatFileSize(file.file_size || 0)} •{' '}
                       {file.source === 'upload' ? (
-                        <span style={{ color: '#f59e0b', fontWeight: '500' }}>⚠️ Pending Upload</span>
+                        <span className="pending-badge">⚠️ Pending Upload</span>
                       ) : (
-                        `Uploaded ${formatTimeAgo(file.uploaded_at)}`
+                        `Uploaded ${file.uploaded_at ? formatTimeAgo(file.uploaded_at) : 'recently'}`
                       )}
                     </div>
                   </div>
