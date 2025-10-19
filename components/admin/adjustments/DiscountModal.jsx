@@ -5,32 +5,41 @@ export default function DiscountModal({ open, onClose, onSubmit, subtotal = 0, t
   const [discountType, setDiscountType] = useState('percentage');
   const [discountValue, setDiscountValue] = useState('');
   const [reason, setReason] = useState('');
-  
-  useEffect(()=>{ 
-    if (!open){ 
-      setDescription(''); 
-      setDiscountType('percentage'); 
-      setDiscountValue(''); 
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(()=>{
+    if (!open){
+      setDescription('');
+      setDiscountType('percentage');
+      setDiscountValue('');
       setReason('');
-    } 
+      setSubmitting(false);
+    }
   }, [open]);
-  
+
   if (!open) return null;
-  
+
   const computed = useMemo(()=>{
     const v = Number(discountValue || 0);
     if (discountType === 'percentage') return Math.max(0, subtotal * (v/100));
     return Math.max(0, v);
   }, [discountType, discountValue, subtotal]);
 
-  const handleSubmit = () => {
-    if (onSubmit) {
-      onSubmit({ 
-        description: description.trim(), 
-        discount_type: discountType, 
-        discount_value: Number(discountValue || 0),
-        notes: reason.trim() || null
-      });
+  const handleSubmit = async () => {
+    if (onSubmit && !submitting) {
+      setSubmitting(true);
+      try {
+        await onSubmit({
+          description: description.trim(),
+          discount_type: discountType,
+          discount_value: Number(discountValue || 0),
+          notes: reason.trim() || null
+        });
+      } catch (error) {
+        console.error('Error submitting discount:', error);
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
