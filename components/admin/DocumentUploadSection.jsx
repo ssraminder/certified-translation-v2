@@ -109,9 +109,19 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
   function viewFile(fileId) {
     const file = uploadedFiles.find(f => f.id === fileId);
-    if (file && file.file_object) {
+    if (!file) return;
+
+    // If file has file_object (locally uploaded), use object URL
+    if (file.file_object) {
       const url = URL.createObjectURL(file.file_object);
       window.open(url, '_blank');
+      return;
+    }
+
+    // If file has file_url (from database), open directly
+    if (file.file_url) {
+      window.open(file.file_url, '_blank');
+      return;
     }
   }
 
@@ -531,9 +541,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
                   <button
                     className="btn-view"
                     onClick={() => viewFile(file.id)}
-                    disabled={!file.file_object}
+                    disabled={!file.file_object && !file.file_url}
+                    title={file.file_object || file.file_url ? 'View file' : 'File URL not available'}
                   >
-                    View
+                    {file.file_object && !file.file_url ? 'View' : (file.file_url ? 'Download' : 'View')}
                   </button>
                   {canEdit && (
                     <button className="btn-remove" onClick={() => removeFile(file.id)}>
