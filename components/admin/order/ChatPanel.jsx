@@ -93,9 +93,10 @@ export default function ChatPanel({ open, order, onClose, onUnreadChange }) {
 
   return (
     <div
-      className="fixed bottom-24 right-6 z-40 w-96 h-96 bg-white rounded-t-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+      className="fixed bottom-24 right-4 md:right-6 z-40 w-full md:w-96 h-96 md:h-96 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
       style={{
         animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        maxWidth: 'calc(100vw - 2rem)',
       }}
     >
       {/* Header */}
