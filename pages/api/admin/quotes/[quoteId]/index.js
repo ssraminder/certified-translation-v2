@@ -111,27 +111,10 @@ async function handler(req, res){
     };
   }));
 
-  // Prefer results for the effective run; fallback to most recent
+  // Get the most recent results (do not auto-recalculate)
   let results = null;
   if (Array.isArray(resultsRows)){
-    results = (effectiveRunId ? resultsRows.find(r => r.run_id === effectiveRunId) : null) || resultsRows[0] || null;
-  }
-
-  // If no results exist but there are line items, recalculate
-  if (items && items.length > 0 && !results) {
-    try {
-      await recalcAndUpsertUnifiedQuoteResults(quoteId, effectiveRunId);
-      // Refetch results after recalculation
-      const { data: newResults } = await supabase
-        .from('quote_results')
-        .select('*')
-        .eq('quote_id', quoteId)
-        .order('updated_at', { ascending: false })
-        .limit(1);
-      results = (Array.isArray(newResults) && newResults[0]) || results;
-    } catch (err) {
-      console.error('Error recalculating quote totals:', err);
-    }
+    results = resultsRows[0] || null;
   }
 
   const can_edit = !['accepted','converted'].includes(String(q.quote_state||'').toLowerCase());
