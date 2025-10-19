@@ -254,17 +254,35 @@ export default function Step4() {
             <div className="space-y-3">
               {options.map(o => {
                 const checked = selected.has(o.id);
-                const disabled = o.is_always_selected;
+                const isAlwaysSelected = o.is_always_selected;
+                const isDisabledOption = !o.is_active;
                 return (
-                  <label key={o.id} className={classNames('flex items-start justify-between rounded-xl border p-4', checked ? 'border-cyan-300 bg-cyan-50' : 'border-gray-200 bg-white')}>
+                  <label
+                    key={o.id}
+                    className={classNames(
+                      'flex items-start justify-between rounded-xl border p-4 cursor-pointer',
+                      checked ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white',
+                      (isAlwaysSelected || isDisabledOption) && 'opacity-75'
+                    )}
+                  >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" className="h-4 w-4" checked={checked} disabled={disabled} onChange={() => toggle(o.id)} />
-                        <span className={classNames('text-sm font-medium', disabled ? 'text-gray-500' : 'text-gray-900')}>{o.name}</span>
-                        {disabled && <span className="text-[11px] text-gray-500">(Always included)</span>}
+                        <input
+                          type="radio"
+                          name="shipping-method"
+                          className="h-4 w-4"
+                          checked={checked}
+                          disabled={isAlwaysSelected || isDisabledOption}
+                          onChange={() => !isAlwaysSelected && !isDisabledOption && toggle(o.id)}
+                        />
+                        <span className={classNames('text-sm font-medium', isDisabledOption ? 'text-gray-500' : 'text-gray-900')}>
+                          {o.name}
+                        </span>
+                        {isAlwaysSelected && <span className="text-[11px] text-gray-500">(Always included)</span>}
+                        {isDisabledOption && <span className="text-[11px] text-red-600">(Disabled)</span>}
                       </div>
                       {o.description && <p className="mt-1 text-xs text-gray-600">{o.description}</p>}
-                      {o.delivery_time && <p className="mt-0.5 text-[11px] text-gray-500">{o.delivery_time}</p>}
+                      {o.delivery_time && <p className="mt-0.5 text-[11px] text-gray-500">Delivery: {o.delivery_time}</p>}
                     </div>
                     <div className="ml-4 whitespace-nowrap text-sm font-medium text-gray-900">{Number(o.price||0) > 0 ? formatCurrency(o.price) : 'FREE'}</div>
                   </label>
