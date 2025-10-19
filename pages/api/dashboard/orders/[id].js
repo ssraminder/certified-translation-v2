@@ -46,11 +46,29 @@ async function handler(req, res){
       order.shipping_address_id ? supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle() : Promise.resolve({ data: null })
     ]);
 
+    // Regenerate signed URLs for files if expired
+    const BUCKET = 'orders';
+    const filesWithUrls = await Promise.all((documents.data || []).map(async (f) => {
+      let url = f.file_url || f.signed_url || null;
+      // Check if URL is expired or missing
+      if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
+        try {
+          const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+          if (signed?.signedUrl) {
+            url = signed.signedUrl;
+          }
+        } catch (err) {
+          console.error('Failed to generate signed URL:', err);
+        }
+      }
+      return { ...f, file_url: url };
+    }));
+
     return res.status(200).json({
       order: {
         ...order,
         quote: quote.data || null,
-        documents: documents.data || [],
+        documents: filesWithUrls,
         billing_address: billing.data || null,
         shipping_address: shipping.data || null,
       }
