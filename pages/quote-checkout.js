@@ -312,71 +312,78 @@ export default function QuoteCheckoutPage() {
 
               {/* Shipping Options Section */}
               <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Shipping Options</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Shipping Method</h2>
+                <p className="text-xs text-gray-500 mb-6">Choose how you'd like to receive your documents</p>
+
                 <div className="space-y-3">
-                  {shippingOptions.filter(o => !o.is_always_selected).length === 0 && shippingOptions.filter(o => o.is_always_selected).length === 0 ? (
-                    <p className="text-gray-600 text-sm">No shipping options available</p>
-                  ) : (
+                  {shippingOptions.filter(o => o.is_always_selected).map((option) => (
+                    <div key={option.id} className="flex items-start gap-4 rounded-xl border-2 border-blue-400 bg-blue-50 p-4">
+                      <input
+                        type="checkbox"
+                        checked
+                        disabled
+                        className="h-5 w-5 mt-0.5 cursor-not-allowed"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between">
+                          <h3 className="font-semibold text-gray-900">{option.name}</h3>
+                          <span className="text-sm font-semibold text-gray-900">FREE</span>
+                        </div>
+                        {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
+                        {option.delivery_time && <p className="text-xs text-gray-500 mt-1">Delivery: {option.delivery_time}</p>}
+                      </div>
+                    </div>
+                  ))}
+
+                  {shippingOptions.filter(o => !o.is_always_selected).length > 0 && (
                     <>
-                      {shippingOptions.filter(o => o.is_always_selected).map((option) => (
-                        <label key={option.id} className="flex items-start gap-3 p-4 border border-gray-200 bg-gray-50 rounded-lg cursor-pointer">
-                          <input
-                            type="radio"
-                            name="shipping"
-                            value={option.id}
-                            checked={String(selectedShipping) === String(option.id)}
-                            onChange={(e) => setSelectedShipping(e.target.value)}
-                            className="w-4 h-4 mt-1"
-                          />
-                          <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{option.name}</p>
-                            {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
-                            {option.delivery_time && <p className="text-sm text-gray-600">Delivery: {option.delivery_time}</p>}
-                          </div>
-                          <p className="font-semibold whitespace-nowrap text-gray-900">Always free</p>
-                        </label>
-                      ))}
-                      {shippingOptions.filter(o => !o.is_always_selected).map((option) => {
-                        const isDisabledOption = !option.is_active;
-                        const isChecked = String(selectedShipping) === String(option.id);
-                        return (
-                          <label
-                            key={option.id}
-                            className={`flex items-start gap-3 p-4 border rounded-lg transition ${
-                              isDisabledOption ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                            } ${
-                              isChecked
-                                ? 'border-cyan-300 bg-cyan-50'
-                                : 'border-gray-200 bg-white hover:bg-gray-50'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="shipping"
-                              value={option.id}
-                              checked={isChecked}
-                              disabled={isDisabledOption}
-                              onChange={(e) => {
-                                if (!isDisabledOption) {
-                                  setSelectedShipping(e.target.value);
-                                }
-                              }}
-                              className="w-4 h-4 mt-1"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className={`font-medium ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>{option.name}</p>
-                                {isDisabledOption && <span className="text-xs text-red-600">(Disabled)</span>}
-                              </div>
-                              {option.description && <p className="text-sm text-gray-600">{option.description}</p>}
-                              {option.delivery_time && <p className="text-sm text-gray-600">Delivery: {option.delivery_time}</p>}
-                            </div>
-                            <p className={`font-semibold whitespace-nowrap ${isDisabledOption ? 'text-gray-500' : 'text-gray-900'}`}>
-                              {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
-                            </p>
-                          </label>
-                        );
-                      })}
+                      <div className="mt-6 pt-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-700 font-medium mb-4">Choose additional delivery method (optional):</p>
+
+                        <div className="space-y-3">
+                          {shippingOptions.filter(o => !o.is_always_selected).map((option) => {
+                            const isDisabled = !option.is_active;
+                            const isChecked = String(selectedShipping) === String(option.id);
+
+                            return (
+                              <label
+                                key={option.id}
+                                className={`flex items-start gap-4 rounded-xl border p-4 transition ${
+                                  isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                                } ${
+                                  isChecked ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="physical_delivery"
+                                  checked={isChecked}
+                                  disabled={isDisabled}
+                                  onChange={() => {
+                                    if (!isDisabled) {
+                                      setSelectedShipping(String(option.id));
+                                    }
+                                  }}
+                                  className="h-5 w-5 mt-0.5"
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-baseline justify-between">
+                                    <h3 className={`font-semibold ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}>
+                                      {option.name}
+                                      {isDisabled && <span className="text-xs text-red-600 ml-2">(Unavailable)</span>}
+                                    </h3>
+                                    <span className="text-sm font-semibold text-gray-900 ml-4">
+                                      {Number(option.price || 0) > 0 ? `$${Number(option.price).toFixed(2)}` : 'FREE'}
+                                    </span>
+                                  </div>
+                                  {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
+                                  {option.delivery_time && <p className="text-xs text-gray-500 mt-1">Delivery: {option.delivery_time}</p>}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>
