@@ -10,6 +10,7 @@ import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
+import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
 
@@ -134,7 +135,10 @@ export default function Page({ initialAdmin }){
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - 65% */}
         <div className="flex-1 lg:w-[65%] space-y-8">
-          
+
+          {/* Order Details Card */}
+          <OrderDetailsCard quote={quote} certifications={certifications} />
+
           {/* Line Items Section */}
           <div>
             <div className="flex items-center justify-between mb-4">
