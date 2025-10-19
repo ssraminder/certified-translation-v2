@@ -514,12 +514,23 @@ export default function Page({ initialAdmin }){
 
               {/* Action Buttons */}
               <div className="space-y-2">
-                <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
-                  Confirm and Update Summary
-                </button>
-                <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50">
-                  Send to Customer
-                </button>
+                {isSent ? (
+                  <>
+                    <button onClick={editAndResend} className="w-full rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-white text-sm font-medium">
+                      Edit Quote
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">Puts quote back into edit mode. You can then make changes and resend.</p>
+                  </>
+                ) : (
+                  <>
+                    <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
+                      Confirm and Update Summary
+                    </button>
+                    <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50">
+                      Send to Customer
+                    </button>
+                  </>
+                )}
                 <a href={`/quote-review?id=${encodeURIComponent(quote.order_id)}`} target="_blank" rel="noreferrer" className="block w-full rounded-lg border px-4 py-2 text-center text-sm font-medium">
                   View as Customer
                 </a>
