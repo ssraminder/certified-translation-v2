@@ -8,6 +8,7 @@ import SurchargeModal from '../../../components/admin/adjustments/SurchargeModal
 import CertificationsManager from '../../../components/admin/CertificationsManager';
 import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
+import DocumentUploadSection from '../../../components/admin/DocumentUploadSection';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
 import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
@@ -32,6 +33,7 @@ export default function Page({ initialAdmin }){
   const [editingItem, setEditingItem] = useState(null);
   const [showEditLine, setShowEditLine] = useState(false);
   const [showSendMagicLink, setShowSendMagicLink] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
 
   useEffect(() => {
     const id = window.location.pathname.split('/').pop();
@@ -151,28 +153,20 @@ export default function Page({ initialAdmin }){
       {/* Customer Details Card */}
       <CustomerDetailsCard quote={quote} onEdit={() => setShowEditHeader(true)} />
 
-      {/* Alert */}
-      {showAlert && (
-        <div className="my-4 mb-6 flex items-start gap-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50" role="alert" aria-live="polite">
-          <svg className="mt-0.5 w-4 h-4 text-yellow-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 16 16" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M14.487 12L9.153 2.667a1.333 1.333 0 00-2.32 0L1.5 12c-.243.421.06.933.574.933h11.84c.513 0 .816-.512.573-.933z"/>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 6v2.667M8 11.333h.007"/>
-          </svg>
-          <p className="text-sm text-yellow-900 flex-1">File uploads and automated analysis are disabled in Phase 1. Use Manual Line Items below.</p>
-          <button onClick={()=> setShowAlert(false)} className="p-1 rounded hover:bg-yellow-100" aria-label="Dismiss">
-            <svg className="w-4 h-4 text-yellow-800" fill="none" stroke="currentColor" viewBox="0 0 16 16">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12 4L4 12M4 4l8 8"/>
-            </svg>
-          </button>
-        </div>
-      )}
-
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - 65% */}
         <div className="flex-1 lg:w-[65%] space-y-8">
 
           {/* Order Details Card */}
           <OrderDetailsCard quote={quote} certifications={certifications} />
+
+          {/* Document Upload Section */}
+          <DocumentUploadSection
+            quoteId={quote?.id}
+            initialFiles={uploadedFiles}
+            onFilesChange={setUploadedFiles}
+            canEdit={canEdit}
+          />
 
           {/* Line Items Section */}
           <div>
