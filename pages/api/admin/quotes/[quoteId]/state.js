@@ -11,8 +11,8 @@ function canTransition(from, to){
   const flow = ['draft','under_review','ready','sent'];
   if (flow.includes(f) && flow.includes(t)){
     const fi = flow.indexOf(f); const ti = flow.indexOf(t);
-    // allow forward, and allow ready -> under_review
-    return (ti >= fi) || (f==='ready' && t==='under_review');
+    // allow forward, and allow ready -> under_review, and allow sent -> under_review (for re-editing)
+    return (ti >= fi) || (f==='ready' && t==='under_review') || (f==='sent' && t==='under_review');
   }
   // allow other admin-driven changes if meaningful
   const misc = new Set(['pending','hitl_required','accepted','expired','converted','abandoned','open','archived']);

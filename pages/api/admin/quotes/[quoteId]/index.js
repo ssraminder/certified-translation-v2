@@ -20,7 +20,7 @@ async function handler(req, res){
       const { data: updated, error: upErr } = await supabase.from('quote_submissions').update(update).eq('quote_id', quoteId).select('*, quote_results(*)').maybeSingle();
       if (upErr) return res.status(500).json({ error: upErr.message });
       if (!updated) return res.status(404).json({ error: 'Quote not found' });
-      const can_edit = !['sent','accepted','converted'].includes(String(updated.quote_state||'').toLowerCase());
+      const can_edit = !['accepted','converted'].includes(String(updated.quote_state||'').toLowerCase());
       const totals = updated?.quote_results ? {
         translation_subtotal: updated?.quote_results?.results_json?.pricing?.translation ?? null,
         certification_subtotal: (updated?.quote_results?.results_json?.pricing?.certifications ?? updated?.quote_results?.results_json?.pricing?.certification) ?? null,
@@ -116,7 +116,7 @@ async function handler(req, res){
   if (Array.isArray(resultsRows)){
     results = (effectiveRunId ? resultsRows.find(r => r.run_id === effectiveRunId) : null) || resultsRows[0] || null;
   }
-  const can_edit = !['sent','accepted','converted'].includes(String(q.quote_state||'').toLowerCase());
+  const can_edit = !['accepted','converted'].includes(String(q.quote_state||'').toLowerCase());
 
   const line_items = (items||[]).map(it => ({
     id: it.id,
