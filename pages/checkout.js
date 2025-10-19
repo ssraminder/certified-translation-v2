@@ -2,17 +2,59 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import styles from '../styles/checkout.module.css';
 import { formatForDisplay as formatPhone } from '../lib/formatters/phone';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
-function CheckoutForm({ order }) {
+function CheckoutSteps({ currentStep = 2 }) {
+  const steps = [
+    { number: 1, label: 'Order Details', completed: true },
+    { number: 2, label: 'Payment', completed: false },
+    { number: 3, label: 'Confirmation', completed: false }
+  ];
+
+  return (
+    <div className="flex items-center justify-center gap-4 mb-8">
+      {steps.map((step, idx) => (
+        <div key={step.number} className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-normal ${
+                step.number < currentStep
+                  ? 'bg-blue-600 text-white'
+                  : step.number === currentStep
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-300 text-gray-600'
+              }`}
+            >
+              {step.number < currentStep ? '✓' : step.number}
+            </div>
+            <span
+              className={`text-sm ${
+                step.number === currentStep
+                  ? 'text-blue-600'
+                  : step.number < currentStep
+                  ? 'text-gray-700'
+                  : 'text-gray-400'
+              }`}
+            >
+              {step.label}
+            </span>
+          </div>
+          {idx < steps.length - 1 && <div className="w-12 h-px bg-gray-300"></div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CheckoutForm({ order, onPaymentSuccess }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,137 +80,116 @@ function CheckoutForm({ order }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="checkout-form">
-      <div className={styles.paymentElementContainer}>
-        <h2>Payment Method</h2>
-        <PaymentElement />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Method</h2>
+        
+        <div className="space-y-3">
+          <div
+            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              paymentMethod === 'card'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 bg-white'
+            }`}
+            onClick={() => setPaymentMethod('card')}
+          >
+            <div className="flex items-center justify-center w-4 h-4">
+              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'card' ? 'bg-gray-900' : ''}`}></div>
+            </div>
+            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
+              <path d="M26.6667 6.66663H5.33333C3.86057 6.66663 2.66666 7.86053 2.66666 9.33329V22.6666C2.66666 24.1394 3.86057 25.3333 5.33333 25.3333H26.6667C28.1394 25.3333 29.3333 24.1394 29.3333 22.6666V9.33329C29.3333 7.86053 28.1394 6.66663 26.6667 6.66663Z" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2.66666 13.3334H29.3333" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div className="flex-1">
+              <div className="text-sm font-normal text-gray-900">Credit / Debit Card</div>
+              <div className="flex items-center gap-2 mt-2">
+                {['VISA', 'MC', 'AMEX'].map((brand) => (
+                  <div key={brand} className="px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded bg-white">
+                    {brand}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              paymentMethod === 'debit'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 bg-white'
+            }`}
+            onClick={() => setPaymentMethod('debit')}
+          >
+            <div className="flex items-center justify-center w-4 h-4">
+              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'debit' ? 'bg-gray-900' : ''}`}></div>
+            </div>
+            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
+              <path d="M16 13.3334H16.0133M16 18.6666H16.0133M16 8H16.0133M21.3333 13.3334H21.3467M21.3333 18.6666H21.3467M21.3333 8H21.3467M10.6667 13.3334H10.68M10.6667 18.6666H10.68M10.6667 8H10.68" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M12 29.3333V25.3333C12 24.9797 12.1405 24.6406 12.3905 24.3905C12.6406 24.1405 12.9797 24 13.3333 24H18.6667C19.0203 24 19.3594 24.1405 19.6095 24.3905C19.8595 24.6406 20 24.9797 20 25.3333V29.3333M24 2.66663H8C6.52724 2.66663 5.33334 3.86053 5.33334 5.33329V26.6666C5.33334 28.1394 6.52724 29.3333 8 29.3333H24C25.4728 29.3333 26.6667 28.1394 26.6667 26.6666V5.33329C26.6667 3.86053 25.4728 2.66663 24 2.66663Z" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div className="text-sm font-normal text-gray-900">Pre-authorized Debit</div>
+          </div>
+
+          <div
+            className={`flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              paymentMethod === 'alipay'
+                ? 'border-blue-600 bg-blue-50'
+                : 'border-gray-200 bg-white'
+            }`}
+            onClick={() => setPaymentMethod('alipay')}
+          >
+            <div className="flex items-center justify-center w-4 h-4">
+              <div className={`w-2 h-2 rounded-full ${paymentMethod === 'alipay' ? 'bg-gray-900' : ''}`}></div>
+            </div>
+            <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
+              <path d="M16 2.66663V29.3333M22.6667 6.66663H12.6667C11.429 6.66663 10.242 7.15829 9.36684 8.03346C8.49167 8.90863 8 10.0956 8 11.3333C8 12.571 8.49167 13.758 9.36684 14.6331C10.242 15.5083 11.429 16 12.6667 16H19.3333C20.571 16 21.758 16.4916 22.6332 17.3668C23.5083 18.242 24 19.4289 24 20.6666C24 21.9043 23.5083 23.0913 22.6332 23.9665C21.758 24.8416 20.571 25.3333 19.3333 25.3333H8" stroke="#4A5565" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <div className="text-sm font-normal text-gray-900">Alipay</div>
+          </div>
+        </div>
+
+        {paymentMethod === 'card' && (
+          <div className="mt-6">
+            <PaymentElement />
+          </div>
+        )}
+
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-1 w-4 h-4 rounded border-gray-300"
+            />
+            <span className="text-sm text-gray-700">
+              I agree to the{' '}
+              <a href="/terms" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="/privacy" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                Privacy Policy
+              </a>
+            </span>
+          </label>
+        </div>
       </div>
 
       {errorMessage && (
-        <div className={styles.errorMessage}>❌ {errorMessage}</div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+          {errorMessage}
+        </div>
       )}
-
-      <div className={styles.termsAcceptance}>
-        <label>
-          <input
-            type="checkbox"
-            checked={termsAccepted}
-            onChange={(e) => setTermsAccepted(e.target.checked)}
-          />
-          <span>
-            I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and{' '}
-            <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>
-          </span>
-        </label>
-      </div>
-
-      <button type="submit" disabled={!stripe || isProcessing || !termsAccepted} className={styles.payButton}>
-        {isProcessing ? (<><span className={styles.spinner}></span> Processing...</>) : (<>🔒 Pay ${order.total?.toFixed(2)} Now</>)}
-      </button>
-
-      <p className={styles.securityNote}>
-        🔒 Secure payment powered by Stripe<br />
-        Your payment information is encrypted and secure
-      </p>
     </form>
   );
 }
 
-function AddressDisplay({ address }) {
-  if (!address) return null;
-  return (
-    <div className={styles.addressDisplay}>
-      <div>{address.full_name}</div>
-      {address.email && <div>{address.email}</div>}
-      <div>{formatPhone(address.phone, address.country)}</div>
-      <div>{address.address_line1}</div>
-      {address.address_line2 && <div>{address.address_line2}</div>}
-      <div>{address.city}, {address.province_state} {address.postal_code}</div>
-      <div>{address.country}</div>
-    </div>
-  );
-}
-
-function PriceSummary({ order }) {
-  return (
-    <div className={styles.priceSummary}>
-      <h3>Payment Summary</h3>
-      <div className={styles.priceLine}><span>Translation</span><span>${Number(order.translation_total||0).toFixed(2)}</span></div>
-      <div className={styles.priceLine}><span>Certification</span><span>${Number(order.certification_total||0).toFixed(2)}</span></div>
-      <div className={styles.priceLine}><span>Delivery</span><span>${Number(order.delivery_total||0).toFixed(2)}</span></div>
-      <div className={styles.priceLine}><span>Shipping</span><span>${Number(order.shipping_total||0).toFixed(2)}</span></div>
-      <div className={styles.priceDivider}></div>
-      <div className={styles.priceLine}><span>Subtotal</span><span>${Number(order.subtotal||0).toFixed(2)}</span></div>
-      <div className={styles.priceLine}><span>GST ({Number(order.tax_rate||0)*100}%)</span><span>${Number(order.tax_total||0).toFixed(2)}</span></div>
-      <div className={styles.priceDivider}></div>
-      <div className={`${styles.priceLine} ${styles.total}`}><span>Total</span><span>${Number(order.total||0).toFixed(2)}</span></div>
-    </div>
-  );
-}
-
-function OrderSummary({ order, onEdit }) {
-  const router = useRouter();
-  return (
-    <div className={styles.orderSummary}>
-      <h2>Order Summary</h2>
-
-      <div className={styles.summarySection}>
-        <div className={styles.sectionHeader}>
-          <h3>Documents ({order.documents?.length || 0})</h3>
-          <button className={styles.editLink} onClick={() => router.push(`/order/step-2?quote=${order.quote_id}`)}>Edit</button>
-        </div>
-        <div className="section-content">
-          {(order.documents||[]).map((doc, idx) => (
-            <div key={doc.id || idx} className="document-item">
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="doc-name" title={doc.filename || 'Document'} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.filename || 'Document'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.summarySection}>
-        <div className={styles.sectionHeader}>
-          <h3>Shipping</h3>
-          <button className={styles.editLink} onClick={() => router.push(`/order/step-4?quote=${order.quote_id}`)}>Edit</button>
-        </div>
-        <div className="section-content">
-          {(order.shipping_options||[]).map((option) => (
-            <div key={option.id} className="shipping-item">
-              <div className="shipping-name">
-                {option.name}
-                {option.delivery_time && <span className="shipping-time"> {option.delivery_time}</span>}
-              </div>
-              <div className="shipping-price">{Number(option.price||0) > 0 ? `$${Number(option.price||0).toFixed(2)}` : 'FREE'}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.summarySection}>
-        <div className={styles.sectionHeader}>
-          <h3>Billing Address</h3>
-          <button className={styles.editLink} onClick={() => router.push(`/order/step-4?quote=${order.quote_id}`)}>Edit</button>
-        </div>
-        <div className="section-content">
-          <AddressDisplay address={order.billing_address} />
-        </div>
-      </div>
-
-      {order.shipping_address && order.shipping_address.id !== order.billing_address?.id && (
-        <div className={styles.summarySection}>
-          <div className={styles.sectionHeader}>
-            <h3>Shipping Address</h3>
-            <button className={styles.editLink} onClick={() => router.push(`/order/step-4?quote=${order.quote_id}`)}>Edit</button>
-          </div>
-          <div className="section-content">
-            <AddressDisplay address={order.shipping_address} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function formatBytes(bytes) {
+  const b = Number(bytes || 0);
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function CheckoutPage() {
@@ -178,6 +199,11 @@ export default function CheckoutPage() {
   const [order, setOrder] = useState(null);
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  const stripe = useStripe();
+  const elements = useElements();
 
   useEffect(() => {
     const run = async () => {
@@ -188,9 +214,9 @@ export default function CheckoutPage() {
         if (!resp.ok) throw new Error(data.error || 'Failed to load order');
         setOrder(data.order);
 
-        // Create payment intent
         const pay = await fetch('/api/payment/create-intent', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ order_id: orderId, amount: data.order.total, currency: 'cad' })
         });
         const payJson = await pay.json();
@@ -207,37 +233,286 @@ export default function CheckoutPage() {
     run();
   }, [orderId, router]);
 
-  const stripeOptions = useMemo(() => ({
-    clientSecret,
-    appearance: { theme: 'stripe', variables: { colorPrimary: '#5cb3cc' } }
-  }), [clientSecret]);
+  const stripeOptions = useMemo(
+    () => ({
+      clientSecret,
+      appearance: {
+        theme: 'stripe',
+        variables: { colorPrimary: '#155DFC' }
+      }
+    }),
+    [clientSecret]
+  );
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    if (!termsAccepted) {
+      alert('Please accept the terms and conditions');
+      return;
+    }
+    setIsProcessing(true);
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/order-confirmation?order_id=${order.id}`,
+      },
+    });
+
+    if (error) {
+      alert(error.message || 'Payment failed');
+      setIsProcessing(false);
+    }
+  };
 
   if (loading || !order) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
-        <p>Loading checkout...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading checkout...</p>
+        </div>
       </div>
     );
   }
 
+  const quote = order.quote || {};
+  const totalService = Number(order.translation_total || 0) + Number(order.certification_total || 0);
+
   return (
-    <div className={styles.checkoutPage}>
-      <div className={styles.checkoutContainer}>
-        <h1>Checkout</h1>
-        <div className={styles.orderSummarySection}>
-          <OrderSummary order={order} />
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-gray-600" viewBox="0 0 16 16" fill="none">
+              <path d="M12.6667 7.33334H3.33333C2.59695 7.33334 2 7.93029 2 8.66667V13.3333C2 14.0697 2.59695 14.6667 3.33333 14.6667H12.6667C13.403 14.6667 14 14.0697 14 13.3333V8.66667C14 7.93029 13.403 7.33334 12.6667 7.33334Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4.66667 7.33334V4.66667C4.66667 3.78261 5.01786 2.93477 5.64298 2.30965C6.2681 1.68453 7.11595 1.33334 8 1.33334C8.88406 1.33334 9.7319 1.68453 10.357 2.30965C10.9821 2.93477 11.3333 3.78261 11.3333 4.66667V7.33334" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-sm text-gray-600">Secure Checkout</span>
+          </div>
+          <h1 className="text-3xl font-normal text-gray-900">Checkout</h1>
         </div>
-        <div className={styles.paymentSection}>
-          {clientSecret && (
-            <Elements stripe={stripePromise} options={stripeOptions}>
-              <CheckoutForm order={order} />
-            </Elements>
-          )}
+
+        <CheckoutSteps currentStep={2} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-normal text-gray-900">Order Summary</h2>
+                <button
+                  onClick={() => router.push(`/order/step-2?quote=${order.quote_id}`)}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Order ID:</span>
+                  <span className="text-gray-900">{order.order_number || order.id?.slice(0, 8)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Translation:</span>
+                  <span className="text-gray-900">{quote.source_lang} → {quote.target_lang}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Purpose:</span>
+                  <span className="text-gray-900">{quote.intended_use_name || quote.intended_use || '—'}</span>
+                </div>
+                <div className="pt-3 border-t border-gray-200">
+                  <div className="text-gray-600 mb-2">Documents:</div>
+                  <div className="space-y-2">
+                    {(order.documents || []).map((doc, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-sm">
+                        <svg className="w-4 h-4 text-gray-400 flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                          <path d="M10 1.33334H4C3.64638 1.33334 3.30724 1.47382 3.05719 1.72387C2.80714 1.97392 2.66667 2.31305 2.66667 2.66668V13.3333C2.66667 13.687 2.80714 14.0261 3.05719 14.2762C3.30724 14.5262 3.64638 14.6667 4 14.6667H12C12.3536 14.6667 12.6928 14.5262 12.9428 14.2762C13.1929 14.0261 13.3333 13.687 13.3333 13.3333V4.66668L10 1.33334Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M9.33334 1.33334V4.00001C9.33334 4.35363 9.47381 4.69277 9.72386 4.94282C9.97391 5.19287 10.313 5.33334 10.6667 5.33334H13.3333M6.66667 6H5.33333M10.6667 8.66666H5.33333M10.6667 11.3333H5.33333" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="text-gray-900 truncate flex-1" title={doc.filename}>{doc.filename}</span>
+                        <span className="text-gray-500 text-xs flex-shrink-0">({formatBytes(doc.bytes)})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 text-gray-600" viewBox="0 0 20 20" fill="none">
+                  <path d="M11.6667 15V4.99998C11.6667 4.55795 11.4911 4.13403 11.1785 3.82147C10.866 3.50891 10.442 3.33331 10 3.33331H3.33333C2.89131 3.33331 2.46738 3.50891 2.15482 3.82147C1.84226 4.13403 1.66667 4.55795 1.66667 4.99998V14.1666C1.66667 14.3877 1.75447 14.5996 1.91075 14.7559C2.06703 14.9122 2.27899 15 2.5 15H4.16667M12.5 15H7.5M15.8333 15H17.5C17.721 15 17.933 14.9122 18.0893 14.7559C18.2455 14.5997 18.3333 14.3877 18.3333 14.1667V11.125C18.333 10.9359 18.2683 10.7525 18.15 10.605L15.25 6.98002C15.1721 6.88242 15.0732 6.80359 14.9607 6.74935C14.8482 6.69512 14.7249 6.66687 14.6 6.66669H11.6667M14.1667 16.6666C15.0871 16.6666 15.8333 15.9205 15.8333 15C15.8333 14.0795 15.0871 13.3333 14.1667 13.3333C13.2462 13.3333 12.5 14.0795 12.5 15C12.5 15.9205 13.2462 16.6666 14.1667 16.6666ZM5.83333 16.6666C6.75381 16.6666 7.5 15.9205 7.5 15C7.5 14.0795 6.75381 13.3333 5.83333 13.3333C4.91286 13.3333 4.16667 14.0795 4.16667 15C4.16667 15.9205 4.91286 16.6666 5.83333 16.6666Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <div className="flex-1">
+                  <div className="text-base font-normal text-gray-900">Courier (Trackable)</div>
+                  <div className="text-sm text-gray-600">2-3 business days</div>
+                  <div className="text-xs text-gray-500">Estimated delivery: {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}</div>
+                </div>
+                <div className="text-base text-gray-900">${Number(order.shipping_total || 0).toFixed(2)}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" viewBox="0 0 20 20" fill="none">
+                    <path d="M15.8333 17.5V15.8333C15.8333 14.9493 15.4821 14.1014 14.857 13.4763C14.2319 12.8512 13.3841 12.5 12.5 12.5H7.5C6.61595 12.5 5.7681 12.8512 5.14298 13.4763C4.51786 14.1014 4.16667 14.9493 4.16667 15.8333V17.5M10 9.16667C11.841 9.16667 13.3333 7.67428 13.3333 5.83333C13.3333 3.99238 11.841 2.5 10 2.5C8.15905 2.5 6.66667 3.99238 6.66667 5.83333C6.66667 7.67428 8.15905 9.16667 10 9.16667Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <h2 className="text-xl font-normal text-gray-900">Billing Address</h2>
+                </div>
+                <button
+                  onClick={() => router.push(`/order/step-4?quote=${order.quote_id}`)}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+              {order.billing_address && (
+                <div className="text-sm space-y-2">
+                  <div className="text-base font-normal text-gray-900">{order.billing_address.full_name}</div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                      <path d="M14.6667 4.66669L8.67266 8.48469C8.46926 8.60283 8.23822 8.66506 8.003 8.66506C7.76777 8.66506 7.53674 8.60283 7.33333 8.48469L1.33333 4.66669M13.3333 2.66669H2.66667C1.93029 2.66669 1.33333 3.26364 1.33333 4.00002V12C1.33333 12.7364 1.93029 13.3334 2.66667 13.3334H13.3333C14.0697 13.3334 14.6667 12.7364 14.6667 12V4.00002C14.6667 3.26364 14.0697 2.66669 13.3333 2.66669Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>{order.billing_address.email || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                      <path d="M9.22133 11.0453C9.35902 11.1085 9.51413 11.123 9.66113 11.0863C9.80812 11.0496 9.93822 10.9639 10.03 10.8433L10.2667 10.5333C10.3909 10.3677 10.5519 10.2333 10.737 10.1407C10.9222 10.0482 11.1263 9.99998 11.3333 9.99998H13.3333C13.687 9.99998 14.0261 10.1405 14.2761 10.3905C14.5262 10.6406 14.6667 10.9797 14.6667 11.3333V13.3333C14.6667 13.6869 14.5262 14.0261 14.2761 14.2761C14.0261 14.5262 13.687 14.6666 13.3333 14.6666C10.1507 14.6666 7.09849 13.4024 4.84805 11.1519C2.59761 8.90149 1.33333 5.84924 1.33333 2.66665C1.33333 2.31302 1.47381 1.97389 1.72386 1.72384C1.9739 1.47379 2.31304 1.33331 2.66667 1.33331H4.66667C5.02029 1.33331 5.35943 1.47379 5.60947 1.72384C5.85952 1.97389 6 2.31302 6 2.66665V4.66665C6 4.87364 5.95181 5.07779 5.85923 5.26293C5.76666 5.44807 5.63226 5.60912 5.46667 5.73331L5.15467 5.96731C5.03228 6.06076 4.94601 6.1937 4.91053 6.34355C4.87504 6.49339 4.89252 6.6509 4.96 6.78931C5.87112 8.63989 7.36961 10.1365 9.22133 11.0453Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>{formatPhone(order.billing_address.phone, order.billing_address.country)}</span>
+                  </div>
+                  <div className="text-gray-600">
+                    <div>{order.billing_address.address_line1}</div>
+                    {order.billing_address.address_line2 && <div>{order.billing_address.address_line2}</div>}
+                    <div>{order.billing_address.city}, {order.billing_address.province_state} {order.billing_address.postal_code}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-600" viewBox="0 0 20 20" fill="none">
+                    <path d="M16.6667 8.33335C16.6667 12.4942 12.0508 16.8275 10.5008 18.1659C10.3564 18.2744 10.1807 18.3331 10 18.3331C9.81933 18.3331 9.64356 18.2744 9.49917 18.1659C7.94917 16.8275 3.33333 12.4942 3.33333 8.33335C3.33333 6.56524 4.03571 4.86955 5.28595 3.61931C6.5362 2.36907 8.23189 1.66669 10 1.66669C11.7681 1.66669 13.4638 2.36907 14.714 3.61931C15.9643 4.86955 16.6667 6.56524 16.6667 8.33335Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M10 10.8333C11.3807 10.8333 12.5 9.71402 12.5 8.33331C12.5 6.9526 11.3807 5.83331 10 5.83331C8.61929 5.83331 7.5 6.9526 7.5 8.33331C7.5 9.71402 8.61929 10.8333 10 10.8333Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <h2 className="text-xl font-normal text-gray-900">Shipping Address</h2>
+                </div>
+                <button
+                  onClick={() => router.push(`/order/step-4?quote=${order.quote_id}`)}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700 mb-4">
+                <input
+                  type="checkbox"
+                  checked={!order.shipping_address || order.shipping_address.id === order.billing_address?.id}
+                  readOnly
+                  className="w-4 h-4 rounded border-gray-900 bg-gray-900 text-white"
+                />
+                <span>Same as billing address</span>
+              </label>
+              {order.shipping_address && order.shipping_address.id !== order.billing_address?.id && (
+                <div className="pl-6 border-l-2 border-gray-200 text-sm space-y-1 text-gray-600">
+                  <div className="text-base font-normal text-gray-900">{order.shipping_address.full_name}</div>
+                  <div>{order.shipping_address.address_line1}</div>
+                  {order.shipping_address.address_line2 && <div>{order.shipping_address.address_line2}</div>}
+                  <div>{order.shipping_address.city}, {order.shipping_address.province_state} {order.shipping_address.postal_code}</div>
+                </div>
+              )}
+              {(!order.shipping_address || order.shipping_address.id === order.billing_address?.id) && order.billing_address && (
+                <div className="pl-6 border-l-2 border-gray-200 text-sm space-y-1 text-gray-600">
+                  <div className="text-base font-normal text-gray-900">{order.billing_address.full_name}</div>
+                  <div>{order.billing_address.address_line1}</div>
+                  {order.billing_address.address_line2 && <div>{order.billing_address.address_line2}</div>}
+                  <div>{order.billing_address.city}, {order.billing_address.province_state} {order.billing_address.postal_code}</div>
+                </div>
+              )}
+            </div>
+
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={stripeOptions}>
+                <CheckoutForm order={order} />
+              </Elements>
+            )}
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg border-2 border-gray-300 p-6 shadow-md sticky top-8">
+              <h2 className="text-xl font-normal text-gray-900 mb-6">Payment Summary</h2>
+              
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-base text-gray-900">Certified Translation Service</div>
+                    <div className="text-sm text-gray-600">{quote.source_lang} to {quote.target_lang}</div>
+                  </div>
+                  <div className="text-base text-gray-900">${totalService.toFixed(2)}</div>
+                </div>
+                
+                <div className="flex justify-between items-center pb-4 border-b border-gray-300">
+                  <div className="text-base text-gray-900">Courier Shipping</div>
+                  <div className="text-base text-gray-900">${Number(order.shipping_total || 0).toFixed(2)}</div>
+                </div>
+                
+                <div className="flex justify-between items-center pt-2">
+                  <div className="text-base text-gray-700">Subtotal</div>
+                  <div className="text-base text-gray-900">${Number(order.subtotal || 0).toFixed(2)}</div>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">GST ({(Number(order.tax_rate || 0) * 100).toFixed(0)}%)</div>
+                  <div className="text-sm text-gray-600">${Number(order.tax_total || 0).toFixed(2)}</div>
+                </div>
+                
+                <div className="flex justify-between items-center pt-4 border-t-2 border-gray-300">
+                  <div className="text-lg text-gray-900">Total</div>
+                  <div className="text-3xl font-normal text-gray-900">${Number(order.total || 0).toFixed(2)}</div>
+                </div>
+              </div>
+
+              <button
+                onClick={handlePayment}
+                disabled={!stripe || !elements || isProcessing || !termsAccepted}
+                className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isProcessing ? 'Processing...' : `Pay $${Number(order.total || 0).toFixed(2)}`}
+              </button>
+
+              <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" viewBox="0 0 17 16" fill="none">
+                      <path d="M13.9349 8.6667C13.9349 12 11.6016 13.6667 8.82825 14.6334C8.68302 14.6826 8.52527 14.6802 8.38158 14.6267C5.60158 13.6667 3.26825 12 3.26825 8.6667V4.00004C3.26825 3.82322 3.33849 3.65366 3.46351 3.52863C3.58854 3.40361 3.75811 3.33337 3.93492 3.33337C5.26825 3.33337 6.93492 2.53337 8.09492 1.52004C8.23615 1.39937 8.41582 1.33307 8.60158 1.33307C8.78735 1.33307 8.96701 1.39937 9.10825 1.52004C10.2749 2.54004 11.9349 3.33337 13.2682 3.33337C13.4451 3.33337 13.6146 3.40361 13.7397 3.52863C13.8647 3.65366 13.9349 3.82322 13.9349 4.00004V8.6667Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>SSL Secure</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4" viewBox="0 0 17 16" fill="none">
+                      <path d="M13.2214 7.33331H3.88802C3.15164 7.33331 2.55469 7.93027 2.55469 8.66665V13.3333C2.55469 14.0697 3.15164 14.6666 3.88802 14.6666H13.2214C13.9577 14.6666 14.5547 14.0697 14.5547 13.3333V8.66665C14.5547 7.93027 13.9577 7.33331 13.2214 7.33331ZM5.22137 7.33331V4.66665C5.22137 3.78259 5.57256 2.93475 6.19769 2.30962C6.82281 1.6845 7.67065 1.33331 8.55471 1.33331C9.43876 1.33331 10.2866 1.6845 10.9117 2.30962C11.5369 2.93475 11.888 3.78259 11.888 4.66665V7.33331" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Encrypted</span>
+                  </div>
+                </div>
+                
+                <div className="text-center text-xs text-gray-500">Powered by Stripe</div>
+                
+                <div className="flex items-center justify-center gap-3">
+                  {['VISA', 'Mastercard', 'AMEX', 'Discover'].map((brand) => (
+                    <div key={brand} className="px-2 py-1 text-xs text-gray-400 border border-gray-300 rounded">
+                      {brand}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div className={styles.checkoutSidebar}>
-        <PriceSummary order={order} />
       </div>
     </div>
   );
