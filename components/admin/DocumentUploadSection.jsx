@@ -406,7 +406,11 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
                     <div className="filename">{file.filename}</div>
                     <div className="file-meta">
                       {file.page_count ? file.page_count + ' pages' : '— pages'} • {formatFileSize(file.file_size)} •{' '}
-                      Uploaded {formatTimeAgo(file.uploaded_at)}
+                      {file.source === 'upload' ? (
+                        <span style={{ color: '#f59e0b', fontWeight: '500' }}>⚠️ Pending Upload</span>
+                      ) : (
+                        `Uploaded ${formatTimeAgo(file.uploaded_at)}`
+                      )}
                     </div>
                   </div>
                 </div>
