@@ -109,12 +109,8 @@ export default function QuoteCheckoutPage() {
     try {
       setError('');
 
-      if (!emailOk(billing.email)) throw new Error('Please enter a valid email');
-      if (!isPhoneValid(billing.phone, billing.country)) throw new Error('Please enter a valid phone');
-      
-      const requiredBilling = ['full_name', 'address_line1', 'city', 'province_state', 'postal_code', 'country'];
-      for (const k of requiredBilling) {
-        if (!String(billing[k] || '').trim()) throw new Error('Please complete all required billing fields');
+      if (!validateBillingAddress(billing)) {
+        throw new Error('Please complete all required billing fields with valid data');
       }
 
       if (!selectedShipping) {
@@ -127,9 +123,8 @@ export default function QuoteCheckoutPage() {
           const { email: _e, ...copyBill } = billing;
           shippingPayload = copyBill;
         } else {
-          const requiredShip = ['full_name', 'phone', 'address_line1', 'city', 'province_state', 'postal_code', 'country'];
-          for (const k of requiredShip) {
-            if (!String(shipping[k] || '').trim()) throw new Error('Please complete all required shipping fields');
+          if (!validateBillingAddress(shipping)) {
+            throw new Error('Please complete all required shipping fields');
           }
           shippingPayload = shipping;
         }
