@@ -131,12 +131,23 @@ async function deleteQuotes(req, res){
 
   try {
     for (const quoteId of quoteIds) {
+      const { data: orders } = await supabase.from('orders').select('id').eq('quote_id', quoteId);
+      const orderIds = (orders || []).map(o => o.id);
+
+      if (orderIds.length > 0) {
+        await supabase.from('order_shipping_options').delete().in('order_id', orderIds);
+        await supabase.from('order_status_history').delete().in('order_id', orderIds);
+        await supabase.from('orders').delete().in('id', orderIds);
+      }
+
       await supabase.from('quote_sub_orders').delete().eq('quote_id', quoteId);
       await supabase.from('quote_files').delete().eq('quote_id', quoteId);
       await supabase.from('quote_adjustments').delete().eq('quote_id', quoteId);
       await supabase.from('quote_certifications').delete().eq('quote_id', quoteId);
       await supabase.from('quote_results').delete().eq('quote_id', quoteId);
       await supabase.from('ocr_analysis').delete().eq('quote_id', quoteId);
+      await supabase.from('quote_shipping_options').delete().eq('quote_id', quoteId);
+      await supabase.from('addresses').delete().eq('quote_id', quoteId);
     }
 
     const { error } = await supabase.from('quote_submissions').delete().in('quote_id', quoteIds);
