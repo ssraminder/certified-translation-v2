@@ -39,14 +39,16 @@ async function handler(req, res) {
     const payload = { ...originalPayload };
 
     // Generate fresh signed URLs for each file associated with this quote
+    // Exclude reference files from webhook analysis
     const quoteId = payload.quote_id || payload.quoteId || null;
     if (quoteId) {
       const supabase = getSupabaseServerClient();
       const BUCKET = 'orders';
       const { data: files } = await supabase
         .from('quote_files')
-        .select('file_id, filename, file_url, signed_url, storage_path')
-        .eq('quote_id', quoteId);
+        .select('file_id, filename, file_url, signed_url, storage_path, file_purpose')
+        .eq('quote_id', quoteId)
+        .neq('file_purpose', 'reference');
       const signedFiles = await Promise.all((files || []).map(async (f) => {
         let url = null; let expiresAt = null;
         try {
