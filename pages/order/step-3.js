@@ -1429,6 +1429,7 @@ export default function Step3() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{infoMessage}</div>
               )}
               <QuoteSummaryCard quoteMeta={quoteMeta} jobId={jobId || quoteMeta?.job_id} />
+              <ReferenceFilesAndNotes files={files} quoteMeta={quoteMeta} />
               <LineItemsTable
                 items={lineItems}
                 onRemove={handleRemoveItem}
