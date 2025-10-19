@@ -84,13 +84,13 @@ export default function OrderDetailPage(){
             ) : (
               <div className="divide-y">
                 {o.documents.map((d) => (
-                  <div key={d.id} className="py-3 flex items-center justify-between text-sm">
-                    <div>
-                      <div className="font-medium text-gray-900">{d.filename}</div>
-                      <div className="text-gray-600">{bytes(d.bytes)} • {d.content_type || 'file'}</div>
+                  <div key={d.id} className="py-3 flex items-center justify-between text-sm gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 truncate" title={d.filename}>{d.filename}</div>
+                      <div className="text-gray-600 text-xs mt-1">{bytes(d.bytes)} • {d.content_type || 'file'}</div>
                     </div>
                     {d.file_url || d.signed_url ? (
-                      <a href={d.file_url || d.signed_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:text-cyan-700">Download</a>
+                      <a href={d.file_url || d.signed_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:text-cyan-700 flex-shrink-0">Download</a>
                     ) : null}
                   </div>
                 ))}
