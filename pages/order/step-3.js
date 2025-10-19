@@ -1098,7 +1098,7 @@ export default function Step3() {
       const submission = submissionRes.data;
       if (!submission) {
         setError('We could not find your quote details.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.MISSING_QUOTE_DATA);
         setShowHITL(true);
         return;
       }
@@ -1109,7 +1109,7 @@ export default function Step3() {
       const normalizedItems = normalizeLineItems(lineItemsRes.data || []);
       if (normalizedItems.length === 0) {
         setError('No billable documents were returned. Our team will prepare a manual quote.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.NO_DOCUMENTS);
         setShowHITL(true);
         return;
       }
@@ -1117,7 +1117,7 @@ export default function Step3() {
       const totals = calculateTotals(normalizedItems);
       if (totals.total <= 0) {
         setError('The automated calculation returned $0. Our team will review this manually.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.ZERO_TOTAL);
         setShowHITL(true);
         return;
       }
@@ -1127,7 +1127,7 @@ export default function Step3() {
       if (totals.subtotal < baseRate) {
         setMinimumOrder(baseRate);
         setError('Your order is below our minimum. A human specialist will provide a custom quote.');
-        await triggerHitlReview(targetQuoteId);
+        await triggerHitlReview(targetQuoteId, HITL_REASONS.BELOW_MINIMUM);
         setShowHITL(true);
         return;
       }
@@ -1382,7 +1382,7 @@ export default function Step3() {
     setIsSaving(true);
     setError('');
     try {
-      await triggerHitlReview(quoteId);
+      await requestHitlReview(supabase, quoteId);
       setShowHITL(true);
       setInfoMessage('Our certified team has been notified. We will send a manual quote shortly.');
     } catch (err) {
