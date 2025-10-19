@@ -9,13 +9,15 @@ function parseQuery(q){
   const limit = Math.min(100, Math.max(1, Number(q.limit || 20)));
   const search = (q.search || '').toString().trim();
   const status = (q.status || 'all').toString().trim().toLowerCase();
-  return { page, limit, search, status };
+  const startDate = (q.start_date || '').toString().trim() || null;
+  const endDate = (q.end_date || '').toString().trim() || null;
+  return { page, limit, search, status, startDate, endDate };
 }
 
 async function listQuotes(req, res){
   if (!hasPermission(req.admin?.role, 'quotes', 'view')) return res.status(403).json({ error: 'Forbidden' });
   const supabase = getSupabaseServerClient();
-  const { page, limit, search, status } = parseQuery(req.query || {});
+  const { page, limit, search, status, startDate, endDate } = parseQuery(req.query || {});
 
   let query = supabase
     .from('quote_submissions')
@@ -27,6 +29,8 @@ async function listQuotes(req, res){
     const like = `%${search}%`;
     query = query.or(`quote_number.ilike.${like},name.ilike.${like},email.ilike.${like}`);
   }
+  if (startDate) query = query.gte('created_at', startDate);
+  if (endDate) query = query.lte('created_at', endDate);
 
   const from = (page - 1) * limit;
   const to = from + limit - 1;
