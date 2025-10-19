@@ -267,7 +267,17 @@ export default function Step1() {
   }
 
   async function triggerWebhook(quoteId) {
-    const payload = JSON.stringify({ quote_id: quoteId });
+    let runId = null;
+    try {
+      const resp = await fetch(`/api/quotes/${encodeURIComponent(quoteId)}/analysis-run`, { method: 'POST' });
+      const json = await resp.json();
+      if (resp.ok) runId = json?.run_id || null;
+    } catch {}
+
+    const payloadObj = { quote_id: quoteId };
+    if (runId) payloadObj.run_id = runId;
+    const payload = JSON.stringify(payloadObj);
+
     try {
       console.log('[Step1] Triggering webhook for quoteId:', quoteId);
       const response = await fetch('/api/trigger-n8n', {
