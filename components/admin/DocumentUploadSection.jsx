@@ -116,7 +116,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
   async function handleFinishUpload() {
     const pendingFiles = uploadedFiles.filter(f => f.source === 'upload' && f.file_object);
-    if (pendingFiles.length === 0) return;
+    if (pendingFiles.length === 0) {
+      alert('No pending files to upload');
+      return;
+    }
 
     setIsUploading(true);
     try {
@@ -125,7 +128,7 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
 
       for (const file of pendingFiles) {
         form.append('files', file.file_object);
-        purposes.push(file.document_type);
+        purposes.push(file.document_type || 'translate');
       }
 
       form.append('file_purposes', JSON.stringify(purposes));
@@ -144,8 +147,10 @@ export default function DocumentUploadSection({ quoteId, initialFiles = [], onFi
         setSuccessMessage(`Successfully uploaded ${json.uploaded_files.length} file(s)`);
         setTimeout(() => setSuccessMessage(''), 3000);
 
+        // Remove pending files from local state
         setUploadedFiles(prev => prev.filter(f => f.source !== 'upload'));
 
+        // Trigger parent refetch to get updated file list from server
         if (onUploadComplete) {
           onUploadComplete();
         }
