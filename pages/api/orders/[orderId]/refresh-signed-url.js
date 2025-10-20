@@ -69,7 +69,7 @@ async function handler(req, res) {
     // Update the file record with the new signed URL
     const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
     await supabase
-      .from('quote_files')
+      .from(table)
       .update({
         signed_url: signedUrl,
         file_url: signedUrl,
