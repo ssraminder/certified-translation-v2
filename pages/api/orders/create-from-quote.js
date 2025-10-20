@@ -109,11 +109,11 @@ async function handler(req, res){
     const { quote_id, billing_address, shipping_address, shipping_option_ids, user_id } = req.body || {};
     if (!quote_id) return res.status(400).json({ error: 'quote_id is required' });
 
-    const quote = await getQuoteTotals(supabase, quote_id);
-    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    const { totals: quoteTotals, quote: quoteData } = await getQuoteData(supabase, quote_id);
+    if (!quoteTotals) return res.status(404).json({ error: 'Quote not found' });
 
-    if (quote.converted_to_order_id) {
-      const existing = await getOrderWithDetails(supabase, quote.converted_to_order_id);
+    if (quoteTotals.converted_to_order_id) {
+      const existing = await getOrderWithDetails(supabase, quoteTotals.converted_to_order_id);
       return res.status(200).json({ order: existing, message: 'Quote already converted to order' });
     }
 
@@ -128,7 +128,7 @@ async function handler(req, res){
     const shippingOptions = await fetchShippingOptionsSnapshot(supabase, selectedIds);
     const shipping_total = round2(shippingOptions.reduce((sum, o) => sum + Number(o.price||0), 0));
 
-    const baseSubtotal = Number(quote.subtotal || 0);
+    const baseSubtotal = Number(quoteTotals.subtotal || 0);
     const subtotal = round2(baseSubtotal + shipping_total);
     const tax_rate = GST_RATE;
     const tax_total = round2(subtotal * tax_rate);
@@ -157,6 +157,16 @@ async function handler(req, res){
       customer_email: billAddr?.email || '',
       customer_phone: billAddr?.phone || null,
       is_guest: !user_id,
+      source_language: quoteData?.source_lang || null,
+      target_language: quoteData?.target_lang || null,
+      document_type: null,
+      page_count: null,
+      word_count: null,
+      urgency: null,
+      due_date: quoteData?.delivery_date || null,
+      project_status: 'not_started',
+      special_instructions: null,
+      internal_notes: null,
     };
     const { data: orderRows, error: orderErr } = await supabase
       .from('orders')
