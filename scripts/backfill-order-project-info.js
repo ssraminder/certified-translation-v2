@@ -41,7 +41,7 @@ async function backfillOrderProjectInfo() {
       try {
         const { data: quoteSubmission, error: subError } = await supabase
           .from('quote_submissions')
-          .select('source_lang, target_lang, delivery_speed, delivery_date')
+          .select('source_lang, target_lang, delivery_option, delivery_date')
           .eq('quote_id', quoteId)
           .maybeSingle();
 
@@ -67,7 +67,7 @@ async function backfillOrderProjectInfo() {
           target_language: quoteSubmission.target_lang || null,
           document_type: documentType,
           page_count: totalPages > 0 ? totalPages : null,
-          urgency: quoteSubmission.delivery_speed || null,
+          urgency: quoteSubmission.delivery_option || null,
           due_date: quoteSubmission.delivery_date || null,
           updated_at: new Date().toISOString(),
         };
