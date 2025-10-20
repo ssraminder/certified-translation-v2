@@ -28,6 +28,17 @@ async function handler(req, res) {
         'discount_amount',
         'discount_type',
         'discount_reason',
+        'service_type',
+        'source_language',
+        'target_language',
+        'document_type',
+        'page_count',
+        'word_count',
+        'urgency',
+        'due_date',
+        'project_status',
+        'special_instructions',
+        'internal_notes',
       ];
 
       for (const [key, value] of Object.entries(updates)) {
