@@ -9,6 +9,7 @@ import CertificationsManager from '../../../components/admin/CertificationsManag
 import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
 import DocumentUploadSection from '../../../components/admin/DocumentUploadSection';
+import FilesDisplay from '../../../components/FilesDisplay';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
 import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
@@ -24,6 +25,7 @@ export default function Page({ initialAdmin }){
   const [adjustments, setAdjustments] = useState([]);
   const [totals, setTotals] = useState(null);
   const [files, setFiles] = useState([]);
+  const [referenceFiles, setReferenceFiles] = useState([]);
   const [certifications, setCertifications] = useState([]);
   const [showManual, setShowManual] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
@@ -52,6 +54,7 @@ export default function Page({ initialAdmin }){
         setAdjustments(json.adjustments || []);
         setTotals(json.totals || null);
         setFiles(json.documents || []);
+        setReferenceFiles(json.reference_materials || []);
         setCertifications(json.certifications || []);
       } catch (err) {
         console.error('Error fetching quote:', err);
@@ -240,6 +243,19 @@ export default function Page({ initialAdmin }){
               onUploadComplete={refetchFiles}
               canEdit={canEdit}
             />
+
+            {/* Files Display Section */}
+            {(files.length > 0 || referenceFiles.length > 0) && (
+              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-6">Files & Documents</h2>
+                <FilesDisplay
+                  quoteFiles={files}
+                  referenceFiles={referenceFiles}
+                  context="quote"
+                  isAdmin={true}
+                />
+              </section>
+            )}
 
             {/* Line Items Section */}
             <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">

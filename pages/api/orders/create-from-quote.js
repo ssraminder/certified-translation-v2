@@ -292,17 +292,34 @@ async function getOrderWithDetails(supabase, orderId){
   if (error) throw error;
   if (!order) return null;
 
-  const [billing, shipping, shippingOptions, files, userData] = await Promise.all([
+  const [billing, shipping, shippingOptions, files, referenceFiles, userData] = await Promise.all([
     supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle(),
     supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle(),
     supabase.from('order_shipping_options').select('*').eq('order_id', orderId),
     supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', orderId),
+    supabase.from('quote_reference_materials').select('id, quote_id, filename, storage_path, file_url, signed_url, bytes, content_type, file_url_expires_at, file_purpose, notes, created_at').eq('quote_id', order.quote_id),
     order.user_id ? supabase.from('users').select('id, email, first_name, last_name, phone, account_type, company_name, company_registration, business_license, designation, tax_id').eq('id', order.user_id).maybeSingle() : Promise.resolve({ data: null })
   ]);
 
   // Regenerate signed URLs for files if expired
   const BUCKET = 'orders';
   const filesWithUrls = await Promise.all((files.data || []).map(async (f) => {
+    let url = f.file_url || f.signed_url || null;
+    // Check if URL is expired or missing
+    if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
+      try {
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+        if (signed?.signedUrl) {
+          url = signed.signedUrl;
+        }
+      } catch (err) {
+        console.error('Failed to generate signed URL:', err);
+      }
+    }
+    return { ...f, file_url: url };
+  }));
+
+  const referenceFilesWithUrls = await Promise.all((referenceFiles.data || []).map(async (f) => {
     let url = f.file_url || f.signed_url || null;
     // Check if URL is expired or missing
     if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
@@ -327,6 +344,7 @@ async function getOrderWithDetails(supabase, orderId){
     shipping_address: shipping.data || null,
     shipping_options: shippingOptions.data || [],
     documents: filesWithUrls,
+    reference_materials: referenceFilesWithUrls,
     customer_type: customerType,
     company_name: user?.company_name || null,
     company_registration: user?.company_registration || null,

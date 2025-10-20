@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '../../../components/DashboardLayout';
 import { useAuth } from '../../../middleware/auth';
 import StatusBadge from '../../../components/dashboard/StatusBadge';
+import FilesDisplay from '../../../components/FilesDisplay';
 import Link from 'next/link';
 import { formatForDisplay as formatPhone } from '../../../lib/formatters/phone';
 
@@ -77,26 +78,17 @@ export default function OrderDetailPage(){
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Documents ({o.documents?.length || 0})</h3>
-            {(!o.documents || o.documents.length === 0) ? (
-              <div className="text-sm text-gray-600">No documents.</div>
-            ) : (
-              <div className="divide-y">
-                {o.documents.map((d) => (
-                  <div key={d.id} className="py-3 flex items-center justify-between text-sm gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-gray-900 truncate" title={d.filename}>{d.filename}</div>
-                      <div className="text-gray-600 text-xs mt-1">{bytes(d.bytes)} • {d.content_type || 'file'}</div>
-                    </div>
-                    {d.file_url || d.signed_url ? (
-                      <a href={d.file_url || d.signed_url} target="_blank" rel="noreferrer" className="text-cyan-600 hover:text-cyan-700 flex-shrink-0">Download</a>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {(o.documents?.length > 0 || o.reference_materials?.length > 0) && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Files & Documents</h3>
+              <FilesDisplay
+                quoteFiles={o.documents || []}
+                referenceFiles={o.reference_materials || []}
+                context="order"
+                isAdmin={false}
+              />
+            </div>
+          )}
 
           {(o.billing_address || o.shipping_address) && (
             <div className="bg-white rounded-lg border border-gray-200 p-6">

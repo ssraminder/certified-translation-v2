@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import DashboardLayout from '../../../components/DashboardLayout';
 import { useAuth } from '../../../middleware/auth';
+import FilesDisplay from '../../../components/FilesDisplay';
 import Link from 'next/link';
 
 export default function QuoteDetailPage() {
@@ -109,26 +110,17 @@ export default function QuoteDetailPage() {
             </div>
           </section>
 
-          <section className="bg-white rounded-lg border border-gray-200 p-4">
-            <h2 className="font-semibold text-gray-900 mb-3">Documents</h2>
-            {quote.documents?.length ? (
-              <div className="divide-y border rounded-lg">
-                {quote.documents.map((d) => (
-                  <div key={d.id} className="p-3 flex items-center justify-between text-sm">
-                    <div className="truncate">
-                      <div className="font-medium text-gray-900 truncate">{d.original_filename}</div>
-                      <div className="text-gray-600">{(d.file_size || 0).toLocaleString()} bytes • {d.content_type || 'file'}</div>
-                    </div>
-                    {d.file_url && (
-                      <a href={d.file_url} target="_blank" rel="noreferrer" className="px-3 py-1 bg-gray-100 rounded">View</a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-gray-600">No documents uploaded.</div>
-            )}
-          </section>
+          {(quote.documents?.length > 0 || quote.reference_materials?.length > 0) && (
+            <section className="bg-white rounded-lg border border-gray-200 p-4">
+              <h2 className="font-semibold text-gray-900 mb-3">Files & Documents</h2>
+              <FilesDisplay
+                quoteFiles={quote.documents || []}
+                referenceFiles={quote.reference_materials || []}
+                context="quote"
+                isAdmin={false}
+              />
+            </section>
+          )}
 
           <section className="bg-white rounded-lg border border-gray-200 p-4">
             <h2 className="font-semibold text-gray-900 mb-3">Line Items</h2>

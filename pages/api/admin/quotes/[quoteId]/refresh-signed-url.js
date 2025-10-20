@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,28 +7,21 @@ async function handler(req, res) {
   }
 
   try {
-    const { orderId, fileId, tableType } = req.body;
-    const docId = fileId || req.body.docId;
+    const { quoteId, fileId, tableType } = req.body;
 
-    if (!orderId || !docId) {
-      return res.status(400).json({ error: 'Missing orderId or docId' });
+    if (!quoteId || !fileId) {
+      return res.status(400).json({ error: 'Missing quoteId or fileId' });
     }
 
     const supabase = getSupabaseServerClient();
     const BUCKET = 'orders';
     const table = tableType === 'reference' ? 'quote_reference_materials' : 'quote_files';
 
-    // Fetch the file record
-    const query = supabase
+    const { data: file, error: fetchError } = await supabase
       .from(table)
       .select('id, storage_path, filename')
-      .eq('id', docId);
-
-    if (table === 'quote_files') {
-      query.eq('order_id', orderId);
-    }
-
-    const { data: file, error: fetchError } = await query.maybeSingle();
+      .eq('id', fileId)
+      .maybeSingle();
 
     if (fetchError) {
       return res.status(500).json({ error: fetchError.message });
@@ -42,12 +35,11 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'File storage path not available' });
     }
 
-    // Generate a new signed URL
     let signedUrl = null;
     try {
       const { data: signed, error: signError } = await supabase.storage
         .from(BUCKET)
-        .createSignedUrl(file.storage_path, 3600); // 1 hour expiry
+        .createSignedUrl(file.storage_path, 3600);
 
       if (signError) {
         console.error('Failed to create signed URL:', signError);
@@ -66,7 +58,6 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to generate download link' });
     }
 
-    // Update the file record with the new signed URL
     const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
     await supabase
       .from(table)
@@ -75,7 +66,7 @@ async function handler(req, res) {
         file_url: signedUrl,
         file_url_expires_at: expiresAt
       })
-      .eq('id', docId);
+      .eq('id', fileId);
 
     return res.status(200).json({
       success: true,
