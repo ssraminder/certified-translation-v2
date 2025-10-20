@@ -16,12 +16,25 @@ function extractSecret(req) {
 function normalizeRow(input) {
   if (!input || typeof input !== 'object') return null;
   const row = { ...input };
-  if (row.page_number != null) {
-    const n = Number(row.page_number);
-    if (!Number.isNaN(n)) row.page_number = n;
+
+  // Normalize numeric fields
+  const numericFields = ['page_number', 'raw_wordcount', 'billable_pages', 'complexity_multiplier', 'confidence_score', 'page_confidence_score', 'text_extraction_confidence', 'language_detection_confidence', 'document_classification_confidence'];
+  for (const field of numericFields) {
+    if (row[field] != null) {
+      const n = Number(row[field]);
+      if (!Number.isNaN(n)) row[field] = n;
+    }
   }
+
+  // Normalize boolean fields
+  if (row.is_first_page != null) {
+    row.is_first_page = Boolean(row.is_first_page);
+  }
+
+  // Trim string fields
   if (typeof row.filename === 'string') row.filename = row.filename.trim();
   if (typeof row.quote_id === 'string') row.quote_id = row.quote_id.trim();
+
   row.updated_at = new Date().toISOString();
   return row;
 }
