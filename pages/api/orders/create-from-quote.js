@@ -122,7 +122,7 @@ async function handler(req, res){
     const { quote_id, billing_address, shipping_address, shipping_option_ids, user_id } = req.body || {};
     if (!quote_id) return res.status(400).json({ error: 'quote_id is required' });
 
-    const { totals: quoteTotals, quote: quoteData } = await getQuoteData(supabase, quote_id);
+    const { totals: quoteTotals, quote: quoteData, totalPages, documentType } = await getQuoteData(supabase, quote_id);
     if (!quoteTotals) return res.status(404).json({ error: 'Quote not found' });
 
     if (quoteTotals.converted_to_order_id) {
@@ -172,10 +172,10 @@ async function handler(req, res){
       is_guest: !user_id,
       source_language: quoteData?.source_lang || null,
       target_language: quoteData?.target_lang || null,
-      document_type: null,
-      page_count: null,
+      document_type: documentType,
+      page_count: totalPages > 0 ? totalPages : null,
       word_count: null,
-      urgency: null,
+      urgency: quoteData?.delivery_speed || null,
       due_date: quoteData?.delivery_date || null,
       project_status: 'not_started',
       special_instructions: null,
