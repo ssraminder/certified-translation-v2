@@ -22,7 +22,6 @@ async function handler(req, res) {
       'page_count',
       'word_count',
       'urgency',
-      'assigned_to',
       'due_date',
       'project_status',
       'special_instructions',
