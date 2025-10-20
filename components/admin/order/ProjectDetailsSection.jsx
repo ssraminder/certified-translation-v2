@@ -68,16 +68,16 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           onClick={() => {
             if (isEditing) {
               setFormData({
-                service_type: order.service_type || 'Translation',
-                source_language: order.source_language || 'Hindi',
-                target_language: order.target_language || 'English',
-                document_type: order.document_type || 'Academic',
-                page_count: order.page_count || 5,
-                word_count: order.word_count || 2500,
-                urgency: order.urgency || 'rush',
+                service_type: order.service_type || '',
+                source_language: order.source_language || '',
+                target_language: order.target_language || '',
+                document_type: order.document_type || '',
+                page_count: order.page_count || null,
+                word_count: order.word_count || null,
+                urgency: order.urgency || '',
                 assigned_to: order.assigned_to || '',
                 due_date: order.due_date || '',
-                project_status: order.project_status || 'in_translation',
+                project_status: order.project_status || '',
                 special_instructions: order.special_instructions || '',
                 internal_notes: order.internal_notes || '',
               });
