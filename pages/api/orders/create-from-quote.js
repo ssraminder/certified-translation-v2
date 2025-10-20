@@ -175,7 +175,7 @@ async function handler(req, res){
       document_type: documentType,
       page_count: totalPages > 0 ? totalPages : null,
       word_count: null,
-      urgency: quoteData?.delivery_speed || null,
+      urgency: quoteData?.delivery_option || null,
       due_date: quoteData?.delivery_date || null,
       project_status: 'not_started',
       special_instructions: null,
