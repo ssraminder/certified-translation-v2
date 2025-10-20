@@ -74,7 +74,8 @@ async function checkOrder() {
     // If there's a quote_id, fetch related information
     if (order.quote_id) {
       console.log('\n🔗 Fetching Quote-Related Data...');
-      
+      console.log(`  Quote ID: ${order.quote_id}`);
+
       // Try to get quote files
       const { data: quoteFiles, error: filesError } = await supabase
         .from('quote_files')
