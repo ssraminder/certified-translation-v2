@@ -1,5 +1,6 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { getQuoteFiles, getQuoteReferenceMaterials, regenerateSignedUrlIfNeeded } from '../../../../lib/fileOperations';
 
 function parseCookies(cookieHeader) {
   const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
