@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '../../../components/DashboardLayout';
 import { useAuth } from '../../../middleware/auth';
 import StatusBadge from '../../../components/dashboard/StatusBadge';
+import FilesDisplay from '../../../components/FilesDisplay';
 import Link from 'next/link';
 import { formatForDisplay as formatPhone } from '../../../lib/formatters/phone';
 
