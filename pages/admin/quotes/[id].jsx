@@ -54,6 +54,7 @@ export default function Page({ initialAdmin }){
         setAdjustments(json.adjustments || []);
         setTotals(json.totals || null);
         setFiles(json.documents || []);
+        setReferenceFiles(json.reference_materials || []);
         setCertifications(json.certifications || []);
       } catch (err) {
         console.error('Error fetching quote:', err);
