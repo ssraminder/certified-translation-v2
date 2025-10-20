@@ -10,6 +10,9 @@ export default function CustomerInformationSection({ order, onUpdate }) {
   });
   const [saving, setSaving] = useState(false);
 
+  const customerType = order.customer_type || (order.is_guest ? 'guest' : 'individual');
+  const isBusiness = customerType === 'business';
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
