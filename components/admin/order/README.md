@@ -283,10 +283,10 @@ BREVO_API_KEY
 ### Fields (Orders Table)
 ```sql
 id, order_number, customer_name, customer_email, customer_phone,
-status, payment_status, total, amount_paid, 
+status, payment_status, total, amount_paid,
 service_type, source_language, target_language,
 document_type, page_count, word_count,
-urgency, assigned_to, due_date, project_status,
+urgency, due_date, project_status,
 special_instructions, internal_notes,
 billing_address (JSONB), shipping_address (JSONB),
 created_at, updated_at
