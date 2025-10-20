@@ -231,7 +231,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             </div>
           ) : (
             <p className="text-gray-900">
-              {urgencyLevels.find(l => l.value === formData.urgency)?.label || formData.urgency}
+              {formData.urgency ? (urgencyLevels.find(l => l.value === formData.urgency)?.label || formData.urgency) : '—'}
             </p>
           )}
         </div>
