@@ -292,11 +292,18 @@ async function getOrderWithDetails(supabase, orderId){
   if (error) throw error;
   if (!order) return null;
 
+  // Fetch files from quote_files table using quote_id (primary method)
+  // Also include files where order_id is set as fallback
+  const filesPromise = supabase
+    .from('quote_files')
+    .select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at')
+    .eq('quote_id', order.quote_id);
+
   const [billing, shipping, shippingOptions, files, referenceFiles, userData] = await Promise.all([
     supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle(),
     supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle(),
     supabase.from('order_shipping_options').select('*').eq('order_id', orderId),
-    supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', orderId),
+    filesPromise,
     supabase.from('quote_reference_materials').select('id, quote_id, filename, storage_path, file_url, signed_url, bytes, content_type, file_url_expires_at, file_purpose, notes, created_at').eq('quote_id', order.quote_id),
     order.user_id ? supabase.from('users').select('id, email, first_name, last_name, phone, account_type, company_name, company_registration, business_license, designation, tax_id').eq('id', order.user_id).maybeSingle() : Promise.resolve({ data: null })
   ]);
