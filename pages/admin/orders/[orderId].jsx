@@ -113,6 +113,19 @@ export default function OrderDetailsPage({ initialAdmin }) {
           {/* Documents */}
           <DocumentsSection order={order} onUpdate={setOrder} />
 
+          {/* Files & Reference Materials */}
+          {(order.documents?.length > 0 || order.reference_materials?.length > 0) && (
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Files Overview</h2>
+              <FilesDisplay
+                quoteFiles={order.documents || []}
+                referenceFiles={order.reference_materials || []}
+                context="order"
+                isAdmin={true}
+              />
+            </div>
+          )}
+
           {/* Pricing & Financials */}
           <PricingFinancialsSection order={order} onUpdate={setOrder} />
 
