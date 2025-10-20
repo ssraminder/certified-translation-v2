@@ -5,6 +5,7 @@ import OrderTimelineSection from '../../../components/admin/order/OrderTimelineS
 import CustomerInformationSection from '../../../components/admin/order/CustomerInformationSection';
 import ProjectDetailsSection from '../../../components/admin/order/ProjectDetailsSection';
 import AnalysisResultsSection from '../../../components/admin/order/AnalysisResultsSection';
+import OCRAnalysisSection from '../../../components/admin/order/OCRAnalysisSection';
 import DocumentsSection from '../../../components/admin/order/DocumentsSection';
 import PricingFinancialsSection from '../../../components/admin/order/PricingFinancialsSection';
 import BillingAddressSection from '../../../components/admin/order/BillingAddressSection';
@@ -104,6 +105,9 @@ export default function OrderDetailsPage({ initialAdmin }) {
 
           {/* Analysis Results */}
           {order.analysis_data && <AnalysisResultsSection data={order.analysis_data} />}
+
+          {/* OCR Analysis */}
+          <OCRAnalysisSection order={order} />
 
           {/* Documents */}
           <DocumentsSection order={order} onUpdate={setOrder} />
