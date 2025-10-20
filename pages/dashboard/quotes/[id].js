@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import DashboardLayout from '../../../components/DashboardLayout';
 import { useAuth } from '../../../middleware/auth';
+import FilesDisplay from '../../../components/FilesDisplay';
 import Link from 'next/link';
 
 export default function QuoteDetailPage() {
