@@ -1,5 +1,6 @@
 import { withApiBreadcrumbs } from '../../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { getQuoteFiles, getQuoteReferenceMaterials, regenerateSignedUrlIfNeeded } from '../../../../lib/fileOperations';
 
 function parseCookies(cookieHeader) {
   const out = {}; if (!cookieHeader) return out; const parts = cookieHeader.split(';');
@@ -42,15 +43,13 @@ async function handleGetQuote(req, res, quoteId) {
     if (error) return res.status(500).json({ error: error.message });
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
 
-    const { data: quoteFiles } = await supabase
-      .from('quote_files')
-      .select('*')
-      .eq('quote_id', quoteId);
+    const [quoteFiles, referenceFiles] = await Promise.all([
+      getQuoteFiles(supabase, quoteId),
+      getQuoteReferenceMaterials(supabase, quoteId)
+    ]);
 
-    const { data: referenceFiles } = await supabase
-      .from('quote_reference_materials')
-      .select('*')
-      .eq('quote_id', quoteId);
+    const quoteFilesWithUrls = await Promise.all((quoteFiles || []).map(f => regenerateSignedUrlIfNeeded(supabase, f)));
+    const referenceFilesWithUrls = await Promise.all((referenceFiles || []).map(f => regenerateSignedUrlIfNeeded(supabase, f)));
 
     const { data: activityLog } = await supabase
       .from('quote_activity_log')
@@ -171,7 +170,7 @@ async function handleGetQuote(req, res, quoteId) {
       last_completed_step: lastCompletedStep,
       currency: (Array.isArray(quote.quote_results) && quote.quote_results[0]?.currency) || 'CAD',
       quote_results: (hasPricing || hasLineItems) ? { line_items: lineItems, pricing } : null,
-      documents: (quoteFiles || []).map((file) => ({
+      documents: (quoteFilesWithUrls || []).map((file) => ({
         id: file.id,
         original_filename: file.filename,
         file_url: file.file_url || file.signed_url,
@@ -181,7 +180,7 @@ async function handleGetQuote(req, res, quoteId) {
         file_purpose: file.file_purpose,
         created_at: file.created_at,
       })),
-      reference_materials: (referenceFiles || []).map((file) => ({
+      reference_materials: (referenceFilesWithUrls || []).map((file) => ({
         id: file.id,
         filename: file.filename,
         file_url: file.file_url || file.signed_url,

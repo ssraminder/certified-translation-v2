@@ -2,6 +2,7 @@ import { withPermission } from '../../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../lib/quoteTotals';
 import { toE164 } from '../../../../../lib/formatters/phone';
+import { getQuoteFiles, getQuoteReferenceMaterials, regenerateSignedUrlIfNeeded } from '../../../../../lib/fileOperations';
 
 async function handler(req, res){
   const { quoteId } = req.query;
@@ -68,27 +69,22 @@ async function handler(req, res){
   const itemsQuery = supabase.from('quote_sub_orders').select('*').eq('quote_id', quoteId).eq('source', 'manual').order('id');
 
   // Fetch items and other collections
-  const [ { data: items }, { data: adjustments }, { data: files }, { data: refMaterials }, { data: certs }, { data: resultsRows } ] = await Promise.all([
+  const [ { data: items }, { data: adjustments }, files, refMaterials, { data: certs }, { data: resultsRows } ] = await Promise.all([
     itemsQuery,
     supabase.from('quote_adjustments').select('*').eq('quote_id', quoteId).order('display_order'),
-    supabase.from('quote_files').select('*').eq('quote_id', quoteId),
-    supabase.from('quote_reference_materials').select('*').eq('quote_id', quoteId),
+    getQuoteFiles(supabase, quoteId),
+    getQuoteReferenceMaterials(supabase, quoteId),
     supabase.from('quote_certifications').select('*').eq('quote_id', quoteId).order('display_order'),
     supabase.from('quote_results').select('*').eq('quote_id', quoteId).order('updated_at', { ascending: false })
   ]);
 
-  const BUCKET = 'orders';
   const documents = await Promise.all((files||[]).map(async (f) => {
-    let url = f.file_url || null;
-    if (!url && f.storage_path){
-      try { const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600); if (signed?.signedUrl) url = signed.signedUrl; } catch {}
-    }
-    if (!url && f.signed_url) url = f.signed_url;
+    const urlFile = await regenerateSignedUrlIfNeeded(supabase, f);
     return {
       id: f.id,
       file_id: f.file_id,
       filename: f.filename,
-      file_url: url,
+      file_url: urlFile.file_url,
       bytes: f.bytes || 0,
       content_type: f.content_type || null,
       doc_type: f.doc_type || null,
@@ -99,15 +95,11 @@ async function handler(req, res){
   }));
 
   const referenceMaterials = await Promise.all((refMaterials||[]).map(async (m) => {
-    let url = m.file_url || null;
-    if (!url && m.storage_path){
-      try { const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(m.storage_path, 3600); if (signed?.signedUrl) url = signed.signedUrl; } catch {}
-    }
-    if (!url && m.signed_url) url = m.signed_url;
+    const urlFile = await regenerateSignedUrlIfNeeded(supabase, m);
     return {
       id: m.id,
       filename: m.filename,
-      file_url: url,
+      file_url: urlFile.file_url,
       bytes: m.bytes || 0,
       content_type: m.content_type || null,
       file_purpose: m.file_purpose || 'reference',

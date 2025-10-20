@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 import { withApiBreadcrumbs } from '../../../lib/sentry';
+import { getQuoteFiles, getQuoteReferenceMaterials, regenerateSignedUrlIfNeeded } from '../../../lib/fileOperations';
 
 async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -63,13 +64,15 @@ async function handler(req, res) {
       }
     }
 
-    // Get quote files
-    const { data: files, error: filesError } = await supabase
-      .from('quote_files')
-      .select('*')
-      .eq('quote_id', magicLink.quote_id);
+    // Get quote files and reference materials using utility
+    const [files, referenceFiles] = await Promise.all([
+      getQuoteFiles(supabase, magicLink.quote_id),
+      getQuoteReferenceMaterials(supabase, magicLink.quote_id)
+    ]);
 
-    if (filesError) throw filesError;
+    // Regenerate signed URLs for files
+    const filesWithUrls = await Promise.all((files || []).map(f => regenerateSignedUrlIfNeeded(supabase, f)));
+    const refFilesWithUrls = await Promise.all((referenceFiles || []).map(f => regenerateSignedUrlIfNeeded(supabase, f)));
 
     // Get quote line items with details
     const { data: lineItems, error: itemsError } = await supabase
@@ -130,7 +133,8 @@ async function handler(req, res) {
       success: true,
       quote,
       quoteResults,
-      files: files || [],
+      files: filesWithUrls || [],
+      referenceFiles: refFilesWithUrls || [],
       lineItems: lineItems || [],
       certifications: certifications || [],
       adjustments: adjustments || [],

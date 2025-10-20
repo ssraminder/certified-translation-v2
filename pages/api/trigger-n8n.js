@@ -1,4 +1,6 @@
 import { withApiBreadcrumbs } from '../../lib/sentry';
+import { getSupabaseServerClient } from '../../lib/supabaseServer';
+import { getQuoteFiles } from '../../lib/fileOperations';
 
 function getBaseUrl(req) {
   const hostHeader = req.headers.host;
@@ -16,8 +18,6 @@ function getBaseUrl(req) {
   })();
   return `${proto}://${hostHeader}`;
 }
-
-import { getSupabaseServerClient } from '../../lib/supabaseServer';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -48,24 +48,20 @@ async function handler(req, res) {
     // quote_files now only contains 'translate' documents (reference files are in quote_reference_materials)
     if (quoteId) {
       const supabase = getSupabaseServerClient();
-      const BUCKET = 'orders';
-      const { data: files, error: filesError } = await supabase
-        .from('quote_files')
-        .select('file_id, filename, file_url, signed_url, storage_path')
-        .eq('quote_id', quoteId);
+      const files = await getQuoteFiles(supabase, quoteId);
 
-      if (filesError) {
-        console.error('[trigger-n8n] Error fetching files:', filesError);
-      } else {
-        console.log(`[trigger-n8n] Found ${files?.length || 0} files for quote ${quoteId}`);
-      }
+      console.log(`[trigger-n8n] Found ${files?.length || 0} files for quote ${quoteId}`);
 
       const signedFiles = await Promise.all((files || []).map(async (f) => {
-        let url = null; let expiresAt = null;
+        let url = null;
+        let expiresAt = null;
         try {
           if (f.storage_path) {
-            const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
-            if (signed?.signedUrl) { url = signed.signedUrl; expiresAt = new Date(Date.now()+3600*1000).toISOString(); }
+            const { data: signed } = await supabase.storage.from('orders').createSignedUrl(f.storage_path, 3600);
+            if (signed?.signedUrl) {
+              url = signed.signedUrl;
+              expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+            }
           }
         } catch (err) {
           console.warn(`[trigger-n8n] Failed to sign URL for file ${f.file_id}:`, err);
