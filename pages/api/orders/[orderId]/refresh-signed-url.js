@@ -7,7 +7,8 @@ async function handler(req, res) {
   }
 
   try {
-    const { orderId, docId } = req.body;
+    const { orderId, fileId, tableType } = req.body;
+    const docId = fileId || req.body.docId;
 
     if (!orderId || !docId) {
       return res.status(400).json({ error: 'Missing orderId or docId' });
@@ -15,14 +16,19 @@ async function handler(req, res) {
 
     const supabase = getSupabaseServerClient();
     const BUCKET = 'orders';
+    const table = tableType === 'reference' ? 'quote_reference_materials' : 'quote_files';
 
     // Fetch the file record
-    const { data: file, error: fetchError } = await supabase
-      .from('quote_files')
+    const query = supabase
+      .from(table)
       .select('id, storage_path, filename')
-      .eq('order_id', orderId)
-      .eq('id', docId)
-      .maybeSingle();
+      .eq('id', docId);
+
+    if (table === 'quote_files') {
+      query.eq('order_id', orderId);
+    }
+
+    const { data: file, error: fetchError } = await query.maybeSingle();
 
     if (fetchError) {
       return res.status(500).json({ error: fetchError.message });
