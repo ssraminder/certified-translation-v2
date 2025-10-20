@@ -1,4 +1,6 @@
 import { withApiBreadcrumbs } from '../../lib/sentry';
+import { getSupabaseServerClient } from '../../lib/supabaseServer';
+import { getQuoteFiles } from '../../lib/fileOperations';
 
 function getBaseUrl(req) {
   const hostHeader = req.headers.host;
@@ -16,8 +18,6 @@ function getBaseUrl(req) {
   })();
   return `${proto}://${hostHeader}`;
 }
-
-import { getSupabaseServerClient } from '../../lib/supabaseServer';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
