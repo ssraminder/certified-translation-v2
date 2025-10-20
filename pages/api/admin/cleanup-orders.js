@@ -26,8 +26,6 @@ async function handler(req, res) {
       'project_status',
       'special_instructions',
       'internal_notes',
-      'billing_address',
-      'shipping_address',
       'translation_total',
       'certification_total',
       'delivery_total',

@@ -63,18 +63,6 @@ Body: {
   project_status?: string,
   special_instructions?: string,
   internal_notes?: string,
-  billing_address?: {
-    full_name: string,
-    address_line1: string,
-    address_line2?: string,
-    city: string,
-    province_state: string,
-    postal_code: string,
-    country: string,
-    phone?: string,
-    email?: string
-  },
-  shipping_address?: {...},
   translation_total?: number,
   certification_total?: number,
   delivery_total?: number,
