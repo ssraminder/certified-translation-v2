@@ -20,11 +20,13 @@ export default function OCRAnalysisSection({ order }) {
       setLoading(true);
       const resp = await fetch(`/api/orders/${order.id}/ocr-analysis`);
       if (!resp.ok) {
-        throw new Error('Failed to fetch OCR analysis');
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${resp.status}: Failed to fetch OCR analysis`);
       }
       const data = await resp.json();
       setAnalysisData(data);
     } catch (err) {
+      console.error('OCR analysis error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
