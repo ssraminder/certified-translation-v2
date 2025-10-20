@@ -59,7 +59,6 @@ Body: {
   page_count?: number,
   word_count?: number,
   urgency?: string,
-  assigned_to?: string,
   due_date?: string,
   project_status?: string,
   special_instructions?: string,
