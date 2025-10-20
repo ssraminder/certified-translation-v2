@@ -21,20 +21,6 @@ async function handler(req, res) {
       // Build updateable fields
       const updateData = {};
       const allowedFields = [
-        'customer_name',
-        'customer_email',
-        'customer_phone',
-        'service_type',
-        'source_language',
-        'target_language',
-        'document_type',
-        'page_count',
-        'word_count',
-        'urgency',
-        'due_date',
-        'project_status',
-        'special_instructions',
-        'internal_notes',
         'translation_total',
         'certification_total',
         'delivery_total',

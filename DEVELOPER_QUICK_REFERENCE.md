@@ -49,20 +49,6 @@ Response: { order: {...} }
 ```javascript
 PATCH /api/orders/[orderId]
 Body: {
-  customer_name?: string,
-  customer_email?: string,
-  customer_phone?: string,
-  service_type?: string,
-  source_language?: string,
-  target_language?: string,
-  document_type?: string,
-  page_count?: number,
-  word_count?: number,
-  urgency?: string,
-  due_date?: string,
-  project_status?: string,
-  special_instructions?: string,
-  internal_notes?: string,
   translation_total?: number,
   certification_total?: number,
   delivery_total?: number,
