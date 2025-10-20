@@ -33,6 +33,13 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    // Get billing address for customer name
+    const { data: billingAddress } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('id', order.billing_address_id)
+      .single();
+
     // Create refund record
     const { data: refund, error: refundError } = await supabase
       .from('order_refunds')
@@ -63,9 +70,10 @@ export default async function handler(req, res) {
     // Send notification email if requested
     if (notifyCustomer) {
       const subject = `Refund Processed - Order ${order.order_number}`;
+      const customerName = billingAddress?.full_name || 'Valued Customer';
       const html = `
         <h2>Refund Notification</h2>
-        <p>Dear ${order.customer_name},</p>
+        <p>Dear ${customerName},</p>
         <p>A refund of <strong>$${amount.toFixed(2)}</strong> has been processed.</p>
         <p>Reason: ${reason}</p>
         <p>The funds will appear in your account within 3-5 business days.</p>
