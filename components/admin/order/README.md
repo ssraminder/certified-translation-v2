@@ -288,7 +288,7 @@ service_type, source_language, target_language,
 document_type, page_count, word_count,
 urgency, due_date, project_status,
 special_instructions, internal_notes,
-billing_address (JSONB), shipping_address (JSONB),
+billing_address_id, shipping_address_id (references addresses table),
 created_at, updated_at
 ```
 
