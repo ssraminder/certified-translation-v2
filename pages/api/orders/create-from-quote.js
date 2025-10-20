@@ -292,11 +292,12 @@ async function getOrderWithDetails(supabase, orderId){
   if (error) throw error;
   if (!order) return null;
 
-  const [billing, shipping, shippingOptions, files] = await Promise.all([
+  const [billing, shipping, shippingOptions, files, userData] = await Promise.all([
     supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle(),
     supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle(),
     supabase.from('order_shipping_options').select('*').eq('order_id', orderId),
-    supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', orderId)
+    supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', orderId),
+    order.user_id ? supabase.from('users').select('id, email, first_name, last_name, phone, account_type, company_name, company_registration, business_license, designation, tax_id').eq('id', order.user_id).maybeSingle() : Promise.resolve({ data: null })
   ]);
 
   // Regenerate signed URLs for files if expired
@@ -317,12 +318,21 @@ async function getOrderWithDetails(supabase, orderId){
     return { ...f, file_url: url };
   }));
 
+  const user = userData?.data;
+  const customerType = user?.account_type || (order.is_guest ? 'guest' : 'individual');
+
   return {
     ...order,
     billing_address: billing.data || null,
     shipping_address: shipping.data || null,
     shipping_options: shippingOptions.data || [],
-    documents: filesWithUrls
+    documents: filesWithUrls,
+    customer_type: customerType,
+    company_name: user?.company_name || null,
+    company_registration: user?.company_registration || null,
+    business_license: user?.business_license || null,
+    designation: user?.designation || null,
+    tax_id: user?.tax_id || null
   };
 }
 

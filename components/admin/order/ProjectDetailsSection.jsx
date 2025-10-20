@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-const serviceTypes = ['Translation', 'Certification', 'Notarization', 'Interpretation'];
 const documentTypes = ['Academic', 'Legal', 'Medical', 'Business', 'Personal', 'Other'];
 const urgencyLevels = [
   { value: 'standard', label: 'Standard (2-3 days)' },
@@ -17,7 +16,6 @@ const statuses = [
 export default function ProjectDetailsSection({ order, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    service_type: order.service_type || '',
     source_language: order.source_language || '',
     target_language: order.target_language || '',
     document_type: order.document_type || '',
@@ -67,7 +65,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           onClick={() => {
             if (isEditing) {
               setFormData({
-                service_type: order.service_type || '',
                 source_language: order.source_language || '',
                 target_language: order.target_language || '',
                 document_type: order.document_type || '',
@@ -94,27 +91,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
       </div>
 
       <div className="grid grid-cols-2 gap-6">
-        {/* Service Type */}
-        <div>
-          <label className="block text-xs uppercase text-gray-500 font-medium mb-2">
-            Service Type <span className="text-red-500">*</span>
-          </label>
-          {isEditing ? (
-            <select
-              value={formData.service_type}
-              onChange={(e) => handleChange('service_type', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Service Type</option>
-              {serviceTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          ) : (
-            <p className="text-gray-900">{formData.service_type || '—'}</p>
-          )}
-        </div>
-
         {/* Source Language */}
         <div>
           <label className="block text-xs uppercase text-gray-500 font-medium mb-2">
@@ -348,7 +324,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             <button
               onClick={() => {
                 setFormData({
-                  service_type: order.service_type || '',
                   source_language: order.source_language || '',
                   target_language: order.target_language || '',
                   document_type: order.document_type || '',
