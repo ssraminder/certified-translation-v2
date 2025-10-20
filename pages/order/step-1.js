@@ -392,9 +392,9 @@ export default function Step1() {
       const { error: filesErr } = await supabase.from('quote_files').insert(fileInserts);
       if (filesErr) throw filesErr;
 
-      // Save reference files if any
+      // Save reference files and notes via API (to bypass RLS on client)
+      const referenceUploads = [];
       if (referenceFiles.length > 0) {
-        const referenceUploads = [];
         for (const f of referenceFiles) {
           const ext = (f.name.split('.').pop() || '').toLowerCase();
           if (ext === 'pdf') {
@@ -406,48 +406,25 @@ export default function Step1() {
             referenceUploads.push(uploaded);
           }
         }
-
-        if (referenceUploads.length > 0) {
-          const refFileInserts = referenceUploads.map(u => ({
-            quote_id: quoteId,
-            job_id: jobId,
-            file_id: u.fileId,
-            filename: u.filename,
-            storage_path: u.storagePath,
-            storage_key: u.storageKey,
-            file_url: u.fileUrl,
-            signed_url: u.signedUrl,
-            bytes: u.bytes,
-            content_type: 'application/pdf',
-            source_lang: formData.sourceLanguage,
-            target_lang: customLanguage || formData.targetLanguage,
-            country_of_issue: formData.countryOfIssue,
-            status: 'uploaded',
-            upload_session_id: uploadSessionId,
-            file_url_expires_at: new Date(Date.now() + 86400000).toISOString(),
-            file_purpose: 'reference'
-          }));
-          const { error: refErr } = await supabase.from('quote_reference_materials').insert(refFileInserts);
-          if (refErr) throw refErr;
-        }
       }
 
-      // Save notes if any (to reference materials table)
-      if (notes.trim()) {
-        const { error: notesErr } = await supabase
-          .from('quote_reference_materials')
-          .insert({
-            quote_id: quoteId,
-            job_id: jobId,
-            notes: notes,
-            file_purpose: 'notes',
-            status: 'uploaded',
-            upload_session_id: uploadSessionId,
-            source_lang: formData.sourceLanguage,
-            target_lang: customLanguage || formData.targetLanguage,
-            country_of_issue: formData.countryOfIssue
-          });
-        if (notesErr) throw notesErr;
+      if (referenceUploads.length > 0 || notes.trim()) {
+        const refResp = await fetch('/api/order/save-reference-materials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quoteId,
+            jobId,
+            referenceFiles: referenceUploads,
+            notes,
+            formData,
+            uploadSessionId
+          })
+        });
+        if (!refResp.ok) {
+          const errData = await refResp.json();
+          throw new Error(errData.error || 'Failed to save reference materials');
+        }
       }
 
       setProcessingStep('Starting analysis...');
