@@ -170,7 +170,7 @@ async function handleGetQuote(req, res, quoteId) {
       last_completed_step: lastCompletedStep,
       currency: (Array.isArray(quote.quote_results) && quote.quote_results[0]?.currency) || 'CAD',
       quote_results: (hasPricing || hasLineItems) ? { line_items: lineItems, pricing } : null,
-      documents: (quoteFiles || []).map((file) => ({
+      documents: (quoteFilesWithUrls || []).map((file) => ({
         id: file.id,
         original_filename: file.filename,
         file_url: file.file_url || file.signed_url,
@@ -180,7 +180,7 @@ async function handleGetQuote(req, res, quoteId) {
         file_purpose: file.file_purpose,
         created_at: file.created_at,
       })),
-      reference_materials: (referenceFiles || []).map((file) => ({
+      reference_materials: (referenceFilesWithUrls || []).map((file) => ({
         id: file.id,
         filename: file.filename,
         file_url: file.file_url || file.signed_url,
