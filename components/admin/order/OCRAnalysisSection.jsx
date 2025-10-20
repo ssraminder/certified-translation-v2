@@ -247,6 +247,12 @@ export default function OCRAnalysisSection({ order }) {
                       <p className="text-sm text-gray-900">{row.is_first_page ? 'Yes' : 'No'}</p>
                     </div>
                   )}
+                  {row.confidence_score != null && (
+                    <div>
+                      <p className="text-xs text-gray-600 font-semibold">Overall Confidence</p>
+                      <p className="text-sm text-gray-900">{(row.confidence_score * 100).toFixed(1)}%</p>
+                    </div>
+                  )}
                   {row.page_confidence_score != null && (
                     <div>
                       <p className="text-xs text-gray-600 font-semibold">Page Confidence</p>
