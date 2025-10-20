@@ -31,14 +31,23 @@ async function getQuoteData(supabase, quote_id){
     .eq('quote_id', quote_id)
     .maybeSingle();
   if (subError) throw subError;
-  if (!quoteSubmission) return { totals: null, quote: null };
+  if (!quoteSubmission) return { totals: null, quote: null, lineItems: [] };
 
-  let { data: totals, error } = await supabase
-    .from('quote_results')
-    .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
-    .eq('quote_id', quote_id)
-    .maybeSingle();
-  if (error) throw error;
+  const [totalsResult, lineItemsResult] = await Promise.all([
+    supabase
+      .from('quote_results')
+      .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
+      .eq('quote_id', quote_id)
+      .maybeSingle(),
+    supabase
+      .from('quote_sub_orders')
+      .select('billable_pages, total_pages, doc_type')
+      .eq('quote_id', quote_id)
+  ]);
+
+  if (totalsResult.error) throw totalsResult.error;
+
+  let totals = totalsResult.data;
 
   // If no results exist, trigger calculation (will be saved to DB)
   if (!totals) {
@@ -56,7 +65,11 @@ async function getQuoteData(supabase, quote_id){
     }
   }
 
-  return { totals: totals || null, quote: quoteSubmission };
+  const lineItems = lineItemsResult.data || [];
+  const totalPages = lineItems.reduce((sum, item) => sum + (item.billable_pages || 0), 0);
+  const documentType = lineItems.length > 0 ? (lineItems[0].doc_type || null) : null;
+
+  return { totals: totals || null, quote: quoteSubmission, lineItems, totalPages, documentType };
 }
 
 async function fetchShippingOptionsSnapshot(supabase, optionIds){
