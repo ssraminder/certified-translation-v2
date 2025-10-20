@@ -130,19 +130,19 @@ export default function OCRAnalysisSection({ order }) {
                   {row.page_number != null ? row.page_number : '—'}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">
-                  {row.wordcount ? row.wordcount.toLocaleString() : (row.word_count ? row.word_count.toLocaleString() : '—')}
+                  {row.raw_wordcount ? row.raw_wordcount.toLocaleString() : (row.wordcount ? row.wordcount.toLocaleString() : (row.word_count ? row.word_count.toLocaleString() : '—'))}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">
                   {row.billable_pages != null ? row.billable_pages : '—'}
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  {row.complexity ? (
+                  {(row.complexity_multiplier || row.complexity) ? (
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                      row.complexity === 'high' ? 'bg-red-100 text-red-800' :
-                      row.complexity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      (row.complexity_multiplier || row.complexity) > 1.5 ? 'bg-red-100 text-red-800' :
+                      (row.complexity_multiplier || row.complexity) > 1.0 ? 'bg-yellow-100 text-yellow-800' :
                       'bg-green-100 text-green-800'
                     }`}>
-                      {row.complexity}
+                      {typeof row.complexity_multiplier === 'number' ? row.complexity_multiplier.toFixed(2) + 'x' : (row.complexity || '—')}
                     </span>
                   ) : '—'}
                 </td>
