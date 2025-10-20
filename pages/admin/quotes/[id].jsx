@@ -25,6 +25,7 @@ export default function Page({ initialAdmin }){
   const [adjustments, setAdjustments] = useState([]);
   const [totals, setTotals] = useState(null);
   const [files, setFiles] = useState([]);
+  const [referenceFiles, setReferenceFiles] = useState([]);
   const [certifications, setCertifications] = useState([]);
   const [showManual, setShowManual] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
