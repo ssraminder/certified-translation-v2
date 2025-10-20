@@ -2,6 +2,7 @@ import { withPermission } from '../../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../../lib/supabaseServer';
 import { recalcAndUpsertUnifiedQuoteResults } from '../../../../../lib/quoteTotals';
 import { toE164 } from '../../../../../lib/formatters/phone';
+import { getQuoteFiles, getQuoteReferenceMaterials, regenerateSignedUrlIfNeeded } from '../../../../../lib/fileOperations';
 
 async function handler(req, res){
   const { quoteId } = req.query;
