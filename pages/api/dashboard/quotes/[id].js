@@ -47,6 +47,11 @@ async function handleGetQuote(req, res, quoteId) {
       .select('*')
       .eq('quote_id', quoteId);
 
+    const { data: referenceFiles } = await supabase
+      .from('quote_reference_materials')
+      .select('*')
+      .eq('quote_id', quoteId);
+
     const { data: activityLog } = await supabase
       .from('quote_activity_log')
       .select('*')
