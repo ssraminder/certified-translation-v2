@@ -284,14 +284,19 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               onChange={(e) => handleChange('project_status', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Select Status</option>
               {statuses.map(status => (
                 <option key={status.value} value={status.value}>{status.label}</option>
               ))}
             </select>
           ) : (
-            <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(formData.project_status)}`}>
-              {statuses.find(s => s.value === formData.project_status)?.label || formData.project_status}
-            </span>
+            formData.project_status ? (
+              <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(formData.project_status)}`}>
+                {statuses.find(s => s.value === formData.project_status)?.label || formData.project_status}
+              </span>
+            ) : (
+              <p className="text-gray-900">—</p>
+            )
           )}
         </div>
       </div>
