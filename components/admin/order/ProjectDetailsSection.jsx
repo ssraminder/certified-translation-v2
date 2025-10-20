@@ -24,7 +24,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
     page_count: order.page_count || null,
     word_count: order.word_count || null,
     urgency: order.urgency || '',
-    assigned_to: order.assigned_to || '',
     due_date: order.due_date || '',
     project_status: order.project_status || '',
     special_instructions: order.special_instructions || '',
@@ -75,7 +74,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
                 page_count: order.page_count || null,
                 word_count: order.word_count || null,
                 urgency: order.urgency || '',
-                assigned_to: order.assigned_to || '',
                 due_date: order.due_date || '',
                 project_status: order.project_status || '',
                 special_instructions: order.special_instructions || '',
@@ -238,23 +236,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           )}
         </div>
 
-        {/* Assigned To */}
-        <div>
-          <label className="block text-xs uppercase text-gray-500 font-medium mb-2">
-            Assigned To
-          </label>
-          {isEditing ? (
-            <input
-              type="text"
-              value={formData.assigned_to}
-              onChange={(e) => handleChange('assigned_to', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Select translator"
-            />
-          ) : (
-            <p className="text-gray-900">{formData.assigned_to || '—'}</p>
-          )}
-        </div>
 
         {/* Due Date */}
         <div>
@@ -374,7 +355,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
                   page_count: order.page_count || null,
                   word_count: order.word_count || null,
                   urgency: order.urgency || '',
-                  assigned_to: order.assigned_to || '',
                   due_date: order.due_date || '',
                   project_status: order.project_status || '',
                   special_instructions: order.special_instructions || '',
