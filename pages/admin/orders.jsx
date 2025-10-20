@@ -99,11 +99,11 @@ export default function Page({ initialAdmin }){
             <tbody>
               {(data.orders||[]).map(o => (
                 <tr key={o.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-3 py-2 font-medium text-gray-900 cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.order_id}</td>
+                  <td className="px-3 py-2 font-medium text-gray-900 cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.order_number || o.order_id || '—'}</td>
                   <td className="px-3 py-2 text-gray-700 cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.customer_name || '—'}<div className="text-xs text-gray-500">{o.customer_email || ''}</div></td>
                   <td className="px-3 py-2 cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}><StatusBadge status={o.status} /></td>
-                  <td className="px-3 py-2 text-right cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.total_amount != null ? `$${Number(o.total_amount).toFixed(2)}` : '—'}</td>
-                  <td className="px-3 py-2 text-gray-600 cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : ''}</td>
+                  <td className="px-3 py-2 text-right cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.total != null ? `$${Number(o.total).toFixed(2)}` : (o.total_amount != null ? `$${Number(o.total_amount).toFixed(2)}` : '—')}</td>
+                  <td className="px-3 py-2 text-gray-600 cursor-pointer" onClick={()=>{ window.location.href = `/admin/orders/${o.id}`; }}>{o.created_at ? new Date(o.created_at).toLocaleDateString() : '—'}</td>
                 </tr>
               ))}
               {(!loading && (!data.orders || data.orders.length === 0)) && (
