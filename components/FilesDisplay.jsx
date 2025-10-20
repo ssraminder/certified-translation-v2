@@ -20,6 +20,27 @@ export default function FilesDisplay({
       quoteFilesData: quoteFiles,
       referenceFilesData: referenceFiles
     });
+
+    if (quoteFiles?.length > 0) {
+      console.log('[FilesDisplay] Quote files details:', quoteFiles.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        hasUrl: !!f.file_url,
+        url: f.file_url ? 'present' : 'missing',
+        quote_id: f.quote_id,
+        order_id: f.order_id
+      })));
+    }
+
+    if (referenceFiles?.length > 0) {
+      console.log('[FilesDisplay] Reference files details:', referenceFiles.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        hasUrl: !!f.file_url,
+        url: f.file_url ? 'present' : 'missing',
+        quote_id: f.quote_id
+      })));
+    }
   }
 
   const getEndpoint = (tableType) => {
@@ -118,8 +139,8 @@ export default function FilesDisplay({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 break-words">{file.filename}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-600">
-                        <span>{formatFileSize(file.bytes)}</span>
-                        {file.created_at && <span>•</span>}
+                        {file.bytes && <span>{formatFileSize(file.bytes)}</span>}
+                        {file.bytes && file.created_at && <span>•</span>}
                         {file.created_at && <span>Uploaded {formatDate(file.created_at)}</span>}
                       </div>
                       {file.file_purpose && (
@@ -129,21 +150,24 @@ export default function FilesDisplay({
                           </span>
                         </div>
                       )}
+                      {!file.file_url && (
+                        <div className="mt-2 text-xs text-amber-600">
+                          Click Download to generate a temporary access link
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {file.file_url && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDownload(file, 'quote', file.quote_id || file.order_id);
-                        }}
-                        disabled={downloadingId === file.id}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {downloadingId === file.id ? 'Downloading...' : 'Download'}
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDownload(file, 'quote', file.quote_id || file.order_id);
+                      }}
+                      disabled={downloadingId === file.id}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {downloadingId === file.id ? 'Downloading...' : 'Download'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -169,8 +193,8 @@ export default function FilesDisplay({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 break-words">{file.filename}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-600">
-                        <span>{formatFileSize(file.bytes)}</span>
-                        {file.created_at && <span>•</span>}
+                        {file.bytes && <span>{formatFileSize(file.bytes)}</span>}
+                        {file.bytes && file.created_at && <span>•</span>}
                         {file.created_at && <span>Uploaded {formatDate(file.created_at)}</span>}
                       </div>
                       {file.file_purpose && (
@@ -183,21 +207,24 @@ export default function FilesDisplay({
                       {file.notes && (
                         <p className="mt-2 text-xs text-gray-700 italic">{file.notes}</p>
                       )}
+                      {!file.file_url && (
+                        <div className="mt-2 text-xs text-amber-600">
+                          Click Download to generate a temporary access link
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {file.file_url && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDownload(file, 'reference', file.quote_id || file.order_id);
-                        }}
-                        disabled={downloadingId === file.id}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {downloadingId === file.id ? 'Downloading...' : 'Download'}
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDownload(file, 'reference', file.quote_id || file.order_id);
+                      }}
+                      disabled={downloadingId === file.id}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {downloadingId === file.id ? 'Downloading...' : 'Download'}
+                    </button>
                   </div>
                 </div>
               </div>
