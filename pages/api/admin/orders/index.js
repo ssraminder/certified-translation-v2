@@ -24,7 +24,7 @@ async function handler(req, res) {
     }
 
     if (search) {
-      query = query.or(`order_id.ilike.%${search}%,customer_name.ilike.%${search}%,customer_email.ilike.%${search}%`);
+      query = query.or(`order_number.ilike.%${search}%,id.ilike.%${search}%,customer_name.ilike.%${search}%,customer_email.ilike.%${search}%`);
     }
 
     if (start_date) {
