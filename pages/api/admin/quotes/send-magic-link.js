@@ -1,6 +1,7 @@
 import { withPermission } from '../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
 import { sendQuoteReadyEmail } from '../../../../lib/email';
+import { getQuoteFiles } from '../../../../lib/fileOperations';
 import crypto from 'crypto';
 
 async function handler(req, res) {
