@@ -20,6 +20,27 @@ export default function FilesDisplay({
       quoteFilesData: quoteFiles,
       referenceFilesData: referenceFiles
     });
+
+    if (quoteFiles?.length > 0) {
+      console.log('[FilesDisplay] Quote files details:', quoteFiles.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        hasUrl: !!f.file_url,
+        url: f.file_url ? 'present' : 'missing',
+        quote_id: f.quote_id,
+        order_id: f.order_id
+      })));
+    }
+
+    if (referenceFiles?.length > 0) {
+      console.log('[FilesDisplay] Reference files details:', referenceFiles.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        hasUrl: !!f.file_url,
+        url: f.file_url ? 'present' : 'missing',
+        quote_id: f.quote_id
+      })));
+    }
   }
 
   const getEndpoint = (tableType) => {
