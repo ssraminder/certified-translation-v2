@@ -24,16 +24,33 @@ async function generateOrderNumber(supabase) {
   return `ORD-${year}-${String(next).padStart(6, '0')}`;
 }
 
-async function getQuoteTotals(supabase, quote_id){
-  let { data, error } = await supabase
-    .from('quote_results')
-    .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
+async function getQuoteData(supabase, quote_id){
+  const { data: quoteSubmission, error: subError } = await supabase
+    .from('quote_submissions')
+    .select('*')
     .eq('quote_id', quote_id)
     .maybeSingle();
-  if (error) throw error;
+  if (subError) throw subError;
+  if (!quoteSubmission) return { totals: null, quote: null, lineItems: [] };
+
+  const [totalsResult, lineItemsResult] = await Promise.all([
+    supabase
+      .from('quote_results')
+      .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
+      .eq('quote_id', quote_id)
+      .maybeSingle(),
+    supabase
+      .from('quote_sub_orders')
+      .select('billable_pages, total_pages, doc_type')
+      .eq('quote_id', quote_id)
+  ]);
+
+  if (totalsResult.error) throw totalsResult.error;
+
+  let totals = totalsResult.data;
 
   // If no results exist, trigger calculation (will be saved to DB)
-  if (!data) {
+  if (!totals) {
     try {
       const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../lib/quoteTotals');
       await recalcAndUpsertUnifiedQuoteResults(quote_id);
@@ -42,13 +59,17 @@ async function getQuoteTotals(supabase, quote_id){
         .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
         .eq('quote_id', quote_id)
         .maybeSingle();
-      data = newData || null;
+      totals = newData || null;
     } catch (calcErr) {
       console.error('[create-from-quote] Failed to auto-calculate results:', calcErr);
     }
   }
 
-  return data || null;
+  const lineItems = lineItemsResult.data || [];
+  const totalPages = lineItems.reduce((sum, item) => sum + (item.billable_pages || 0), 0);
+  const documentType = lineItems.length > 0 ? (lineItems[0].doc_type || null) : null;
+
+  return { totals: totals || null, quote: quoteSubmission, lineItems, totalPages, documentType };
 }
 
 async function fetchShippingOptionsSnapshot(supabase, optionIds){
@@ -101,11 +122,11 @@ async function handler(req, res){
     const { quote_id, billing_address, shipping_address, shipping_option_ids, user_id } = req.body || {};
     if (!quote_id) return res.status(400).json({ error: 'quote_id is required' });
 
-    const quote = await getQuoteTotals(supabase, quote_id);
-    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    const { totals: quoteTotals, quote: quoteData, totalPages, documentType } = await getQuoteData(supabase, quote_id);
+    if (!quoteTotals) return res.status(404).json({ error: 'Quote not found' });
 
-    if (quote.converted_to_order_id) {
-      const existing = await getOrderWithDetails(supabase, quote.converted_to_order_id);
+    if (quoteTotals.converted_to_order_id) {
+      const existing = await getOrderWithDetails(supabase, quoteTotals.converted_to_order_id);
       return res.status(200).json({ order: existing, message: 'Quote already converted to order' });
     }
 
@@ -120,7 +141,7 @@ async function handler(req, res){
     const shippingOptions = await fetchShippingOptionsSnapshot(supabase, selectedIds);
     const shipping_total = round2(shippingOptions.reduce((sum, o) => sum + Number(o.price||0), 0));
 
-    const baseSubtotal = Number(quote.subtotal || 0);
+    const baseSubtotal = Number(quoteTotals.subtotal || 0);
     const subtotal = round2(baseSubtotal + shipping_total);
     const tax_rate = GST_RATE;
     const tax_total = round2(subtotal * tax_rate);
@@ -149,6 +170,16 @@ async function handler(req, res){
       customer_email: billAddr?.email || '',
       customer_phone: billAddr?.phone || null,
       is_guest: !user_id,
+      source_language: quoteData?.source_lang || null,
+      target_language: quoteData?.target_lang || null,
+      document_type: documentType,
+      page_count: totalPages > 0 ? totalPages : null,
+      word_count: null,
+      urgency: quoteData?.delivery_speed || null,
+      due_date: quoteData?.delivery_date || null,
+      project_status: 'not_started',
+      special_instructions: null,
+      internal_notes: null,
     };
     const { data: orderRows, error: orderErr } = await supabase
       .from('orders')
