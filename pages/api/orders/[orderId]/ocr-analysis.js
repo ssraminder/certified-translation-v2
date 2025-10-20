@@ -40,7 +40,7 @@ async function handler(req, res) {
     const [{ data: ocrRows, error: ocrError }, { data: quoteSubOrders, error: subOrdersError }] = await Promise.all([
       supabase
         .from('ocr_analysis')
-        .select('quote_id, filename, page_number, wordcount, billable_pages, complexity, updated_at')
+        .select('quote_id, filename, page_number, raw_wordcount, billable_pages, complexity_multiplier, document_type, principal_holder_name, is_first_page, detected_language, page_confidence_score, text_extraction_confidence, language_detection_confidence, document_classification_confidence, ocr_method, run_id')
         .eq('quote_id', order.quote_id),
       supabase
         .from('quote_sub_orders')
