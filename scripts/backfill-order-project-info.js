@@ -62,11 +62,14 @@ async function backfillOrderProjectInfo() {
         const totalPages = (lineItems || []).reduce((sum, item) => sum + (item.billable_pages || 0), 0);
         const documentType = lineItems && lineItems.length > 0 ? (lineItems[0].doc_type || null) : null;
 
+        // page_count should be an integer, so round it if needed
+        const pageCount = totalPages > 0 ? Math.round(totalPages) : null;
+
         const updateData = {
           source_language: quoteSubmission.source_lang || null,
           target_language: quoteSubmission.target_lang || null,
           document_type: documentType,
-          page_count: totalPages > 0 ? totalPages : null,
+          page_count: pageCount,
           urgency: quoteSubmission.delivery_option || null,
           due_date: quoteSubmission.delivery_date || null,
           updated_at: new Date().toISOString(),
