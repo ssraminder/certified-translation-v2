@@ -64,7 +64,11 @@ export default function OCRAnalysisSection({ order }) {
     return (
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">OCR Analysis</h2>
-        <p className="text-sm text-red-600">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded p-3">
+          <p className="text-sm text-red-700 font-medium">Error loading OCR analysis:</p>
+          <p className="text-sm text-red-600 mt-1">{error}</p>
+          <p className="text-xs text-red-500 mt-2">Check browser console for more details.</p>
+        </div>
       </div>
     );
   }
