@@ -64,7 +64,7 @@ export default function CustomerInformationSection({ order, onUpdate }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Left Column */}
         <div className="space-y-6">
           {/* Name */}
@@ -81,7 +81,7 @@ export default function CustomerInformationSection({ order, onUpdate }) {
                 placeholder="Enter customer name"
               />
             ) : (
-              <p className="text-gray-900">{formData.customer_name || '—'}</p>
+              <p className="text-gray-900 font-medium">{formData.customer_name || '—'}</p>
             )}
           </div>
 
@@ -100,7 +100,7 @@ export default function CustomerInformationSection({ order, onUpdate }) {
             ) : (
               <div className="flex items-center gap-2">
                 <p className="text-gray-900">{formData.customer_email || '—'}</p>
-                {formData.customer_email && (
+                {formData.customer_email && !order.is_guest && (
                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -122,10 +122,6 @@ export default function CustomerInformationSection({ order, onUpdate }) {
                 type="tel"
                 value={formData.customer_phone}
                 onChange={(e) => handleChange('customer_phone', e.target.value)}
-                onBlur={(e) => {
-                  // Phone formatting handled on display, save raw value
-                  handleChange('customer_phone', e.target.value);
-                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             ) : (
@@ -138,72 +134,121 @@ export default function CustomerInformationSection({ order, onUpdate }) {
             <label className="block text-xs uppercase text-gray-500 font-medium mb-2">
               Customer ID
             </label>
-            <p className="text-gray-900 font-mono text-sm">{order.customer_id || '—'}</p>
-          </div>
-
-          {/* Account Type */}
-          <div>
-            <label className="block text-xs uppercase text-gray-500 font-medium mb-2">
-              Account Type
-            </label>
-            <span className="inline-block px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-              {order.is_guest ? 'Guest' : 'Registered User'}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Column - Quick Stats */}
-        <div>
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Quick Stats</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Orders</span>
-                <span className="text-lg font-semibold text-gray-900">5</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Lifetime Value</span>
-                <span className="text-lg font-semibold text-gray-900">$450 CAD</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Member Since</span>
-                <span className="text-lg font-semibold text-gray-900">Jan 2024</span>
-              </div>
-              <div className="pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-600 mb-2">Tags</p>
-                <div className="flex gap-2 flex-wrap">
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                    VIP Customer
-                  </span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                    Repeat Client
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <p className="text-gray-900 font-mono text-sm">{order.customer_id || order.user_id || '—'}</p>
+              {(order.customer_id || order.user_id) && (
+                <button
+                  onClick={() => {
+                    const id = order.customer_id || order.user_id;
+                    navigator.clipboard.writeText(id);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                  title="Copy to clipboard"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="space-y-2">
-            <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              Email Customer
-            </button>
-            <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              Call
-            </button>
-            <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              View History
-            </button>
+          {/* Customer Type Badge */}
+          <div>
+            <label className="block text-xs uppercase text-gray-500 font-medium mb-2">
+              Customer Type
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
+                isBusiness 
+                  ? 'bg-purple-100 text-purple-800' 
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
+                {isBusiness ? '🏢 Business' : '👤 Individual'}
+              </span>
+              {order.is_guest && (
+                <span className="inline-block px-3 py-1 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full">
+                  Guest User
+                </span>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* Right Column - Business Info or Stats */}
+        <div>
+          {isBusiness && order.company_name ? (
+            <div className="space-y-6">
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <h3 className="text-sm font-semibold text-purple-900 mb-4">Business Information</h3>
+                <div className="space-y-3">
+                  {/* Company Name */}
+                  <div>
+                    <p className="text-xs text-purple-700 font-medium uppercase">Company Name</p>
+                    <p className="text-sm text-purple-900 font-medium mt-1">{order.company_name}</p>
+                  </div>
+
+                  {/* Company Registration */}
+                  {order.company_registration && (
+                    <div>
+                      <p className="text-xs text-purple-700 font-medium uppercase">Registration Number</p>
+                      <p className="text-sm text-purple-900 font-mono mt-1">{order.company_registration}</p>
+                    </div>
+                  )}
+
+                  {/* Business License */}
+                  {order.business_license && (
+                    <div>
+                      <p className="text-xs text-purple-700 font-medium uppercase">Business License</p>
+                      <p className="text-sm text-purple-900 font-mono mt-1">{order.business_license}</p>
+                    </div>
+                  )}
+
+                  {/* Designation */}
+                  {order.designation && (
+                    <div>
+                      <p className="text-xs text-purple-700 font-medium uppercase">Designation</p>
+                      <p className="text-sm text-purple-900 mt-1">{order.designation}</p>
+                    </div>
+                  )}
+
+                  {/* Tax ID */}
+                  {order.tax_id && (
+                    <div>
+                      <p className="text-xs text-purple-700 font-medium uppercase">Tax ID</p>
+                      <p className="text-sm text-purple-900 font-mono mt-1">{order.tax_id}</p>
+                    </div>
+                  )}
+
+                  {!order.company_registration && !order.business_license && !order.designation && !order.tax_id && (
+                    <p className="text-xs text-purple-600 italic">No additional business details available</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Customer Profile</h3>
+              <div className="space-y-3 text-sm text-gray-600">
+                <div className="flex justify-between items-center">
+                  <span>Account Status</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    order.is_guest 
+                      ? 'bg-gray-100 text-gray-700' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {order.is_guest ? 'Guest' : 'Registered'}
+                  </span>
+                </div>
+                {order.created_at && (
+                  <div className="flex justify-between items-center">
+                    <span>Created</span>
+                    <span className="text-gray-700">{new Date(order.created_at).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
