@@ -86,10 +86,7 @@ async function handler(req, res) {
     }
 
     // Get file count and page count
-    const { data: files } = await supabase
-      .from('quote_files')
-      .select('id')
-      .eq('quote_id', quote_id);
+    const files = await getQuoteFiles(supabase, quote_id);
 
     const { data: quoteLines } = await supabase
       .from('quote_sub_orders')
