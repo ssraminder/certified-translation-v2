@@ -180,13 +180,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           {isEditing ? (
             <input
               type="number"
-              value={formData.page_count}
-              onChange={(e) => handleChange('page_count', parseInt(e.target.value))}
+              value={formData.page_count || ''}
+              onChange={(e) => handleChange('page_count', e.target.value ? parseInt(e.target.value) : null)}
               min="1"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
-            <p className="text-gray-900">{formData.page_count}</p>
+            <p className="text-gray-900">{formData.page_count ? formData.page_count : '—'}</p>
           )}
         </div>
 
@@ -198,13 +198,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           {isEditing ? (
             <input
               type="number"
-              value={formData.word_count}
-              onChange={(e) => handleChange('word_count', parseInt(e.target.value))}
+              value={formData.word_count || ''}
+              onChange={(e) => handleChange('word_count', e.target.value ? parseInt(e.target.value) : null)}
               min="1"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
-            <p className="text-gray-900">{formData.word_count.toLocaleString()}</p>
+            <p className="text-gray-900">{formData.word_count ? formData.word_count.toLocaleString() : '—'}</p>
           )}
         </div>
 
