@@ -17,16 +17,16 @@ const statuses = [
 export default function ProjectDetailsSection({ order, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    service_type: order.service_type || 'Translation',
-    source_language: order.source_language || 'Hindi',
-    target_language: order.target_language || 'English',
-    document_type: order.document_type || 'Academic',
-    page_count: order.page_count || 5,
-    word_count: order.word_count || 2500,
-    urgency: order.urgency || 'rush',
+    service_type: order.service_type || '',
+    source_language: order.source_language || '',
+    target_language: order.target_language || '',
+    document_type: order.document_type || '',
+    page_count: order.page_count || null,
+    word_count: order.word_count || null,
+    urgency: order.urgency || '',
     assigned_to: order.assigned_to || '',
     due_date: order.due_date || '',
-    project_status: order.project_status || 'in_translation',
+    project_status: order.project_status || '',
     special_instructions: order.special_instructions || '',
     internal_notes: order.internal_notes || '',
   });
@@ -68,16 +68,16 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           onClick={() => {
             if (isEditing) {
               setFormData({
-                service_type: order.service_type || 'Translation',
-                source_language: order.source_language || 'Hindi',
-                target_language: order.target_language || 'English',
-                document_type: order.document_type || 'Academic',
-                page_count: order.page_count || 5,
-                word_count: order.word_count || 2500,
-                urgency: order.urgency || 'rush',
+                service_type: order.service_type || '',
+                source_language: order.source_language || '',
+                target_language: order.target_language || '',
+                document_type: order.document_type || '',
+                page_count: order.page_count || null,
+                word_count: order.word_count || null,
+                urgency: order.urgency || '',
                 assigned_to: order.assigned_to || '',
                 due_date: order.due_date || '',
-                project_status: order.project_status || 'in_translation',
+                project_status: order.project_status || '',
                 special_instructions: order.special_instructions || '',
                 internal_notes: order.internal_notes || '',
               });
@@ -107,12 +107,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               onChange={(e) => handleChange('service_type', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Select Service Type</option>
               {serviceTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
           ) : (
-            <p className="text-gray-900">{formData.service_type}</p>
+            <p className="text-gray-900">{formData.service_type || '—'}</p>
           )}
         </div>
 
@@ -130,7 +131,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               placeholder="e.g., Hindi, Spanish"
             />
           ) : (
-            <p className="text-gray-900">{formData.source_language}</p>
+            <p className="text-gray-900">{formData.source_language || '—'}</p>
           )}
         </div>
 
@@ -148,7 +149,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               placeholder="e.g., English"
             />
           ) : (
-            <p className="text-gray-900">{formData.target_language}</p>
+            <p className="text-gray-900">{formData.target_language || '—'}</p>
           )}
         </div>
 
@@ -163,12 +164,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               onChange={(e) => handleChange('document_type', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Select Document Type</option>
               {documentTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
           ) : (
-            <p className="text-gray-900">{formData.document_type}</p>
+            <p className="text-gray-900">{formData.document_type || '—'}</p>
           )}
         </div>
 
@@ -180,13 +182,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           {isEditing ? (
             <input
               type="number"
-              value={formData.page_count}
-              onChange={(e) => handleChange('page_count', parseInt(e.target.value))}
+              value={formData.page_count || ''}
+              onChange={(e) => handleChange('page_count', e.target.value ? parseInt(e.target.value) : null)}
               min="1"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
-            <p className="text-gray-900">{formData.page_count}</p>
+            <p className="text-gray-900">{formData.page_count ? formData.page_count : '—'}</p>
           )}
         </div>
 
@@ -198,13 +200,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           {isEditing ? (
             <input
               type="number"
-              value={formData.word_count}
-              onChange={(e) => handleChange('word_count', parseInt(e.target.value))}
+              value={formData.word_count || ''}
+              onChange={(e) => handleChange('word_count', e.target.value ? parseInt(e.target.value) : null)}
               min="1"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           ) : (
-            <p className="text-gray-900">{formData.word_count.toLocaleString()}</p>
+            <p className="text-gray-900">{formData.word_count ? formData.word_count.toLocaleString() : '—'}</p>
           )}
         </div>
 
@@ -231,7 +233,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             </div>
           ) : (
             <p className="text-gray-900">
-              {urgencyLevels.find(l => l.value === formData.urgency)?.label || formData.urgency}
+              {formData.urgency ? (urgencyLevels.find(l => l.value === formData.urgency)?.label || formData.urgency) : '—'}
             </p>
           )}
         </div>
@@ -284,14 +286,19 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               onChange={(e) => handleChange('project_status', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Select Status</option>
               {statuses.map(status => (
                 <option key={status.value} value={status.value}>{status.label}</option>
               ))}
             </select>
           ) : (
-            <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(formData.project_status)}`}>
-              {statuses.find(s => s.value === formData.project_status)?.label || formData.project_status}
-            </span>
+            formData.project_status ? (
+              <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(formData.project_status)}`}>
+                {statuses.find(s => s.value === formData.project_status)?.label || formData.project_status}
+              </span>
+            ) : (
+              <p className="text-gray-900">—</p>
+            )
           )}
         </div>
       </div>
@@ -360,16 +367,16 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             <button
               onClick={() => {
                 setFormData({
-                  service_type: order.service_type || 'Translation',
-                  source_language: order.source_language || 'Hindi',
-                  target_language: order.target_language || 'English',
-                  document_type: order.document_type || 'Academic',
-                  page_count: order.page_count || 5,
-                  word_count: order.word_count || 2500,
-                  urgency: order.urgency || 'rush',
+                  service_type: order.service_type || '',
+                  source_language: order.source_language || '',
+                  target_language: order.target_language || '',
+                  document_type: order.document_type || '',
+                  page_count: order.page_count || null,
+                  word_count: order.word_count || null,
+                  urgency: order.urgency || '',
                   assigned_to: order.assigned_to || '',
                   due_date: order.due_date || '',
-                  project_status: order.project_status || 'in_translation',
+                  project_status: order.project_status || '',
                   special_instructions: order.special_instructions || '',
                   internal_notes: order.internal_notes || '',
                 });
