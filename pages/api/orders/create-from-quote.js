@@ -24,8 +24,16 @@ async function generateOrderNumber(supabase) {
   return `ORD-${year}-${String(next).padStart(6, '0')}`;
 }
 
-async function getQuoteTotals(supabase, quote_id){
-  let { data, error } = await supabase
+async function getQuoteData(supabase, quote_id){
+  const { data: quoteSubmission, error: subError } = await supabase
+    .from('quote_submissions')
+    .select('*')
+    .eq('quote_id', quote_id)
+    .maybeSingle();
+  if (subError) throw subError;
+  if (!quoteSubmission) return { totals: null, quote: null };
+
+  let { data: totals, error } = await supabase
     .from('quote_results')
     .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
     .eq('quote_id', quote_id)
@@ -33,7 +41,7 @@ async function getQuoteTotals(supabase, quote_id){
   if (error) throw error;
 
   // If no results exist, trigger calculation (will be saved to DB)
-  if (!data) {
+  if (!totals) {
     try {
       const { recalcAndUpsertUnifiedQuoteResults } = await import('../../../lib/quoteTotals');
       await recalcAndUpsertUnifiedQuoteResults(quote_id);
@@ -42,13 +50,13 @@ async function getQuoteTotals(supabase, quote_id){
         .select('quote_id, subtotal, tax, total, shipping_total, converted_to_order_id')
         .eq('quote_id', quote_id)
         .maybeSingle();
-      data = newData || null;
+      totals = newData || null;
     } catch (calcErr) {
       console.error('[create-from-quote] Failed to auto-calculate results:', calcErr);
     }
   }
 
-  return data || null;
+  return { totals: totals || null, quote: quoteSubmission };
 }
 
 async function fetchShippingOptionsSnapshot(supabase, optionIds){
