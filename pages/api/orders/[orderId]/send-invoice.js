@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
     const supabase = getSupabaseServerClient();
 
-    // Get order details
+    // Get order details and billing address
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select('*')
@@ -33,12 +33,19 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const { data: billingAddress } = await supabase
+      .from('addresses')
+      .select('*')
+      .eq('id', order.billing_address_id)
+      .single();
+
     // Send invoice email
     if (scheduleMode === 'now') {
       const subject = `Invoice - Order ${order.order_number}`;
+      const customerName = billingAddress?.full_name || 'Valued Customer';
       const html = `
         <h2>Invoice for Order ${order.order_number}</h2>
-        <p>Dear ${order.customer_name},</p>
+        <p>Dear ${customerName},</p>
         <p>Amount Due: <strong>$${amount.toFixed(2)}</strong></p>
         ${includePaymentLink ? '<p><a href="#">Pay Now</a></p>' : ''}
       `;
