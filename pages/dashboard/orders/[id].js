@@ -78,17 +78,15 @@ export default function OrderDetailPage(){
             </div>
           </div>
 
-          {(o.documents?.length > 0 || o.reference_materials?.length > 0) && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Files & Documents</h3>
-              <FilesDisplay
-                quoteFiles={o.documents || []}
-                referenceFiles={o.reference_materials || []}
-                context="order"
-                isAdmin={false}
-              />
-            </div>
-          )}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Files & Documents</h3>
+            <FilesDisplay
+              quoteFiles={o.documents || []}
+              referenceFiles={o.reference_materials || []}
+              context="order"
+              isAdmin={false}
+            />
+          </div>
 
           {(o.billing_address || o.shipping_address) && (
             <div className="bg-white rounded-lg border border-gray-200 p-6">

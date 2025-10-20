@@ -110,17 +110,15 @@ export default function QuoteDetailPage() {
             </div>
           </section>
 
-          {(quote.documents?.length > 0 || quote.reference_materials?.length > 0) && (
-            <section className="bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="font-semibold text-gray-900 mb-3">Files & Documents</h2>
-              <FilesDisplay
-                quoteFiles={quote.documents || []}
-                referenceFiles={quote.reference_materials || []}
-                context="quote"
-                isAdmin={false}
-              />
-            </section>
-          )}
+          <section className="bg-white rounded-lg border border-gray-200 p-4">
+            <h2 className="font-semibold text-gray-900 mb-3">Files & Documents</h2>
+            <FilesDisplay
+              quoteFiles={quote.documents || []}
+              referenceFiles={quote.reference_materials || []}
+              context="quote"
+              isAdmin={false}
+            />
+          </section>
 
           <section className="bg-white rounded-lg border border-gray-200 p-4">
             <h2 className="font-semibold text-gray-900 mb-3">Line Items</h2>
