@@ -4,6 +4,7 @@ export default function DocumentsSection({ order, onUpdate }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [dragActive, setDragActive] = useState(false);
+  const [downloadingDocId, setDownloadingDocId] = useState(null);
   const fileInputRef = useRef(null);
 
   const sourceDocuments = order.documents?.filter(d => d.type === 'source') || [];
@@ -131,6 +132,46 @@ export default function DocumentsSection({ order, onUpdate }) {
     });
   };
 
+  const handleDownload = async (doc, e) => {
+    e.preventDefault();
+
+    try {
+      setDownloadingDocId(doc.id);
+
+      const resp = await fetch(`/api/orders/${order.id}/refresh-signed-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          docId: doc.id,
+        }),
+      });
+
+      if (!resp.ok) {
+        throw new Error('Failed to generate download link');
+      }
+
+      const data = await resp.json();
+
+      if (data.success && data.file.file_url) {
+        const link = document.createElement('a');
+        link.href = data.file.file_url;
+        link.download = doc.filename || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      alert('Error generating download link: ' + err.message);
+    } finally {
+      setDownloadingDocId(null);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg p-6 border border-gray-200">
       <h2 className="text-lg font-semibold text-gray-900 mb-6">Documents & Files</h2>
@@ -209,14 +250,13 @@ export default function DocumentsSection({ order, onUpdate }) {
                   </div>
                   <div className="flex gap-2">
                     {doc.file_url && (
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      <button
+                        onClick={(e) => handleDownload(doc, e)}
+                        disabled={downloadingDocId === doc.id}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Download
-                      </a>
+                        {downloadingDocId === doc.id ? 'Downloading...' : 'Download'}
+                      </button>
                     )}
                     <button
                       onClick={() => handleDelete(doc.id)}
@@ -264,13 +304,13 @@ export default function DocumentsSection({ order, onUpdate }) {
                         >
                           Preview
                         </a>
-                        <a
-                          href={doc.file_url}
-                          download
-                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        <button
+                          onClick={(e) => handleDownload(doc, e)}
+                          disabled={downloadingDocId === doc.id}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Download
-                        </a>
+                          {downloadingDocId === doc.id ? 'Downloading...' : 'Download'}
+                        </button>
                       </>
                     )}
                   </div>
