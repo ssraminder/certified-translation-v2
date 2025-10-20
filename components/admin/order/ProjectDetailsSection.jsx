@@ -107,12 +107,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               onChange={(e) => handleChange('service_type', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Select Service Type</option>
               {serviceTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
           ) : (
-            <p className="text-gray-900">{formData.service_type}</p>
+            <p className="text-gray-900">{formData.service_type || '—'}</p>
           )}
         </div>
 
@@ -130,7 +131,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               placeholder="e.g., Hindi, Spanish"
             />
           ) : (
-            <p className="text-gray-900">{formData.source_language}</p>
+            <p className="text-gray-900">{formData.source_language || '—'}</p>
           )}
         </div>
 
@@ -148,7 +149,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               placeholder="e.g., English"
             />
           ) : (
-            <p className="text-gray-900">{formData.target_language}</p>
+            <p className="text-gray-900">{formData.target_language || '—'}</p>
           )}
         </div>
 
@@ -163,12 +164,13 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
               onChange={(e) => handleChange('document_type', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">Select Document Type</option>
               {documentTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
           ) : (
-            <p className="text-gray-900">{formData.document_type}</p>
+            <p className="text-gray-900">{formData.document_type || '—'}</p>
           )}
         </div>
 
