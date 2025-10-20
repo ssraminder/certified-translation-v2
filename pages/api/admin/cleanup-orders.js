@@ -10,16 +10,8 @@ async function handler(req, res) {
   try {
     const supabase = getSupabaseServerClient();
 
-    // Fields to reset to null
+    // Fields to reset to null (only nullable fields)
     const fieldsToReset = [
-      'translation_total',
-      'certification_total',
-      'delivery_total',
-      'shipping_total',
-      'subtotal',
-      'tax_rate',
-      'tax_total',
-      'total',
       'discount_amount',
       'discount_type',
       'discount_reason',

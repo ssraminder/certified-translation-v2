@@ -10,16 +10,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// Fields to reset to null
+// Fields to reset to null (only nullable fields)
 const FIELDS_TO_RESET = [
-  'translation_total',
-  'certification_total',
-  'delivery_total',
-  'shipping_total',
-  'subtotal',
-  'tax_rate',
-  'tax_total',
-  'total',
   'discount_amount',
   'discount_type',
   'discount_reason',
