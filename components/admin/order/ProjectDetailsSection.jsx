@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-const serviceTypes = ['Translation', 'Certification', 'Notarization', 'Interpretation'];
 const documentTypes = ['Academic', 'Legal', 'Medical', 'Business', 'Personal', 'Other'];
 const urgencyLevels = [
   { value: 'standard', label: 'Standard (2-3 days)' },
@@ -17,7 +16,6 @@ const statuses = [
 export default function ProjectDetailsSection({ order, onUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    service_type: order.service_type || '',
     source_language: order.source_language || '',
     target_language: order.target_language || '',
     document_type: order.document_type || '',
@@ -67,7 +65,6 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
           onClick={() => {
             if (isEditing) {
               setFormData({
-                service_type: order.service_type || '',
                 source_language: order.source_language || '',
                 target_language: order.target_language || '',
                 document_type: order.document_type || '',
