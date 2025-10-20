@@ -7,6 +7,7 @@ import ProjectDetailsSection from '../../../components/admin/order/ProjectDetail
 import AnalysisResultsSection from '../../../components/admin/order/AnalysisResultsSection';
 import OCRAnalysisSection from '../../../components/admin/order/OCRAnalysisSection';
 import DocumentsSection from '../../../components/admin/order/DocumentsSection';
+import FilesDisplay from '../../../components/FilesDisplay';
 import PricingFinancialsSection from '../../../components/admin/order/PricingFinancialsSection';
 import BillingAddressSection from '../../../components/admin/order/BillingAddressSection';
 import ShippingAddressSection from '../../../components/admin/order/ShippingAddressSection';
