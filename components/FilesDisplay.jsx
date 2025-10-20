@@ -1,14 +1,26 @@
 import { useState } from 'react';
 import { getFilePurposeLabel, getFilePurposeColor, formatFileSize, formatDate } from '../lib/filePurposeLabels';
 
-export default function FilesDisplay({ 
-  quoteFiles = [], 
-  referenceFiles = [], 
+export default function FilesDisplay({
+  quoteFiles = [],
+  referenceFiles = [],
   context = 'quote',
-  isAdmin = false 
+  isAdmin = false
 }) {
   const [downloadingId, setDownloadingId] = useState(null);
   const [error, setError] = useState(null);
+
+  // Debug logging
+  if (typeof window !== 'undefined') {
+    console.log('[FilesDisplay] Received data:', {
+      quoteFiles: quoteFiles?.length,
+      referenceFiles: referenceFiles?.length,
+      context,
+      isAdmin,
+      quoteFilesData: quoteFiles,
+      referenceFilesData: referenceFiles
+    });
+  }
 
   const getEndpoint = (tableType) => {
     if (context === 'order') {
