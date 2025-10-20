@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 import { withApiBreadcrumbs } from '../../../lib/sentry';
+import { getQuoteFiles, getQuoteReferenceMaterials, regenerateSignedUrlIfNeeded } from '../../../lib/fileOperations';
 
 async function handler(req, res) {
   if (req.method !== 'GET') {
