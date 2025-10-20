@@ -319,6 +319,22 @@ async function getOrderWithDetails(supabase, orderId){
     return { ...f, file_url: url };
   }));
 
+  const referenceFilesWithUrls = await Promise.all((referenceFiles.data || []).map(async (f) => {
+    let url = f.file_url || f.signed_url || null;
+    // Check if URL is expired or missing
+    if ((!url || (f.file_url_expires_at && new Date(f.file_url_expires_at) < new Date())) && f.storage_path) {
+      try {
+        const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(f.storage_path, 3600);
+        if (signed?.signedUrl) {
+          url = signed.signedUrl;
+        }
+      } catch (err) {
+        console.error('Failed to generate signed URL:', err);
+      }
+    }
+    return { ...f, file_url: url };
+  }));
+
   const user = userData?.data;
   const customerType = user?.account_type || (order.is_guest ? 'guest' : 'individual');
 
@@ -328,6 +344,7 @@ async function getOrderWithDetails(supabase, orderId){
     shipping_address: shipping.data || null,
     shipping_options: shippingOptions.data || [],
     documents: filesWithUrls,
+    reference_materials: referenceFilesWithUrls,
     customer_type: customerType,
     company_name: user?.company_name || null,
     company_registration: user?.company_registration || null,
