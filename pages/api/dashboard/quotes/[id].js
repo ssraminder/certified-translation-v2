@@ -43,15 +43,13 @@ async function handleGetQuote(req, res, quoteId) {
     if (error) return res.status(500).json({ error: error.message });
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
 
-    const { data: quoteFiles } = await supabase
-      .from('quote_files')
-      .select('*')
-      .eq('quote_id', quoteId);
+    const [quoteFiles, referenceFiles] = await Promise.all([
+      getQuoteFiles(supabase, quoteId),
+      getQuoteReferenceMaterials(supabase, quoteId)
+    ]);
 
-    const { data: referenceFiles } = await supabase
-      .from('quote_reference_materials')
-      .select('*')
-      .eq('quote_id', quoteId);
+    const quoteFilesWithUrls = await Promise.all((quoteFiles || []).map(f => regenerateSignedUrlIfNeeded(supabase, f)));
+    const referenceFilesWithUrls = await Promise.all((referenceFiles || []).map(f => regenerateSignedUrlIfNeeded(supabase, f)));
 
     const { data: activityLog } = await supabase
       .from('quote_activity_log')
