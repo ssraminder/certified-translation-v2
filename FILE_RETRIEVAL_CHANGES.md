@@ -35,6 +35,18 @@ Created a centralized utility file for file operations with the following functi
 - Uses `regenerateSignedUrlIfNeeded()` for each file
 - Returns `documents` and `reference_materials` in the enhanced quote response
 
+#### `pages/api/trigger-n8n.js`
+- Uses `getQuoteFiles()` utility to fetch files by `quote_id`
+- Generates fresh signed URLs for webhook payload
+
+#### `pages/api/admin/quotes/send-magic-link.js`
+- Uses `getQuoteFiles()` utility to get file count
+- Properly filters files by `quote_id`
+
+#### `pages/api/admin/quotes/send-ready-email.js`
+- Uses `getQuoteFiles()` utility to get file count
+- Properly filters files by `quote_id`
+
 ### 3. Component Improvements: `components/FilesDisplay.jsx`
 - Enhanced debug logging to show which files are being received
 - Improved handling of files without URLs
