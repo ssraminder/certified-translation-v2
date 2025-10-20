@@ -28,7 +28,6 @@ async function handler(req, res) {
         'discount_amount',
         'discount_type',
         'discount_reason',
-        'service_type',
         'source_language',
         'target_language',
         'document_type',
