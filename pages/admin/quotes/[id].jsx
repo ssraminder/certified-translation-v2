@@ -84,6 +84,12 @@ export default function Page({ initialAdmin }){
             if (json?.certifications) {
               setCertifications(json.certifications);
             }
+            if (json?.documents) {
+              setFiles(json.documents);
+            }
+            if (json?.reference_materials) {
+              setReferenceFiles(json.reference_materials);
+            }
           })
           .catch(err => console.error('Polling error:', err));
       }
