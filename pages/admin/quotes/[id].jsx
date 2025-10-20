@@ -251,17 +251,15 @@ export default function Page({ initialAdmin }){
             />
 
             {/* Files Display Section */}
-            {(files.length > 0 || referenceFiles.length > 0) && (
-              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">Files & Documents</h2>
-                <FilesDisplay
-                  quoteFiles={files}
-                  referenceFiles={referenceFiles}
-                  context="quote"
-                  isAdmin={true}
-                />
-              </section>
-            )}
+            <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Files & Documents</h2>
+              <FilesDisplay
+                quoteFiles={files}
+                referenceFiles={referenceFiles}
+                context="quote"
+                isAdmin={true}
+              />
+            </section>
 
             {/* Line Items Section */}
             <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
