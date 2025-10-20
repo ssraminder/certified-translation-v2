@@ -9,6 +9,7 @@ import CertificationsManager from '../../../components/admin/CertificationsManag
 import EditQuoteHeaderModal from '../../../components/admin/EditQuoteHeaderModal';
 import EditLineItemModal from '../../../components/admin/EditLineItemModal';
 import DocumentUploadSection from '../../../components/admin/DocumentUploadSection';
+import FilesDisplay from '../../../components/FilesDisplay';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
 import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
