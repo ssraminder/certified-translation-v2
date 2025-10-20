@@ -55,6 +55,7 @@ async function cleanupOrders() {
     const { data: updated, error: updateError } = await supabase
       .from('orders')
       .update(updateData)
+      .not('id', 'is', null)
       .select('id, order_number');
 
     if (updateError) throw updateError;

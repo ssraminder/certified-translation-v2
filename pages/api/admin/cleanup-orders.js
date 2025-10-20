@@ -52,7 +52,7 @@ async function handler(req, res) {
     const { error: updateError } = await supabase
       .from('orders')
       .update(updateData)
-      .gt('id', '');
+      .not('id', 'is', null);
 
     if (updateError) throw updateError;
 
