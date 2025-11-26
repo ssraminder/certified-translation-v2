@@ -129,10 +129,14 @@ async function handler(req, res){
       const details_html = `<p>You can access your account instantly using the button below, or continue to payment from your quote.</p>
       <div style="text-align:center;margin:18px 0;"><a href="${process.env.NEXT_PUBLIC_SITE_URL || ''}/auth/verify?token=${encodeURIComponent(token)}" style="display:inline-block;background:#00B8D4;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;">Access Your Account</a></div>
       <p>Your quote number is <strong>${quote_number}</strong>.</p>`;
-      await sendWelcomeEmail({ email: normEmail, first_name, quote_number, details_html });
+      sendWelcomeEmail({ email: normEmail, first_name, quote_number, details_html }).catch(err => {
+        console.error('Failed to send welcome email:', err);
+      });
     } else {
       const details_html = `<p>Your quote number is <strong>${quote_number}</strong>. You can view all your quotes from your dashboard.</p>`;
-      await sendQuoteSavedEmail({ email: normEmail, first_name, quote_number, details_html });
+      sendQuoteSavedEmail({ email: normEmail, first_name, quote_number, details_html }).catch(err => {
+        console.error('Failed to send quote saved email:', err);
+      });
     }
 
     return res.status(200).json({ success: true, user_id: userId, user_created: userCreated, quote_number });
