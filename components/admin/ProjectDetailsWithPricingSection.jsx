@@ -70,7 +70,20 @@ export default function ProjectDetailsWithPricingSection({
 
         {/* Documents/Line Items */}
         <div className="mt-8 pt-6 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Documents ({lineItems.length})</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900">Documents ({lineItems.length})</h3>
+            {canEdit && (
+              <button
+                onClick={() => onAddLineItem?.()}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 16 16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4.287 8h9.333M8.953 3.333v9.334"/>
+                </svg>
+                Add Item
+              </button>
+            )}
+          </div>
           {lineItems.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
