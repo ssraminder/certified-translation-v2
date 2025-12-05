@@ -12,7 +12,7 @@ import DocumentUploadSection from '../../../components/admin/DocumentUploadSecti
 import FilesDisplay from '../../../components/FilesDisplay';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
-import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
+import ProjectDetailsWithPricingSection from '../../../components/admin/ProjectDetailsWithPricingSection';
 import SendMagicLinkModal from '../../../components/admin/SendMagicLinkModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
