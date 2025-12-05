@@ -397,7 +397,7 @@ async function createOrRemoveRushAdjustment(supabase, quoteId, selectedDeliveryK
       type: 'surcharge',
       description: 'Rush Delivery Fee',
       discount_type: 'fixed',
-      discount_value: 0,
+      discount_value: rushAmount,
       total_amount: rushAmount,
       is_taxable: true,
       notes: `${rushPercentDisplay}% rush fee applied for expedited delivery`
