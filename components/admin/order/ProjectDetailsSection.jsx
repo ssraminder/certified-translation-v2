@@ -154,13 +154,28 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             Number of Pages
           </label>
           {isEditing ? (
-            <input
-              type="number"
-              value={formData.page_count || ''}
-              onChange={(e) => handleChange('page_count', e.target.value ? parseInt(e.target.value) : null)}
-              min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            order.line_item_count > 1 ? (
+              <div>
+                <input
+                  type="number"
+                  value={formData.page_count || ''}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+                <p className="text-xs text-gray-600 mt-2">
+                  Multiple documents. Edit Line Items below to update page counts.
+                </p>
+              </div>
+            ) : (
+              <input
+                type="number"
+                step="0.01"
+                value={formData.page_count || ''}
+                onChange={(e) => handleChange('page_count', e.target.value ? parseFloat(e.target.value) : null)}
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )
           ) : (
             <p className="text-gray-900">{formData.page_count ? formData.page_count : '—'}</p>
           )}
