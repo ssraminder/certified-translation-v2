@@ -293,12 +293,13 @@ async function getOrderWithDetails(supabase, orderId){
   if (error) throw error;
   if (!order) return null;
 
-  const [billing, shipping, shippingOptions, filesData, userData] = await Promise.all([
+  const [billing, shipping, shippingOptions, filesData, userData, lineItemsData] = await Promise.all([
     supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle(),
     supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle(),
     supabase.from('order_shipping_options').select('*').eq('order_id', orderId),
     getOrderFilesFromQuote(supabase, order.quote_id),
-    order.user_id ? supabase.from('users').select('id, email, first_name, last_name, phone, account_type, company_name, company_registration, business_license, designation, tax_id').eq('id', order.user_id).maybeSingle() : Promise.resolve({ data: null })
+    order.user_id ? supabase.from('users').select('id, email, first_name, last_name, phone, account_type, company_name, company_registration, business_license, designation, tax_id').eq('id', order.user_id).maybeSingle() : Promise.resolve({ data: null }),
+    order.quote_id ? supabase.from('quote_sub_orders').select('id').eq('quote_id', order.quote_id) : Promise.resolve({ data: [] })
   ]);
 
   const filesWithUrls = filesData.documents || [];
@@ -306,6 +307,7 @@ async function getOrderWithDetails(supabase, orderId){
 
   const user = userData?.data;
   const customerType = user?.account_type || (order.is_guest ? 'guest' : 'individual');
+  const lineItemCount = Array.isArray(lineItemsData.data) ? lineItemsData.data.length : 0;
 
   return {
     ...order,
@@ -319,7 +321,8 @@ async function getOrderWithDetails(supabase, orderId){
     company_registration: user?.company_registration || null,
     business_license: user?.business_license || null,
     designation: user?.designation || null,
-    tax_id: user?.tax_id || null
+    tax_id: user?.tax_id || null,
+    line_item_count: lineItemCount
   };
 }
 
