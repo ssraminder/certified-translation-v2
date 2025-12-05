@@ -11,9 +11,6 @@ async function handler(req, res){
     const { quoteId } = req.query;
     const supabase = getSupabaseServerClient();
 
-  const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
-  if (['accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
-
   const body = req.body || {};
   console.log('API adjustments.body', body);
   const type = String(body.type || '').toLowerCase();
