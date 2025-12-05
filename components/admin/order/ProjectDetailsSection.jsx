@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toDateInputFormat, toISOString, formatDateForDisplay } from '../../../lib/dateUtils';
 
 const documentTypes = ['Academic', 'Legal', 'Medical', 'Business', 'Personal', 'Other'];
 const urgencyLevels = [
@@ -22,7 +23,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
     page_count: order.page_count || null,
     word_count: order.word_count || null,
     urgency: order.urgency || '',
-    due_date: order.due_date || '',
+    due_date: toDateInputFormat(order.due_date) || '',
     project_status: order.project_status || '',
     special_instructions: order.special_instructions || '',
     internal_notes: order.internal_notes || '',
@@ -36,10 +37,15 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const dataToSend = {
+        ...formData,
+        due_date: formData.due_date ? toISOString(formData.due_date) : null,
+      };
+
       const resp = await fetch(`/api/orders/${order.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
       if (!resp.ok) throw new Error('Failed to update');
       const data = await resp.json();
@@ -71,7 +77,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
                 page_count: order.page_count || null,
                 word_count: order.word_count || null,
                 urgency: order.urgency || '',
-                due_date: order.due_date || '',
+                due_date: toDateInputFormat(order.due_date) || '',
                 project_status: order.project_status || '',
                 special_instructions: order.special_instructions || '',
                 internal_notes: order.internal_notes || '',
@@ -242,7 +248,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             />
           ) : (
             <p className="text-gray-900">
-              {formData.due_date ? new Date(formData.due_date).toLocaleDateString() : '—'}
+              {formatDateForDisplay(order.due_date)}
             </p>
           )}
         </div>
@@ -345,7 +351,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
                   page_count: order.page_count || null,
                   word_count: order.word_count || null,
                   urgency: order.urgency || '',
-                  due_date: order.due_date || '',
+                  due_date: toDateInputFormat(order.due_date) || '',
                   project_status: order.project_status || '',
                   special_instructions: order.special_instructions || '',
                   internal_notes: order.internal_notes || '',

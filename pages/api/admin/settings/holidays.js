@@ -1,5 +1,6 @@
 import { withPermission } from '../../../../lib/apiAdmin';
 import { getSupabaseServerClient } from '../../../../lib/supabaseServer';
+import { normalizeToISOString } from '../../../../lib/dateUtils';
 
 async function handler(req, res) {
   if (req.method === 'GET') {
@@ -60,12 +61,17 @@ async function createHoliday(req, res) {
       return res.status(400).json({ error: 'location_id, holiday_name, and holiday_date are required' });
     }
 
+    const normalizedDate = normalizeToISOString(holiday_date);
+    if (!normalizedDate) {
+      return res.status(400).json({ error: 'Invalid holiday_date format' });
+    }
+
     const { data: holiday, error } = await supabase
       .from('company_holidays')
       .insert([{
         location_id,
         holiday_name,
-        holiday_date,
+        holiday_date: normalizedDate,
         description,
         is_closed: is_closed !== false,
         opening_time: is_closed === false ? opening_time : null,

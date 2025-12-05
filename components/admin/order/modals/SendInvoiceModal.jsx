@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toISOString } from '../../../lib/dateUtils';
 
 export default function SendInvoiceModal({ open, order, balance, onClose, onUpdate }) {
   const [scheduleMode, setScheduleMode] = useState('now');
@@ -21,7 +22,7 @@ export default function SendInvoiceModal({ open, order, balance, onClose, onUpda
         body: JSON.stringify({
           amount: balance,
           scheduleMode,
-          scheduledDate: scheduleMode === 'scheduled' ? scheduledDate : null,
+          scheduledDate: scheduleMode === 'scheduled' ? toISOString(scheduledDate) : null,
           includePaymentLink,
           sendCopyToAdmin,
         }),
