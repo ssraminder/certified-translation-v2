@@ -248,7 +248,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             />
           ) : (
             <p className="text-gray-900">
-              {formData.due_date ? new Date(formData.due_date).toLocaleDateString() : '—'}
+              {formatDateForDisplay(order.due_date)}
             </p>
           )}
         </div>
