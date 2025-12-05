@@ -105,14 +105,16 @@ export default function ProjectDetailsWithLineItemsSection({ order, onUpdate }) 
   const { totalPages, totalWords } = calculateTotals();
   const isSingleLineItem = lineItems.length === 1;
 
-  const handleLineItemSave = async (updatedItem) => {
+  const handleLineItemSave = async (patch) => {
+    if (!editingLineItem) return;
+
     try {
       const resp = await fetch(
-        `/api/admin/quotes/${order.quote_id}/line-items/${updatedItem.id}`,
+        `/api/admin/quotes/${order.quote_id}/line-items/${editingLineItem.id}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedItem),
+          body: JSON.stringify(patch),
         }
       );
 
@@ -123,7 +125,7 @@ export default function ProjectDetailsWithLineItemsSection({ order, onUpdate }) 
 
       setLineItems(prev =>
         prev.map(item =>
-          item.id === updatedItem.id ? { ...item, ...updatedItem } : item
+          item.id === editingLineItem.id ? { ...item, ...patch } : item
         )
       );
       setEditingLineItem(null);
