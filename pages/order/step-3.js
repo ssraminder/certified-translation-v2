@@ -1246,7 +1246,8 @@ export default function Step3() {
         deliveryOptions: deliveryOptionsList,
         settings: settingsData,
         sameDayEligible: sameDay,
-        holidays: holidaysSet
+        holidays: holidaysSet,
+        rushPercent: parseNumber(settingsData.rush_percent) || 0.30
       });
 
       try {
