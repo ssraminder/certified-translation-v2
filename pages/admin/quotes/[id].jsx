@@ -12,7 +12,7 @@ import DocumentUploadSection from '../../../components/admin/DocumentUploadSecti
 import FilesDisplay from '../../../components/FilesDisplay';
 import CustomerDetailsCard from '../../../components/admin/CustomerDetailsCard';
 import QuoteNumberCard from '../../../components/admin/QuoteNumberCard';
-import OrderDetailsCard from '../../../components/admin/OrderDetailsCard';
+import ProjectDetailsWithPricingSection from '../../../components/admin/ProjectDetailsWithPricingSection';
 import SendMagicLinkModal from '../../../components/admin/SendMagicLinkModal';
 
 export const getServerSideProps = getServerSideAdminWithPermission('quotes','view');
@@ -144,7 +144,21 @@ export default function Page({ initialAdmin }){
     const json = await resp.json();
     if (json?.success){
       setLineItems(items => items.map(it => it.id === id ? json.line_item : it));
-      setTotals(json.totals || totals);
+      if (json.totals) {
+        setTotals(json.totals);
+      }
+      // Force refresh of totals from API to ensure consistency
+      setTimeout(async () => {
+        try {
+          const refreshResp = await fetch(`/api/admin/quotes/${quote.id}`);
+          const refreshJson = await refreshResp.json();
+          if (refreshJson?.totals) {
+            setTotals(refreshJson.totals);
+          }
+        } catch (err) {
+          console.error('Error refreshing totals:', err);
+        }
+      }, 100);
     }
   }
 
@@ -236,10 +250,23 @@ export default function Page({ initialAdmin }){
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Column - Main Content */}
-          <div className="flex-1 lg:w-[65%] space-y-8">
+          <div className="flex-1 lg:w-[100%] space-y-8">
 
-            {/* Order Details Card */}
-            <OrderDetailsCard quote={quote} certifications={certifications} />
+            {/* Project Details with Pricing Section */}
+            <ProjectDetailsWithPricingSection
+              quote={quote}
+              lineItems={lineItems}
+              certifications={certifications}
+              adjustments={adjustments}
+              computedTotals={computedTotals}
+              canEdit={canEdit}
+              onEditClick={() => setShowEditHeader(true)}
+              onLineItemClick={(item) => {
+                setEditingItem(item);
+                setShowEditLine(true);
+              }}
+              onAddLineItem={() => setShowManual(true)}
+            />
 
             {/* Document Upload Section */}
             <DocumentUploadSection
@@ -259,62 +286,6 @@ export default function Page({ initialAdmin }){
                 context="quote"
                 isAdmin={true}
               />
-            </section>
-
-            {/* Line Items Section */}
-            <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Line Items</h2>
-                {canEdit && (
-                  <button onClick={()=> setShowManual(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 16 16">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M4.287 8h9.333M8.953 3.333v9.334"/>
-                    </svg>
-                    Add Line Item
-                  </button>
-                )}
-              </div>
-              <div className="space-y-3">
-                {lineItems.map(it => {
-                  const effectiveRate = ((it.unit_rate_override ?? it.unit_rate) ?? 0);
-                  const computedLineTotal = (Number(effectiveRate) * Number(it.billable_pages || 0));
-                  return (
-                    <div key={it.id} className="p-4 rounded-lg border border-gray-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M12.5 1.667H5c-.442 0-.866.175-1.179.488A1.667 1.667 0 003.333 3.333v13.334c0 .442.176.866.488 1.179.313.313.737.487 1.179.487h10c.442 0 .866-.174 1.179-.487.313-.313.488-.737.488-1.179V5.833l-4.167-4.166z"/>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.67} d="M11.667 1.667v3.333c0 .442.175.866.488 1.179.313.313.737.488 1.179.488h3.333M8.333 7.5h-1.666M13.333 10.833H6.667M13.333 14.167H6.667"/>
-                          </svg>
-                          <div className="flex-1">
-                            <h3 className="font-medium text-gray-900">{it.filename || it.doc_type || 'Document'}</h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                              Pages: {it.total_pages||it.billable_pages} | Billable: {it.billable_pages} | Rate: ${Number(effectiveRate).toFixed(2)}/page
-                            </p>
-                            <p className="text-sm font-medium text-gray-900 mt-1">Total: ${computedLineTotal.toFixed(2)}</p>
-                          </div>
-                        </div>
-                        {canEdit && (
-                          <div className="flex items-center gap-2">
-                            <button className="p-2 rounded-lg hover:bg-gray-100" onClick={()=> { setEditingItem(it); setShowEditLine(true); }}>
-                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M8 2H3.333c-.353 0-.692.14-.942.39A1.333 1.333 0 002 3.333v9.334c0 .353.14.692.39.942.25.25.59.39.943.39h9.334c.353 0 .692-.14.942-.39.25-.25.39-.59.39-.943V8"/>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M12.25 1.75a1.414 1.414 0 112 2L8.24 9.76a2 2 0 01-.568.403l-1.916.56a.333.333 0 01-.408-.408l.56-1.915a2 2 0 01.403-.569l6.01-6.009z"/>
-                              </svg>
-                            </button>
-                            <button onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}/line-items/${it.id}`, { method:'DELETE' }); const j = await r.json(); if (j?.success){ setLineItems(list=> list.filter(x=> x.id !== it.id)); if (j.totals) setTotals(j.totals); } }} className="p-2 rounded-lg hover:bg-gray-100">
-                              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 16 16">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.33} d="M6.667 7.333v4M9.333 7.333v4M12.667 4v9.333c0 .354-.14.693-.391.943-.25.25-.589.391-.943.391H4.667c-.354 0-.693-.14-.943-.391a1.333 1.333 0 01-.391-.943V4M2 4h12M5.333 4V2.667c0-.354.14-.694.391-.944.25-.25.59-.39.943-.39h2.666c.354 0 .694.14.944.39.25.25.39.59.39.944V4"/>
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {lineItems.length === 0 && <p className="text-sm text-gray-500">No line items</p>}
-              </div>
             </section>
 
             {/* Certifications Section */}
@@ -460,171 +431,6 @@ export default function Page({ initialAdmin }){
             </section>
           </div>
 
-          {/* Right Column - Sticky Pricing Summary */}
-          <div className="lg:w-[35%]">
-            <div className="sticky top-4">
-              <section className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">Pricing Summary</h2>
-                
-                <div className="space-y-4">
-                  {/* Translation */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-900">Translation</span>
-                      <span className="font-medium text-gray-900">${computedTotals.translation.toFixed(2)}</span>
-                    </div>
-                    <ul className="ml-4 space-y-1 text-sm text-gray-600">
-                      {lineItems.map(it => {
-                        const rate = Number((it.unit_rate_override ?? it.unit_rate) || 0);
-                        const pages = Number(it.billable_pages||0);
-                        const amount = (rate * pages);
-                        return (
-                          <li key={it.id} className="flex items-center justify-between">
-                            <span>• {(it.filename || it.doc_type || 'Document')}</span>
-                            <span>${amount.toFixed(2)}</span>
-                          </li>
-                        );
-                      })}
-                      {lineItems.length === 0 && <li className="text-gray-400">No items</li>}
-                    </ul>
-                  </div>
-
-                  {/* Certification */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-900">Certification</span>
-                      <span className="font-medium text-gray-900">${computedTotals.certification.toFixed(2)}</span>
-                    </div>
-                    <ul className="ml-4 space-y-1 text-sm text-gray-600">
-                      {(certifications||[]).map(c => {
-                        const label = c.cert_type_name || 'Certification';
-                        const rate = Number((c.override_rate ?? c.default_rate) || 0);
-                        const isOverride = Number(c.override_rate) > 0;
-                        return (
-                          <li key={c.id} className="flex items-center justify-between">
-                            <span>• {label}{isOverride ? ' (override)' : ''}</span>
-                            <span>${rate.toFixed(2)}</span>
-                          </li>
-                        );
-                      })}
-                      {((certifications?.length||0)) === 0 && <li className="text-gray-400">No items</li>}
-                    </ul>
-                  </div>
-
-                  {/* Additional Items */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-gray-900">Additional Items</span>
-                      <span className="font-medium text-gray-900">${computedTotals.additionalItems.toFixed(2)}</span>
-                    </div>
-                    <ul className="ml-4 space-y-1 text-sm text-gray-600">
-                      {additionalItems.map(a => (
-                        <li key={a.id} className="flex items-center justify-between">
-                          <span>• {a.description}</span>
-                          <span>${Number(a.total_amount||0).toFixed(2)}</span>
-                        </li>
-                      ))}
-                      {additionalItems.length === 0 && <li className="text-gray-400">None</li>}
-                    </ul>
-                  </div>
-
-                  {/* Discounts */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-green-700">Discounts</span>
-                      <span className="font-medium text-green-700">-${computedTotals.discounts.toFixed(2)}</span>
-                    </div>
-                    <ul className="ml-4 space-y-1 text-sm text-gray-600">
-                      {discounts.map(a => (
-                        <li key={a.id} className="flex items-center justify-between">
-                          <span>• {a.description}</span>
-                          <span>-${Number(a.total_amount||0).toFixed(2)}</span>
-                        </li>
-                      ))}
-                      {discounts.length === 0 && <li className="text-gray-400">None</li>}
-                    </ul>
-                  </div>
-
-                  {/* Surcharges */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-orange-700">Surcharges</span>
-                      <span className="font-medium text-orange-700">+${computedTotals.surcharges.toFixed(2)}</span>
-                    </div>
-                    <ul className="ml-4 space-y-1 text-sm text-gray-600">
-                      {surcharges.map(a => (
-                        <li key={a.id} className="flex items-center justify-between">
-                          <span>• {a.description}</span>
-                          <span>+${Number(a.total_amount||0).toFixed(2)}</span>
-                        </li>
-                      ))}
-                      {surcharges.length === 0 && <li className="text-gray-400">None</li>}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="border-t my-4" />
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">Subtotal</span>
-                    <span className="font-medium text-gray-900">${computedTotals.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-gray-600">
-                    <span>Tax (0%)</span>
-                    <span>${computedTotals.tax.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <div className="border-t my-4" />
-
-                <div className="flex items-center justify-between text-lg font-semibold text-gray-900">
-                  <span>Total</span>
-                  <span>${computedTotals.total.toFixed(2)}</span>
-                </div>
-
-                <div className="border-t my-4" />
-
-                {/* Delivery Date Selector */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2 text-gray-900">Delivery Date</label>
-                  <input
-                    type="date"
-                    disabled={!canEdit}
-                    className="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm disabled:opacity-50"
-                    value={quote.delivery_date ? new Date(quote.delivery_date).toISOString().split('T')[0] : ''}
-                    onChange={e => updateDeliveryDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="border-t pt-4 space-y-2">
-                  {isSent ? (
-                    <>
-                      <button onClick={editAndResend} className="w-full rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-white text-sm font-medium">
-                        Edit Quote
-                      </button>
-                      <button onClick={() => setShowSendMagicLink(true)} className="w-full rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50">
-                        Copy & Send Link
-                      </button>
-                      <p className="text-xs text-gray-500 text-center mt-2">Edit quote to make changes. Use copy link to share with customer.</p>
-                    </>
-                  ) : (
-                    <>
-                      <button disabled={!canEdit} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700" onClick={async ()=>{ const r = await fetch(`/api/admin/quotes/${quote.id}`); const j = await r.json(); if (j?.totals) setTotals(j.totals); }}>
-                        Confirm and Update Summary
-                      </button>
-                      <button disabled={!canEdit} onClick={sendToCustomer} className="w-full rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-blue-700">
-                        Send to Customer
-                      </button>
-                    </>
-                  )}
-                  <a href={`/quote-review?id=${encodeURIComponent(quote.order_id)}`} target="_blank" rel="noreferrer" className="block w-full rounded-lg border px-4 py-2 text-center text-sm font-medium hover:bg-gray-50">
-                    View as Customer
-                  </a>
-                </div>
-              </section>
-            </div>
-          </div>
         </div>
       </div>
 
