@@ -37,10 +37,15 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const dataToSend = {
+        ...formData,
+        due_date: formData.due_date ? toISOString(formData.due_date) : null,
+      };
+
       const resp = await fetch(`/api/orders/${order.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
       if (!resp.ok) throw new Error('Failed to update');
       const data = await resp.json();
