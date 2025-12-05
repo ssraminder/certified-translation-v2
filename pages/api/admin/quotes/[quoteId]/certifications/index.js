@@ -14,12 +14,6 @@ async function handler(req, res){
     const supabase = getSupabaseServerClient();
     const { quoteId } = req.query;
 
-    // Ensure quote is editable
-    const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
-    if (['accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())){
-      return res.status(400).json({ error: 'Quote is locked' });
-    }
-
     const { cert_type_code, cert_type_name, default_rate, override_rate, applies_to_file_id, applies_to_filename } = req.body || {};
 
   let typeName = cert_type_name;
