@@ -435,7 +435,7 @@ function computeDeliveryEstimates({
       afterCutoff
     });
     const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
-    const modifier = 0.3;
+    const modifier = rushPercent;
     const priceLabel = toPercentLabel(modifier);
     delivery.expedited = {
       key: 'rush',
