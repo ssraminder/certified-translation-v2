@@ -1099,6 +1099,11 @@ export default function Step3() {
     if (!supabase) return;
     const persistSelection = async () => {
       try {
+        const baseSubtotal = roundToCents(pricing?.subtotal ?? 0);
+        const rushPercent = parseNumber(settings?.rush_percent) || 0.30;
+
+        await createOrRemoveRushAdjustment(supabase, quoteId, selectedDeliveryOption.key, baseSubtotal, rushPercent);
+
         const totalsWithDelivery = applyDeliveryModifier(pricing, selectedDeliveryOption);
         const deliveryPayload = {
           ...deliveryEstimates,
@@ -1113,7 +1118,7 @@ export default function Step3() {
       }
     };
     persistSelection();
-  }, [quoteId, selectedDeliveryOption, deliveryEstimates, pricing, lineItems]);
+  }, [quoteId, selectedDeliveryOption, deliveryEstimates, pricing, lineItems, settings]);
 
   useEffect(() => {
     if (!router.isReady) return;
