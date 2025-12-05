@@ -119,7 +119,12 @@ async function handler(req, res) {
 
       for (const [key, value] of Object.entries(updates)) {
         if (allowedFields.includes(key)) {
-          updateData[key] = value;
+          // Normalize date fields
+          if (key === 'due_date' && value) {
+            updateData[key] = normalizeToISOString(value);
+          } else {
+            updateData[key] = value;
+          }
         }
       }
 
