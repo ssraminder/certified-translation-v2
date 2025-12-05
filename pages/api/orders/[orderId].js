@@ -1,6 +1,7 @@
 import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 import { getOrderWithDetails } from './create-from-quote';
+import { recalcAndUpsertUnifiedQuoteResults } from '../../../lib/quoteTotals';
 
 function roundToCents(v) {
   return Math.round(Number(v || 0) * 100) / 100;
@@ -142,6 +143,24 @@ async function handler(req, res) {
           currentOrder.urgency,
           updates.urgency
         );
+      }
+
+      // Sync page_count changes to quote_sub_orders if page_count was updated
+      if (updates.page_count !== undefined && currentOrder?.quote_id) {
+        const { data: lineItems } = await supabase
+          .from('quote_sub_orders')
+          .select('id')
+          .eq('quote_id', currentOrder.quote_id);
+
+        if (Array.isArray(lineItems) && lineItems.length === 1) {
+          const newPageCount = updates.page_count;
+          await supabase
+            .from('quote_sub_orders')
+            .update({ billable_pages: newPageCount })
+            .eq('id', lineItems[0].id);
+
+          await recalcAndUpsertUnifiedQuoteResults(currentOrder.quote_id);
+        }
       }
 
       // Fetch updated order

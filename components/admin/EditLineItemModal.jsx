@@ -67,7 +67,7 @@ export default function EditLineItemModal({ open, onClose, lineItem, onSave }){
               <label className="block text-sm font-medium mb-2">Billable Pages</label>
               <input
                 type="number"
-                step="0.1"
+                step="0.01"
                 min="0"
                 value={billablePages}
                 onChange={e=> setBillablePages(e.target.value)}

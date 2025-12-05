@@ -171,8 +171,8 @@ export default function ManualLineItemForm({ open, onClose, quoteId, files, onCr
               <label className="block text-sm font-medium mb-2">Billable Pages *</label>
               <input
                 type="number"
-                step="0.1"
-                min="0.1"
+                step="0.01"
+                min="0.01"
                 value={billablePages}
                 onChange={e=> setBillablePages(e.target.value)}
                 className="w-full rounded-lg border-0 bg-white px-3 py-2 text-sm border border-gray-300"
