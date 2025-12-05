@@ -375,12 +375,48 @@ function applyDeliveryModifier(pricing, option) {
   return base;
 }
 
+async function createOrRemoveRushAdjustment(supabase, quoteId, selectedDeliveryKey, baseSubtotal, rushPercent) {
+  if (!supabase || !quoteId) return;
+
+  const isRushSelected = ['rush', 'sameDay'].includes(selectedDeliveryKey);
+
+  const { data: existingRushAdj } = await supabase
+    .from('quote_adjustments')
+    .select('id')
+    .eq('quote_id', quoteId)
+    .eq('type', 'surcharge')
+    .ilike('description', '%rush%')
+    .maybeSingle();
+
+  if (isRushSelected && !existingRushAdj) {
+    const rushAmount = roundToCents(baseSubtotal * rushPercent);
+    const rushPercentDisplay = Math.round(rushPercent * 100);
+
+    await supabase.from('quote_adjustments').insert({
+      quote_id: quoteId,
+      type: 'surcharge',
+      description: 'Rush Delivery Fee',
+      discount_type: 'fixed',
+      discount_value: rushAmount,
+      total_amount: rushAmount,
+      is_taxable: true,
+      notes: `${rushPercentDisplay}% rush fee applied for expedited delivery`
+    });
+  } else if (!isRushSelected && existingRushAdj) {
+    await supabase
+      .from('quote_adjustments')
+      .delete()
+      .eq('id', existingRushAdj.id);
+  }
+}
+
 function computeDeliveryEstimates({
   items,
   deliveryOptions,
   settings,
   sameDayEligible,
-  holidays
+  holidays,
+  rushPercent = 0.30
 }) {
   const tz = settings?.timezone || DEFAULT_TIMEZONE;
   const orderCutoff = settings?.order_cutoff_time || DEFAULT_ORDER_CUTOFF;
@@ -434,7 +470,7 @@ function computeDeliveryEstimates({
       afterCutoff
     });
     const rawDate = addBusinessDaysFromNow(requiredDays, tz, holidaySet);
-    const modifier = 0.3;
+    const modifier = rushPercent;
     const priceLabel = toPercentLabel(modifier);
     delivery.expedited = {
       key: 'rush',
@@ -1063,6 +1099,11 @@ export default function Step3() {
     if (!supabase) return;
     const persistSelection = async () => {
       try {
+        const baseSubtotal = roundToCents(pricing?.subtotal ?? 0);
+        const rushPercent = parseNumber(settings?.rush_percent) || 0.30;
+
+        await createOrRemoveRushAdjustment(supabase, quoteId, selectedDeliveryOption.key, baseSubtotal, rushPercent);
+
         const totalsWithDelivery = applyDeliveryModifier(pricing, selectedDeliveryOption);
         const deliveryPayload = {
           ...deliveryEstimates,
@@ -1077,7 +1118,7 @@ export default function Step3() {
       }
     };
     persistSelection();
-  }, [quoteId, selectedDeliveryOption, deliveryEstimates, pricing, lineItems]);
+  }, [quoteId, selectedDeliveryOption, deliveryEstimates, pricing, lineItems, settings]);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -1245,7 +1286,8 @@ export default function Step3() {
         deliveryOptions: deliveryOptionsList,
         settings: settingsData,
         sameDayEligible: sameDay,
-        holidays: holidaysSet
+        holidays: holidaysSet,
+        rushPercent: parseNumber(settingsData.rush_percent) || 0.30
       });
 
       try {

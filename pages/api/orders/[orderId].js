@@ -2,6 +2,74 @@ import { withApiBreadcrumbs } from '../../../lib/sentry';
 import { getSupabaseServerClient } from '../../../lib/supabaseServer';
 import { getOrderWithDetails } from './create-from-quote';
 
+function roundToCents(v) {
+  return Math.round(Number(v || 0) * 100) / 100;
+}
+
+async function handleRushAdjustmentForUrgencyChange(supabase, orderId, oldUrgency, newUrgency) {
+  if (!newUrgency || !supabase) return;
+
+  if (oldUrgency === newUrgency) return;
+
+  const isRushNew = ['rush', 'express'].includes(String(newUrgency || '').toLowerCase());
+  const isRushOld = ['rush', 'express'].includes(String(oldUrgency || '').toLowerCase());
+
+  if (isRushNew === isRushOld) return;
+
+  const { data: order } = await supabase
+    .from('orders')
+    .select('quote_id, subtotal')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (!order?.quote_id) return;
+
+  const { data: existingRushAdj } = await supabase
+    .from('quote_adjustments')
+    .select('id')
+    .eq('quote_id', order.quote_id)
+    .eq('type', 'surcharge')
+    .ilike('description', '%rush%')
+    .maybeSingle();
+
+  const { data: settings } = await supabase
+    .from('app_settings')
+    .select('rush_percent')
+    .maybeSingle();
+
+  const rushPercent = Number(settings?.rush_percent || 0.30);
+
+  if (isRushNew && !existingRushAdj) {
+    const baseSubtotal = Number(order.subtotal || 0);
+    const rushAmount = roundToCents(baseSubtotal * rushPercent);
+    const rushPercentDisplay = Math.round(rushPercent * 100);
+
+    try {
+      await supabase.from('quote_adjustments').insert({
+        quote_id: order.quote_id,
+        type: 'surcharge',
+        description: 'Rush Delivery Fee',
+        discount_type: 'fixed',
+        discount_value: rushAmount,
+        total_amount: rushAmount,
+        is_taxable: true,
+        notes: `${rushPercentDisplay}% rush fee applied by staff (urgency: ${newUrgency})`
+      });
+    } catch (err) {
+      console.error('Failed to create rush adjustment:', err);
+    }
+  } else if (!isRushNew && existingRushAdj) {
+    try {
+      await supabase
+        .from('quote_adjustments')
+        .delete()
+        .eq('id', existingRushAdj.id);
+    } catch (err) {
+      console.error('Failed to remove rush adjustment:', err);
+    }
+  }
+}
+
 async function handler(req, res) {
   const { orderId } = req.query;
   if (!orderId) return res.status(400).json({ error: 'Missing orderId' });
@@ -17,6 +85,13 @@ async function handler(req, res) {
 
     if (req.method === 'PATCH') {
       const updates = req.body;
+
+      // Get current order to check for urgency changes
+      const { data: currentOrder } = await supabase
+        .from('orders')
+        .select('urgency, quote_id, subtotal')
+        .eq('id', orderId)
+        .maybeSingle();
 
       // Build updateable fields
       const updateData = {};
@@ -58,6 +133,16 @@ async function handler(req, res) {
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Handle rush adjustment if urgency changed
+      if (updates.urgency !== undefined && currentOrder) {
+        await handleRushAdjustmentForUrgencyChange(
+          supabase,
+          orderId,
+          currentOrder.urgency,
+          updates.urgency
+        );
+      }
 
       // Fetch updated order
       const order = await getOrderWithDetails(supabase, orderId);
