@@ -3,9 +3,8 @@ import AdminLayout from '../../../components/admin/AdminLayout';
 import { getServerSideAdminWithPermission } from '../../../lib/withAdminPage';
 import OrderTimelineSection from '../../../components/admin/order/OrderTimelineSection';
 import CustomerInformationSection from '../../../components/admin/order/CustomerInformationSection';
-import ProjectDetailsSection from '../../../components/admin/order/ProjectDetailsSection';
+import ProjectDetailsWithLineItemsSection from '../../../components/admin/order/ProjectDetailsWithLineItemsSection';
 import AnalysisResultsSection from '../../../components/admin/order/AnalysisResultsSection';
-import OCRAnalysisSection from '../../../components/admin/order/OCRAnalysisSection';
 import DocumentsSection from '../../../components/admin/order/DocumentsSection';
 import FilesDisplay from '../../../components/FilesDisplay';
 import PricingFinancialsSection from '../../../components/admin/order/PricingFinancialsSection';
@@ -101,14 +100,11 @@ export default function OrderDetailsPage({ initialAdmin }) {
           {/* Customer Information */}
           <CustomerInformationSection order={order} onUpdate={setOrder} />
 
-          {/* Project Details */}
-          <ProjectDetailsSection order={order} onUpdate={setOrder} />
+          {/* Project Details with Line Items */}
+          <ProjectDetailsWithLineItemsSection order={order} onUpdate={setOrder} />
 
           {/* Analysis Results */}
           {order.analysis_data && <AnalysisResultsSection data={order.analysis_data} />}
-
-          {/* OCR Analysis */}
-          <OCRAnalysisSection order={order} />
 
           {/* Documents */}
           <DocumentsSection order={order} onUpdate={setOrder} />
