@@ -351,7 +351,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
                   page_count: order.page_count || null,
                   word_count: order.word_count || null,
                   urgency: order.urgency || '',
-                  due_date: order.due_date || '',
+                  due_date: toDateInputFormat(order.due_date) || '',
                   project_status: order.project_status || '',
                   special_instructions: order.special_instructions || '',
                   internal_notes: order.internal_notes || '',
