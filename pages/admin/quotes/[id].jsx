@@ -144,7 +144,21 @@ export default function Page({ initialAdmin }){
     const json = await resp.json();
     if (json?.success){
       setLineItems(items => items.map(it => it.id === id ? json.line_item : it));
-      setTotals(json.totals || totals);
+      if (json.totals) {
+        setTotals(json.totals);
+      }
+      // Force refresh of totals from API to ensure consistency
+      setTimeout(async () => {
+        try {
+          const refreshResp = await fetch(`/api/admin/quotes/${quote.id}`);
+          const refreshJson = await refreshResp.json();
+          if (refreshJson?.totals) {
+            setTotals(refreshJson.totals);
+          }
+        } catch (err) {
+          console.error('Error refreshing totals:', err);
+        }
+      }, 100);
     }
   }
 
