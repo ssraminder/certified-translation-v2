@@ -426,10 +426,15 @@ function HolidayForm({ locationId, onSave }) {
     e.preventDefault();
     try {
       setSaving(true);
+      const formToSend = {
+        ...form,
+        holiday_date: form.holiday_date ? toISOString(form.holiday_date) : null,
+      };
+
       const res = await fetch('/api/admin/settings/holidays', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location_id: locationId, ...form })
+        body: JSON.stringify({ location_id: locationId, ...formToSend })
       });
       const data = await res.json();
       if (data.success) {
