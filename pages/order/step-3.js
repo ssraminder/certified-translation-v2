@@ -375,6 +375,41 @@ function applyDeliveryModifier(pricing, option) {
   return base;
 }
 
+async function createOrRemoveRushAdjustment(supabase, quoteId, selectedDeliveryKey, baseSubtotal, rushPercent) {
+  if (!supabase || !quoteId) return;
+
+  const isRushSelected = ['rush', 'sameDay'].includes(selectedDeliveryKey);
+
+  const { data: existingRushAdj } = await supabase
+    .from('quote_adjustments')
+    .select('id')
+    .eq('quote_id', quoteId)
+    .eq('type', 'surcharge')
+    .ilike('description', '%rush%')
+    .maybeSingle();
+
+  if (isRushSelected && !existingRushAdj) {
+    const rushAmount = roundToCents(baseSubtotal * rushPercent);
+    const rushPercentDisplay = Math.round(rushPercent * 100);
+
+    await supabase.from('quote_adjustments').insert({
+      quote_id: quoteId,
+      type: 'surcharge',
+      description: 'Rush Delivery Fee',
+      discount_type: 'fixed',
+      discount_value: 0,
+      total_amount: rushAmount,
+      is_taxable: true,
+      notes: `${rushPercentDisplay}% rush fee applied for expedited delivery`
+    });
+  } else if (!isRushSelected && existingRushAdj) {
+    await supabase
+      .from('quote_adjustments')
+      .delete()
+      .eq('id', existingRushAdj.id);
+  }
+}
+
 function computeDeliveryEstimates({
   items,
   deliveryOptions,
