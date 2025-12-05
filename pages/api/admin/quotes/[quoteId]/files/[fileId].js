@@ -9,12 +9,6 @@ async function handler(req, res){
     const supabase = getSupabaseServerClient();
     const { quoteId, fileId } = req.query;
 
-    // Ensure quote is editable
-    const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
-    if (['accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())){
-      return res.status(400).json({ error: 'Quote is locked' });
-    }
-
     // Resolve file by either bigint id or uuid file_id
     const fileMatch = isNumericId(fileId) ? { id: Number(fileId) } : { file_id: fileId };
     const { data: file } = await supabase

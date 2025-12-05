@@ -9,9 +9,6 @@ async function handler(req, res){
     const { quoteId, adjustmentId } = req.query;
     const supabase = getSupabaseServerClient();
 
-  const { data: q } = await supabase.from('quote_submissions').select('quote_state').eq('quote_id', quoteId).maybeSingle();
-  if (['accepted','converted'].includes(String(q?.quote_state||'').toLowerCase())) return res.status(400).json({ error: 'Quote is locked' });
-
     const { error } = await supabase.from('quote_adjustments').delete().eq('id', adjustmentId).eq('quote_id', quoteId);
     if (error) return res.status(500).json({ error: error.message });
 
