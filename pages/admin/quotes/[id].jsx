@@ -265,6 +265,7 @@ export default function Page({ initialAdmin }){
                 setEditingItem(item);
                 setShowEditLine(true);
               }}
+              onAddLineItem={() => setShowManual(true)}
             />
 
             {/* Document Upload Section */}
