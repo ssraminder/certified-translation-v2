@@ -145,6 +145,24 @@ async function handler(req, res) {
         );
       }
 
+      // Sync page_count changes to quote_sub_orders if page_count was updated
+      if (updates.page_count !== undefined && currentOrder?.quote_id) {
+        const { data: lineItems } = await supabase
+          .from('quote_sub_orders')
+          .select('id')
+          .eq('quote_id', currentOrder.quote_id);
+
+        if (Array.isArray(lineItems) && lineItems.length === 1) {
+          const newPageCount = updates.page_count;
+          await supabase
+            .from('quote_sub_orders')
+            .update({ billable_pages: newPageCount })
+            .eq('id', lineItems[0].id);
+
+          await recalcAndUpsertUnifiedQuoteResults(currentOrder.quote_id);
+        }
+      }
+
       // Fetch updated order
       const order = await getOrderWithDetails(supabase, orderId);
       return res.status(200).json({ order });
