@@ -154,7 +154,7 @@ export default function ProjectDetailsSection({ order, onUpdate }) {
             Number of Pages
           </label>
           {isEditing ? (
-            order.line_item_count > 1 ? (
+            (order.line_item_count || 0) > 1 ? (
               <div>
                 <input
                   type="number"
