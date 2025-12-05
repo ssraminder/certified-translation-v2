@@ -110,11 +110,14 @@ export default function ProjectDetailsWithLineItemsSection({ order, onUpdate }) 
 
     try {
       const resp = await fetch(
-        `/api/admin/quotes/${order.quote_id}/line-items/${editingLineItem.id}`,
+        `/api/admin/quotes/${order.quote_id}/line-items`,
         {
-          method: 'PATCH',
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patch),
+          body: JSON.stringify({
+            line_item_id: editingLineItem.id,
+            updates: patch,
+          }),
         }
       );
 
@@ -122,6 +125,8 @@ export default function ProjectDetailsWithLineItemsSection({ order, onUpdate }) 
         const error = await resp.json();
         throw new Error(error.error || 'Failed to update line item');
       }
+
+      const data = await resp.json();
 
       setLineItems(prev =>
         prev.map(item =>
