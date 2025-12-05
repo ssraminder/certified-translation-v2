@@ -86,6 +86,13 @@ async function handler(req, res) {
     if (req.method === 'PATCH') {
       const updates = req.body;
 
+      // Get current order to check for urgency changes
+      const { data: currentOrder } = await supabase
+        .from('orders')
+        .select('urgency, quote_id, subtotal')
+        .eq('id', orderId)
+        .maybeSingle();
+
       // Build updateable fields
       const updateData = {};
       const allowedFields = [
@@ -126,6 +133,16 @@ async function handler(req, res) {
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Handle rush adjustment if urgency changed
+      if (updates.urgency !== undefined && currentOrder) {
+        await handleRushAdjustmentForUrgencyChange(
+          supabase,
+          orderId,
+          currentOrder.urgency,
+          updates.urgency
+        );
+      }
 
       // Fetch updated order
       const order = await getOrderWithDetails(supabase, orderId);
