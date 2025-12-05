@@ -14,6 +14,7 @@ export default function ProjectDetailsWithPricingSection({
   canEdit = false,
   onEditClick = () => {},
   onLineItemClick = () => {},
+  onAddLineItem = () => {},
 }) {
   const additionalItems = adjustments.filter(a => a.type === 'additional_item');
   const discounts = adjustments.filter(a => a.type === 'discount');
