@@ -50,7 +50,7 @@ async function handleRushAdjustmentForUrgencyChange(supabase, orderId, oldUrgenc
         type: 'surcharge',
         description: 'Rush Delivery Fee',
         discount_type: 'fixed',
-        discount_value: 0,
+        discount_value: rushAmount,
         total_amount: rushAmount,
         is_taxable: true,
         notes: `${rushPercentDisplay}% rush fee applied by staff (urgency: ${newUrgency})`
