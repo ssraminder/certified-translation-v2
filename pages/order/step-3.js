@@ -380,7 +380,8 @@ function computeDeliveryEstimates({
   deliveryOptions,
   settings,
   sameDayEligible,
-  holidays
+  holidays,
+  rushPercent = 0.30
 }) {
   const tz = settings?.timezone || DEFAULT_TIMEZONE;
   const orderCutoff = settings?.order_cutoff_time || DEFAULT_ORDER_CUTOFF;
