@@ -250,10 +250,22 @@ export default function Page({ initialAdmin }){
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left Column - Main Content */}
-          <div className="flex-1 lg:w-[65%] space-y-8">
+          <div className="flex-1 lg:w-[100%] space-y-8">
 
-            {/* Order Details Card */}
-            <OrderDetailsCard quote={quote} certifications={certifications} />
+            {/* Project Details with Pricing Section */}
+            <ProjectDetailsWithPricingSection
+              quote={quote}
+              lineItems={lineItems}
+              certifications={certifications}
+              adjustments={adjustments}
+              computedTotals={computedTotals}
+              canEdit={canEdit}
+              onEditClick={() => setShowEditHeader(true)}
+              onLineItemClick={(item) => {
+                setEditingItem(item);
+                setShowEditLine(true);
+              }}
+            />
 
             {/* Document Upload Section */}
             <DocumentUploadSection
