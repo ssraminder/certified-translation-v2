@@ -22,7 +22,7 @@ export default function SendInvoiceModal({ open, order, balance, onClose, onUpda
         body: JSON.stringify({
           amount: balance,
           scheduleMode,
-          scheduledDate: scheduleMode === 'scheduled' ? scheduledDate : null,
+          scheduledDate: scheduleMode === 'scheduled' ? toISOString(scheduledDate) : null,
           includePaymentLink,
           sendCopyToAdmin,
         }),
