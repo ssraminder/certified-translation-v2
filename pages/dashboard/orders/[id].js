@@ -3,6 +3,7 @@ import DashboardLayout from '../../../components/DashboardLayout';
 import { useAuth } from '../../../middleware/auth';
 import StatusBadge from '../../../components/dashboard/StatusBadge';
 import FilesDisplay from '../../../components/FilesDisplay';
+import CustomerMessages from '../../../components/dashboard/CustomerMessages';
 import Link from 'next/link';
 import { formatForDisplay as formatPhone } from '../../../lib/formatters/phone';
 
@@ -87,6 +88,8 @@ export default function OrderDetailPage(){
               isAdmin={false}
             />
           </div>
+
+          <CustomerMessages orderId={o.id} />
 
           {(o.billing_address || o.shipping_address) && (
             <div className="bg-white rounded-lg border border-gray-200 p-6">
