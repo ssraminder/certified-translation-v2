@@ -41,7 +41,7 @@ async function handler(req, res){
 
     const [quote, documents, referenceDocuments, billing, shipping] = await Promise.all([
       order.quote_id ? supabase.from('quote_submissions').select('*').eq('quote_id', order.quote_id).maybeSingle() : Promise.resolve({ data: null }),
-      supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', order.id),
+      supabase.from('quote_files').select('id, quote_id, order_id, file_id, filename, storage_path, storage_key, file_url, signed_url, bytes, content_type, status, file_url_expires_at, file_purpose, created_at').eq('order_id', order.id).in('file_purpose', ['translate', 'final_translation', 'certified_copy']),
       order.quote_id ? supabase.from('quote_reference_materials').select('id, quote_id, filename, storage_path, file_url, signed_url, bytes, content_type, file_url_expires_at, file_purpose, notes, created_at').eq('quote_id', order.quote_id) : Promise.resolve({ data: [] }),
       order.billing_address_id ? supabase.from('addresses').select('*').eq('id', order.billing_address_id).maybeSingle() : Promise.resolve({ data: null }),
       order.shipping_address_id ? supabase.from('addresses').select('*').eq('id', order.shipping_address_id).maybeSingle() : Promise.resolve({ data: null })
